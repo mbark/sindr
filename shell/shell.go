@@ -2,6 +2,7 @@ package shell
 
 import (
 	"fmt"
+	"os/exec"
 
 	lua "github.com/yuin/gopher-lua"
 )
@@ -19,6 +20,18 @@ var exports = map[string]lua.LGFunction{
 }
 
 func run(L *lua.LState) int {
-	fmt.Println("called shell.run")
+	lv := L.Get(-1)
+	if str, ok := lv.(lua.LString); ok {
+		fmt.Printf("running command %s", string(str))
+		cmd := exec.Command("bash", "-c", fmt.Sprintf("%s", string(str)))
+		err := cmd.Run()
+		if err != nil {
+			panic(err)
+		}
+	}
+	if lv.Type() != lua.LTString {
+		panic("string required.")
+	}
+
 	return 0
 }

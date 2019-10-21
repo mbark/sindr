@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/mbark/shmake/shell"
+	"github.com/urfave/cli"
 	"github.com/yuin/gluamapper"
 	lua "github.com/yuin/gopher-lua"
 )
@@ -14,20 +16,19 @@ type task struct {
 }
 
 type runtime struct {
-	tasks   []task
+	tasks   map[string]task
 	exports map[string]lua.LGFunction
 }
 
 func getRuntime() *runtime {
-	var tasks []task
 	r := &runtime{
-		tasks:   tasks,
+		tasks:   make(map[string]task),
 		exports: make(map[string]lua.LGFunction),
 	}
 
 	r.exports["register_task"] = registerTask(func(t task) {
 		fmt.Printf("registered task %s\n", t.Name)
-		r.tasks = append(r.tasks, t)
+		r.tasks[t.Name] = t
 	})
 
 	return r
@@ -66,15 +67,27 @@ func main() {
 		panic(err)
 	}
 
-	for _, t := range r.tasks {
-		fmt.Printf("evaluating task '%s'\n", t.Name)
+	app := cli.NewApp()
 
-		if err := L.CallByParam(lua.P{
-			Fn:      t.Fn,
-			NRet:    1,
-			Protect: true,
-		}); err != nil {
-			panic(err)
+	app.Name = "shmake"
+	app.Usage = "make shmake"
+	for name, t := range r.tasks {
+		app.Commands = []cli.Command{
+			{
+				Name: name,
+				Action: func(c *cli.Context) error {
+					return L.CallByParam(lua.P{
+						Fn:      t.Fn,
+						NRet:    1,
+						Protect: true,
+					})
+				},
+			},
 		}
+	}
+
+	err := app.Run(os.Args)
+	if err != nil {
+		panic(err)
 	}
 }

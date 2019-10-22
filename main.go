@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/mbark/shmake/files"
 	"github.com/mbark/shmake/shell"
 	"github.com/urfave/cli"
 	"github.com/yuin/gluamapper"
@@ -63,6 +64,7 @@ func main() {
 
 	L.PreloadModule("shmake.main", r.loader)
 	L.PreloadModule("shmake.shell", shell.Loader)
+	L.PreloadModule("shmake.files", files.Loader)
 	if err := L.DoFile("main.lua"); err != nil {
 		panic(err)
 	}
@@ -72,18 +74,18 @@ func main() {
 	app.Name = "shmake"
 	app.Usage = "make shmake"
 	for name, t := range r.tasks {
-		app.Commands = []cli.Command{
-			{
+		app.Commands = append(app.Commands,
+			cli.Command{
 				Name: name,
 				Action: func(c *cli.Context) error {
+					fmt.Printf("Running command %s\n", name)
 					return L.CallByParam(lua.P{
 						Fn:      t.Fn,
 						NRet:    1,
 						Protect: true,
 					})
 				},
-			},
-		}
+			})
 	}
 
 	err := app.Run(os.Args)

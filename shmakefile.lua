@@ -37,9 +37,9 @@ function dev_assets()
 function assets_live()
     yarn.run('gulp dev')
 
-local dev = m.add_env{name="dev", default=true}
-local prod = m.add_env{name="prod"}
+local dev = m.register_env{name="dev", default=true}
+local prod = m.register_env{name="prod"}
 
-shmake.add_task{fn=clean, name="clean"}
-shmake.add_task{fn=prod_assets, env=prod, name="assets"}
-shmake.add_task{fn=dev_assets, env=dev, name="assets"}
+shmake.register_task{fn=clean, name="clean"}
+shmake.register_task{fn=prod_assets, env=prod, name="assets"}
+shmake.register_task{fn=dev_assets, env=dev, name="assets"}

@@ -1,6 +1,7 @@
 package files
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -9,7 +10,7 @@ import (
 )
 
 type deleteConfig struct {
-	FileGlob        string
+	Files           string
 	OnlyDirectories bool
 }
 
@@ -31,7 +32,10 @@ func removeGlob(glob string, onlyDirectories bool) {
 		panic(err)
 	}
 
+	fmt.Printf("glob %s matches %s\n", glob, matches)
+
 	for _, file := range matches {
+		fmt.Printf("found matching file %s\n", file)
 		stat, err := os.Stat(file)
 		if err != nil {
 			panic(err)
@@ -41,6 +45,7 @@ func removeGlob(glob string, onlyDirectories bool) {
 			continue
 		}
 
+		fmt.Printf("removing %s\n", file)
 		err = os.RemoveAll(file)
 		if err != nil {
 			panic(err)
@@ -59,7 +64,7 @@ func delete(L *lua.LState) int {
 			panic(err)
 		}
 
-		removeGlob(config.FileGlob, config.OnlyDirectories)
+		removeGlob(config.Files, config.OnlyDirectories)
 
 		return 0
 	}

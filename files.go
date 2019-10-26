@@ -14,10 +14,10 @@ type deleteConfig struct {
 	OnlyDirectories bool
 }
 
-func getFileModule() Module {
+func getFileModule(runtime *Runtime) Module {
 	return Module{
 		exports: map[string]lua.LGFunction{
-			"delete": delete,
+			"delete": delete(runtime.addCommand),
 		},
 	}
 }
@@ -49,21 +49,29 @@ func removeGlob(glob string, onlyDirectories bool) {
 	}
 }
 
-func delete(L *lua.LState) int {
-	lv := L.Get(-1)
-	if glob, ok := lv.(lua.LString); ok {
-		removeGlob(string(glob), false)
-		return 0
-	} else if tbl, ok := lv.(*lua.LTable); ok {
-		var config deleteConfig
-		if err := gluamapper.Map(tbl, &config); err != nil {
-			panic(err)
+func delete(addCommand func(cmd func())) lua.LGFunction {
+	return func(L *lua.LState) int {
+		lv := L.Get(-1)
+
+		if glob, ok := lv.(lua.LString); ok {
+			addCommand(func() {
+				removeGlob(string(glob), false)
+			})
+
+			return 0
+		} else if tbl, ok := lv.(*lua.LTable); ok {
+			addCommand(func() {
+				var config deleteConfig
+				if err := gluamapper.Map(tbl, &config); err != nil {
+					panic(err)
+				}
+
+				removeGlob(config.Files, config.OnlyDirectories)
+			})
+
+			return 0
 		}
 
-		removeGlob(config.Files, config.OnlyDirectories)
-
-		return 0
+		panic("string required.")
 	}
-
-	panic("string required.")
 }

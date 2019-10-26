@@ -27,6 +27,11 @@ type Runtime struct {
 	environments map[string]env
 	defaultEnv   *env
 	modules      map[string]Module
+	commands     []func()
+}
+
+func (runtime *Runtime) addCommand(fn func()) {
+	runtime.commands = append(runtime.commands, fn)
 }
 
 // Module ...
@@ -35,10 +40,12 @@ type Module struct {
 }
 
 func getRuntime() *Runtime {
+	var commands []func()
 	r := &Runtime{
 		tasks:        make(map[string]task),
 		environments: make(map[string]env),
 		modules:      make(map[string]Module),
+		commands:     commands,
 	}
 
 	mainModule := Module{
@@ -104,8 +111,8 @@ func main() {
 
 	r := getRuntime()
 
-	r.modules["shmake.files"] = getFileModule()
-	r.modules["shmake.shell"] = getShellModule()
+	r.modules["shmake.files"] = getFileModule(r)
+	r.modules["shmake.shell"] = getShellModule(r)
 
 	for name, module := range r.modules {
 		L.PreloadModule(name, module.loader)
@@ -152,11 +159,21 @@ func main() {
 				Name: name,
 				Action: func(c *cli.Context) error {
 					fmt.Printf("Running command %s\n", name)
-					return L.CallByParam(lua.P{
+					err := L.CallByParam(lua.P{
 						Fn:      t.Fn,
 						NRet:    1,
 						Protect: true,
 					})
+
+					if err != nil {
+						return err
+					}
+
+					for _, cmd := range r.commands {
+						cmd()
+					}
+
+					return nil
 				},
 			})
 	}

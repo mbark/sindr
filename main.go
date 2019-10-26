@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/mbark/shmake/files"
-	"github.com/mbark/shmake/shell"
 	"github.com/urfave/cli"
 	"github.com/yuin/gluamapper"
 	lua "github.com/yuin/gopher-lua"
@@ -23,38 +21,49 @@ type env struct {
 	Default bool
 }
 
-type runtime struct {
+// Runtime ...
+type Runtime struct {
 	tasks        map[string]task
 	environments map[string]env
 	defaultEnv   *env
-	exports      map[string]lua.LGFunction
+	modules      map[string]Module
 }
 
-func getRuntime() *runtime {
-	r := &runtime{
+// Module ...
+type Module struct {
+	exports map[string]lua.LGFunction
+}
+
+func getRuntime() *Runtime {
+	r := &Runtime{
 		tasks:        make(map[string]task),
 		environments: make(map[string]env),
-		exports:      make(map[string]lua.LGFunction),
+		modules:      make(map[string]Module),
 	}
 
-	r.exports["register_task"] = registerTask(func(t task) {
-		fmt.Printf("registered task %s\n", t.Name)
-		r.tasks[t.Name] = t
-	})
+	mainModule := Module{
+		exports: map[string]lua.LGFunction{
+			"register_task": registerTask(func(t task) {
+				fmt.Printf("registered task %s\n", t.Name)
+				r.tasks[t.Name] = t
+			}),
+			"register_env": registerEnv(func(e env) {
+				fmt.Printf("registered env %s\n", e.Name)
+				r.environments[e.Name] = e
+				if e.Default {
+					r.defaultEnv = &e
+				}
+			}),
+		},
+	}
 
-	r.exports["register_env"] = registerEnv(func(e env) {
-		fmt.Printf("registered env %s\n", e.Name)
-		r.environments[e.Name] = e
-		if e.Default {
-			r.defaultEnv = &e
-		}
-	})
+	r.modules["shmake.main"] = mainModule
 
 	return r
 }
 
-func (runtime runtime) loader(L *lua.LState) int {
-	mod := L.SetFuncs(L.NewTable(), runtime.exports)
+func (module Module) loader(L *lua.LState) int {
+	mod := L.SetFuncs(L.NewTable(), module.exports)
 
 	L.Push(mod)
 	return 1
@@ -95,9 +104,13 @@ func main() {
 
 	r := getRuntime()
 
-	L.PreloadModule("shmake.main", r.loader)
-	L.PreloadModule("shmake.shell", shell.Loader)
-	L.PreloadModule("shmake.files", files.Loader)
+	r.modules["shmake.files"] = getFileModule()
+	r.modules["shmake.shell"] = getShellModule()
+
+	for name, module := range r.modules {
+		L.PreloadModule(name, module.loader)
+	}
+
 	if err := L.DoFile("main.lua"); err != nil {
 		panic(err)
 	}
@@ -130,9 +143,7 @@ func main() {
 	}
 
 	for name, t := range r.tasks {
-		fmt.Printf("adding task %s with environment %s\n", t.Name, t.Env)
 		if t.Env != "" && t.Env != *environment {
-			fmt.Printf("skip adding %s\n", t.Name)
 			continue
 		}
 

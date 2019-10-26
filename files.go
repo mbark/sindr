@@ -1,4 +1,4 @@
-package files
+package main
 
 import (
 	"fmt"
@@ -14,16 +14,12 @@ type deleteConfig struct {
 	OnlyDirectories bool
 }
 
-// Loader ...
-func Loader(L *lua.LState) int {
-	mod := L.SetFuncs(L.NewTable(), exports)
-
-	L.Push(mod)
-	return 1
-}
-
-var exports = map[string]lua.LGFunction{
-	"delete": delete,
+func getFileModule() Module {
+	return Module{
+		exports: map[string]lua.LGFunction{
+			"delete": delete,
+		},
+	}
 }
 
 func removeGlob(glob string, onlyDirectories bool) {

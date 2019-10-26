@@ -1,4 +1,4 @@
-package shell
+package main
 
 import (
 	"fmt"
@@ -7,16 +7,12 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
-// Loader ...
-func Loader(L *lua.LState) int {
-	mod := L.SetFuncs(L.NewTable(), exports)
-
-	L.Push(mod)
-	return 1
-}
-
-var exports = map[string]lua.LGFunction{
-	"run": run,
+func getShellModule() Module {
+	return Module{
+		exports: map[string]lua.LGFunction{
+			"run": run,
+		},
+	}
 }
 
 func run(L *lua.LState) int {

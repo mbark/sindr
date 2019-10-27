@@ -27,10 +27,10 @@ type Runtime struct {
 	environments map[string]env
 	defaultEnv   *env
 	modules      map[string]Module
-	commands     []func()
+	commands     []func() int64
 }
 
-func (runtime *Runtime) addCommand(fn func()) {
+func (runtime *Runtime) addCommand(fn func() int64) {
 	runtime.commands = append(runtime.commands, fn)
 }
 
@@ -40,7 +40,7 @@ type Module struct {
 }
 
 func getRuntime() *Runtime {
-	var commands []func()
+	var commands []func() int64
 	r := &Runtime{
 		tasks:        make(map[string]task),
 		environments: make(map[string]env),

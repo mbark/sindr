@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/yuin/gluamapper"
 	lua "github.com/yuin/gopher-lua"
@@ -22,7 +23,7 @@ func getFileModule(runtime *Runtime) Module {
 	}
 }
 
-func removeGlob(glob string, onlyDirectories bool) {
+func removeGlob(glob string, onlyDirectories bool) int64 {
 	matches, err := filepath.Glob(glob)
 	if err != nil {
 		panic(err)
@@ -30,6 +31,7 @@ func removeGlob(glob string, onlyDirectories bool) {
 
 	fmt.Printf("glob %s matches %s\n", glob, matches)
 
+	removedFile := false
 	for _, file := range matches {
 		fmt.Printf("found matching file %s\n", file)
 		stat, err := os.Stat(file)
@@ -46,27 +48,35 @@ func removeGlob(glob string, onlyDirectories bool) {
 		if err != nil {
 			panic(err)
 		}
+
+		removedFile = true
 	}
+
+	if removedFile {
+		return time.Now().Unix()
+	}
+
+	return 0
 }
 
-func delete(addCommand func(cmd func())) lua.LGFunction {
+func delete(addCommand func(cmd func() int64)) lua.LGFunction {
 	return func(L *lua.LState) int {
 		lv := L.Get(-1)
 
 		if glob, ok := lv.(lua.LString); ok {
-			addCommand(func() {
-				removeGlob(string(glob), false)
+			addCommand(func() int64 {
+				return removeGlob(string(glob), false)
 			})
 
 			return 0
 		} else if tbl, ok := lv.(*lua.LTable); ok {
-			addCommand(func() {
+			addCommand(func() int64 {
 				var config deleteConfig
 				if err := gluamapper.Map(tbl, &config); err != nil {
 					panic(err)
 				}
 
-				removeGlob(config.Files, config.OnlyDirectories)
+				return removeGlob(config.Files, config.OnlyDirectories)
 			})
 
 			return 0

@@ -18,12 +18,12 @@ type deleteConfig struct {
 func getFileModule(runtime *Runtime) Module {
 	return Module{
 		exports: map[string]lua.LGFunction{
-			"delete": delete(runtime.addCommand),
+			"delete": delete(runtime, runtime.addCommand),
 		},
 	}
 }
 
-func removeGlob(glob string, onlyDirectories bool) int64 {
+func removeGlob(glob string, onlyDirectories bool) (int64, bool) {
 	matches, err := filepath.Glob(glob)
 	if err != nil {
 		panic(err)
@@ -53,19 +53,24 @@ func removeGlob(glob string, onlyDirectories bool) int64 {
 	}
 
 	if removedFile {
-		return time.Now().Unix()
+		return time.Now().Unix(), true
 	}
 
-	return 0
+	return 0, false
 }
 
-func delete(addCommand func(cmd func() int64)) lua.LGFunction {
+func delete(runtime *Runtime, addCommand func(cmd func() int64)) lua.LGFunction {
 	return func(L *lua.LState) int {
 		lv := L.Get(-1)
 
 		if glob, ok := lv.(lua.LString); ok {
 			addCommand(func() int64 {
-				return removeGlob(string(glob), false)
+				lastRun, hasTimestamp := removeGlob(string(glob), false)
+				if !hasTimestamp {
+					return runtime.getLastTimestamp("removeGlob:" + string(glob))
+				}
+
+				return lastRun
 			})
 
 			return 0
@@ -76,7 +81,12 @@ func delete(addCommand func(cmd func() int64)) lua.LGFunction {
 					panic(err)
 				}
 
-				return removeGlob(config.Files, config.OnlyDirectories)
+				lastRun, hasTimestamp := removeGlob(config.Files, config.OnlyDirectories)
+				if !hasTimestamp {
+					return runtime.getLastTimestamp("removeGlob:" + config.Files)
+				}
+
+				return lastRun
 			})
 
 			return 0

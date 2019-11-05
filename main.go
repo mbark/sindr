@@ -3,7 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
+	"strconv"
+	"io/ioutil"
 	"os"
+	"path"
 
 	"github.com/urfave/cli"
 	"github.com/yuin/gluamapper"
@@ -28,10 +31,38 @@ type Runtime struct {
 	defaultEnv   *env
 	modules      map[string]Module
 	commands     []func() int64
+	cache        string
 }
 
+// Register a command to run, the command should return an int64 representing the
+// unix timestamp for when it was last run.
+// There are special values you can return:
+// * -1 is always out of date, meaning that it will always be rerun (and
+//   thus all commands after it as well)
+// *  0 is always up to date, meaning it will never rerun unless a previous command
+//    was out of date
 func (runtime *Runtime) addCommand(fn func() int64) {
 	runtime.commands = append(runtime.commands, fn)
+}
+
+func (runtime *Runtime) getLastTimestamp(hash string) int64 {
+	file, err := os.Open(path.Join(runtime.cache, hash))
+	if err != nil {
+		return -1
+	}
+	defer file.Close()
+
+	b, err := ioutil.ReadAll(file)
+	if err != nil {
+		return -1
+	}
+
+	timestamp, err := strconv.ParseInt(string(b), 10, 64)
+	if err != nil {
+		return -1
+	}
+
+	return timestamp
 }
 
 // Module ...
@@ -40,12 +71,16 @@ type Module struct {
 }
 
 func getRuntime() *Runtime {
+	home := os.Getenv("HOME")
+	cacheHome := xdgPath("CACHE_HOME", path.Join(home, ".cache"))
+
 	var commands []func() int64
 	r := &Runtime{
 		tasks:        make(map[string]task),
 		environments: make(map[string]env),
 		modules:      make(map[string]Module),
 		commands:     commands,
+		cache:        path.Join(cacheHome, "shmake"),
 	}
 
 	mainModule := Module{
@@ -103,6 +138,15 @@ func registerEnv(register func(e env)) lua.LGFunction {
 		L.Push(lua.LString(e.Name))
 		return 1
 	}
+}
+
+func xdgPath(name, defaultPath string) string {
+	dir := os.Getenv(fmt.Sprintf("XDG_%s", name))
+	if dir != "" && path.IsAbs(dir) {
+		return dir
+	}
+
+	return defaultPath
 }
 
 func main() {
@@ -170,7 +214,8 @@ func main() {
 					}
 
 					for _, cmd := range r.commands {
-						cmd()
+						timestamp := cmd()
+						fmt.Printf("timestamp: %s", timestamp)
 					}
 
 					return nil

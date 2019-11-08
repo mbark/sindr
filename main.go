@@ -3,10 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
-	"strconv"
 	"io/ioutil"
 	"os"
 	"path"
+	"strconv"
 
 	"github.com/urfave/cli"
 	"github.com/yuin/gluamapper"
@@ -24,13 +24,19 @@ type env struct {
 	Default bool
 }
 
+// Command ...
+type Command struct {
+	pre func() int64
+	run func()
+}
+
 // Runtime ...
 type Runtime struct {
 	tasks        map[string]task
 	environments map[string]env
 	defaultEnv   *env
 	modules      map[string]Module
-	commands     []func() int64
+	commands     []Command
 	cache        string
 }
 
@@ -41,8 +47,8 @@ type Runtime struct {
 //   thus all commands after it as well)
 // *  0 is always up to date, meaning it will never rerun unless a previous command
 //    was out of date
-func (runtime *Runtime) addCommand(fn func() int64) {
-	runtime.commands = append(runtime.commands, fn)
+func (runtime *Runtime) addCommand(cmd Command) {
+	runtime.commands = append(runtime.commands, cmd)
 }
 
 func (runtime *Runtime) getLastTimestamp(hash string) int64 {
@@ -74,7 +80,7 @@ func getRuntime() *Runtime {
 	home := os.Getenv("HOME")
 	cacheHome := xdgPath("CACHE_HOME", path.Join(home, ".cache"))
 
-	var commands []func() int64
+	var commands []Command
 	r := &Runtime{
 		tasks:        make(map[string]task),
 		environments: make(map[string]env),
@@ -213,9 +219,21 @@ func main() {
 						return err
 					}
 
+					var timestamp int64 = 0
+					outOfDate := false
 					for _, cmd := range r.commands {
-						timestamp := cmd()
-						fmt.Printf("timestamp: %s", timestamp)
+						if !outOfDate {
+							timestamp = cmd.pre()
+						}
+
+						if timestamp < 0 || outOfDate {
+							fmt.Printf("command %s is out of date: %d\n", name, timestamp)
+							outOfDate = true
+							cmd.run()
+						} else {
+							fmt.Printf("command %s is up to date\n", name)
+						}
+
 					}
 
 					return nil

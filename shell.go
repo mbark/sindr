@@ -15,7 +15,7 @@ func getShellModule(runtime *Runtime) Module {
 	}
 }
 
-func run(addCommand func(cmd func() int64)) lua.LGFunction {
+func run(addCommand func(cmd Command)) lua.LGFunction {
 	return func(L *lua.LState) int {
 		lv := L.Get(-1)
 
@@ -24,15 +24,18 @@ func run(addCommand func(cmd func() int64)) lua.LGFunction {
 		}
 
 		if str, ok := lv.(lua.LString); ok {
-			addCommand(func() int64 {
-				fmt.Printf("running command %s", string(str))
-				cmd := exec.Command("bash", "-c", fmt.Sprintf("%s", string(str)))
-				err := cmd.Run()
-				if err != nil {
-					panic(err)
-				}
-
-				return -1
+			addCommand(Command{
+				pre: func() int64 {
+					return -1
+				},
+				run: func() {
+					fmt.Printf("running command %s", string(str))
+					cmd := exec.Command("bash", "-c", fmt.Sprintf("%s", string(str)))
+					err := cmd.Run()
+					if err != nil {
+						panic(err)
+					}
+				},
 			})
 		}
 

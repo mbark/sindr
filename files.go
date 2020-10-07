@@ -22,7 +22,7 @@ func getFileModule(runtime *Runtime) Module {
 	}
 }
 
-func preRemoveGlob(config deleteConfig) []string {
+func findGlobMatches(config deleteConfig) []string {
 	matches, err := filepath.Glob(config.Files)
 	if err != nil {
 		panic(err)
@@ -76,16 +76,16 @@ func delete(runtime *Runtime, addCommand func(cmd Command)) lua.LGFunction {
 		}
 
 		addCommand(Command{
-			pre: func() int64 {
-				files := preRemoveGlob(config)
+			version: func() *string {
+				files := findGlobMatches(config)
 				if len(files) > 0 {
-					return -1
+					return nil
 				}
 
-				return 0
+				return &AlwaysUpToDateVersion
 			},
 			run: func() {
-				files := preRemoveGlob(config)
+				files := findGlobMatches(config)
 				removeFiles(files)
 			},
 		})

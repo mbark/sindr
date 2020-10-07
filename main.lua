@@ -26,7 +26,7 @@ end
 local dev = shmake.register_env{name="dev", default=true}
 local prod = shmake.register_env{name="prod"}
 
--- shmake.register_task{name="script", fn=a_script, env=dev}
--- shmake.register_task{name="clean", fn=clean, env=dev}
+shmake.register_task{name="script", fn=a_script, env=dev}
+shmake.register_task{name="clean", fn=clean, env=dev}
 shmake.register_task{name="start", fn=start, env=dev}
--- shmake.register_task{name="prodclean", fn=prod_clean, env=prod}
+shmake.register_task{name="prodclean", fn=prod_clean, env=prod}

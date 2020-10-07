@@ -2,10 +2,8 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
-	"strconv"
 
 	"github.com/urfave/cli/v2"
 	"github.com/yuin/gluamapper"
@@ -25,8 +23,8 @@ type env struct {
 
 // Command ...
 type Command struct {
-	pre func() int64
-	run func()
+	version func() *string
+	run     func()
 }
 
 // Runtime ...
@@ -36,8 +34,10 @@ type Runtime struct {
 	defaultEnv   *env
 	modules      map[string]Module
 	commands     []Command
-	cache        string
+	cache        Cache
 }
+
+var AlwaysUpToDateVersion = "0"
 
 // Register a command to run, the command should return an int64 representing the
 // unix timestamp for when it was last run.
@@ -50,26 +50,6 @@ func (runtime *Runtime) addCommand(cmd Command) {
 	runtime.commands = append(runtime.commands, cmd)
 }
 
-func (runtime *Runtime) getLastTimestamp(hash string) int64 {
-	file, err := os.Open(path.Join(runtime.cache, hash))
-	if err != nil {
-		return -1
-	}
-	defer file.Close()
-
-	b, err := ioutil.ReadAll(file)
-	if err != nil {
-		return -1
-	}
-
-	timestamp, err := strconv.ParseInt(string(b), 10, 64)
-	if err != nil {
-		return -1
-	}
-
-	return timestamp
-}
-
 // Module ...
 type Module struct {
 	exports map[string]lua.LGFunction
@@ -78,6 +58,12 @@ type Module struct {
 func getRuntime() *Runtime {
 	home := os.Getenv("HOME")
 	cacheHome := xdgPath("CACHE_HOME", path.Join(home, ".cache"))
+	cacheDir := path.Join(cacheHome, "shmake")
+
+	err := os.MkdirAll(cacheDir, 0700)
+	if err != nil {
+		panic(err)
+	}
 
 	var commands []Command
 	r := &Runtime{
@@ -85,7 +71,7 @@ func getRuntime() *Runtime {
 		environments: make(map[string]env),
 		modules:      make(map[string]Module),
 		commands:     commands,
-		cache:        path.Join(cacheHome, "shmake"),
+		cache:        NewCache(cacheDir),
 	}
 
 	mainModule := Module{
@@ -221,32 +207,55 @@ func main() {
 			&cli.Command{
 				Name: name,
 				Action: func(c *cli.Context) error {
-					fmt.Printf("Running command %s\n", name)
+					fmt.Printf("Running task %s\n", name)
+
 					err := L.CallByParam(lua.P{
 						Fn:      t.Fn,
 						NRet:    1,
 						Protect: true,
 					})
-
 					if err != nil {
 						return err
 					}
 
-					var timestamp int64 = 0
+					fmt.Println(r.commands)
+
+					var version *string
 					outOfDate := false
 					for _, cmd := range r.commands {
 						if !outOfDate {
-							timestamp = cmd.pre()
+							version = cmd.version()
 						}
 
-						if timestamp < 0 || outOfDate {
-							fmt.Printf("command %s is out of date: %d\n", name, timestamp)
+						fmt.Printf("cmd version %v\n", version)
+
+						cachedVersion, err := r.cache.GetVersion(name)
+						if err != nil {
+							fmt.Println(err)
+							panic(err)
+						}
+
+						// Special version number, signifies that it is up to date no matter what is cached
+						if version != nil && *version == AlwaysUpToDateVersion {
+							fmt.Printf("command %s is up to date\n", name)
+							continue
+						}
+
+						if cachedVersion == nil {
+							fmt.Printf("command %s is out of date, version: %v\n", name, version)
 							outOfDate = true
 							cmd.run()
-						} else {
-							fmt.Printf("command %s is up to date\n", name)
+							continue
 						}
 
+						if version == nil || *cachedVersion != *version || outOfDate {
+							fmt.Printf("command %s is out of date, version: %v\n", name, version)
+							outOfDate = true
+							cmd.run()
+							continue
+						}
+
+							fmt.Printf("command %s is up to date\n", name)
 					}
 
 					return nil

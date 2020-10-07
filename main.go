@@ -1,14 +1,13 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
 	"strconv"
 
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 	"github.com/yuin/gluamapper"
 	lua "github.com/yuin/gopher-lua"
 )
@@ -172,40 +171,54 @@ func main() {
 		panic(err)
 	}
 
-	flags := flag.NewFlagSet("", flag.ContinueOnError)
-	var environment = flags.String("env", "", "")
-	flags.Parse(os.Args[1:])
+	var environment string
 
-	if *environment == "" && r.defaultEnv != nil {
-		environment = &r.defaultEnv.Name
+	envApp := &cli.App{
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:        "env",
+				Destination: &environment,
+			},
+		},
+		Action: func(c *cli.Context) error {
+			return nil
+		},
 	}
 
-	fmt.Printf("environment %s\n", *environment)
+	if err := envApp.Run(os.Args); err != nil {
+		panic(err)
+	}
 
-	app := cli.NewApp()
-	app.Name = "shmake"
-	app.Usage = "make shmake"
+	if environment == "" && r.defaultEnv != nil {
+		environment = r.defaultEnv.Name
+	}
 
-	app.Flags = []cli.Flag{
-		cli.StringFlag{
+	fmt.Printf("environment %s\n", environment)
+	if environment != "" {
+		if _, ok := r.environments[environment]; !ok {
+			panic(fmt.Sprintf("no environment %s", environment))
+		}
+	}
+
+	cliFlags := []cli.Flag{
+		&cli.StringFlag{
 			Name:  "env",
 			Usage: "set which environment to show commands for",
 		},
 	}
 
-	if *environment != "" {
-		if _, ok := r.environments[*environment]; !ok {
-			panic(fmt.Sprintf("no environment %s", *environment))
-		}
-	}
+	fmt.Printf("commands %+v\n", r.tasks)
 
+	var commands []*cli.Command
 	for name, t := range r.tasks {
-		if t.Env != "" && t.Env != *environment {
+		if t.Env != "" && t.Env != environment {
 			continue
 		}
 
-		app.Commands = append(app.Commands,
-			cli.Command{
+		fmt.Printf("registering command with name %s\n", name)
+
+		commands = append(commands,
+			&cli.Command{
 				Name: name,
 				Action: func(c *cli.Context) error {
 					fmt.Printf("Running command %s\n", name)
@@ -239,6 +252,13 @@ func main() {
 					return nil
 				},
 			})
+	}
+
+	app := &cli.App{
+		Name:     "shmake",
+		Usage:    "make shmake",
+		Flags:    cliFlags,
+		Commands: commands,
 	}
 
 	err := app.Run(os.Args)

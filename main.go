@@ -222,7 +222,10 @@ func main() {
 	fmt.Printf("commands %+v\n", r.tasks)
 
 	var commands []*cli.Command
-	for name, t := range r.tasks {
+	for nameV, tV := range r.tasks {
+		name := nameV
+		t := tV
+
 		if t.Env != "" && t.Env != environment {
 			continue
 		}

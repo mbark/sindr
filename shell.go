@@ -43,9 +43,6 @@ func run(runtime *Runtime, addCommand func(cmd Command)) lua.LGFunction {
 
 		if str, ok := lv.(lua.LString); ok {
 			addCommand(Command{
-				version: func() *string {
-					return nil
-				},
 				run: func() {
 					command := withVariables(runtime, string(str))
 					fmt.Printf("running command %s\n", command)
@@ -68,9 +65,6 @@ func start(addCommand func(cmd Command)) lua.LGFunction {
 
 		if str, ok := lv.(lua.LString); ok {
 			addCommand(Command{
-				version: func() *string {
-					return nil
-				},
 				run: func() {
 					cmd := exec.Command("bash", "-c", fmt.Sprintf("%s", string(str)))
 					cmd.Stdout = os.Stdout
@@ -103,9 +97,6 @@ func start(addCommand func(cmd Command)) lua.LGFunction {
 			})
 
 			addCommand(Command{
-				version: func() *string {
-					return nil
-				},
 				run: func() {
 					fmt.Println("start run()")
 					var colorIdx uint8 = 0

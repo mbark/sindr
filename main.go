@@ -23,8 +23,7 @@ type env struct {
 
 // Command ...
 type Command struct {
-	version func() *string
-	run     func()
+	run func()
 }
 
 // Runtime ...
@@ -35,7 +34,6 @@ type Runtime struct {
 	defaultEnv   *env
 	modules      map[string]Module
 	commands     []Command
-	cache        Cache
 }
 
 var AlwaysUpToDateVersion = "0"
@@ -73,7 +71,6 @@ func getRuntime() *Runtime {
 		variables:    make(map[string]string),
 		modules:      make(map[string]Module),
 		commands:     commands,
-		cache:        NewCache(cacheDir),
 	}
 
 	mainModule := Module{
@@ -246,43 +243,8 @@ func main() {
 					}
 
 					fmt.Printf("task commands %v\n", r.commands)
-
-					var version *string
-					outOfDate := false
 					for _, cmd := range r.commands {
-						if !outOfDate {
-							version = cmd.version()
-						}
-
-						fmt.Printf("cmd version %v\n", version)
-
-						cachedVersion, err := r.cache.GetVersion(name)
-						if err != nil {
-							fmt.Println(err)
-							panic(err)
-						}
-
-						// Special version number, signifies that it is up to date no matter what is cached
-						if version != nil && *version == AlwaysUpToDateVersion {
-							fmt.Printf("command %s is up to date\n", name)
-							continue
-						}
-
-						if cachedVersion == nil {
-							fmt.Printf("command %s is out of date, version: %v\n", name, version)
-							outOfDate = true
-							cmd.run()
-							continue
-						}
-
-						if version == nil || *cachedVersion != *version || outOfDate {
-							fmt.Printf("command %s is out of date, version: %v\n", name, version)
-							outOfDate = true
-							cmd.run()
-							continue
-						}
-
-						fmt.Printf("command %s is up to date\n", name)
+						cmd.run()
 					}
 
 					return nil

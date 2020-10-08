@@ -9,13 +9,17 @@ function prod_clean()
 end
 
 function clean()
-    files.delete('*.pyc')
     files.delete('file')
+    files.delete('file2')
     files.delete({ files="some_dir", only_directories=true })
+    files.delete({ files="nested", only_directories=true })
 end
 
 function a_script()
     shell.run([[ touch "file" ]])
+    files.copy({ from='file', to='file2' })
+    files.mkdir('some_dir')
+    files.mkdir({dir='nested/directory', all=true})
 end
 
 function start()

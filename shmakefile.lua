@@ -12,13 +12,19 @@ function clean()
     files.delete("triresolve/media_source/elm/.elm")
 
 function prod_assets()
+    files.delete('triresolve/media_source/build/')
+    files.mkdirp('triresolve/media_source/build/')
+    yarn.run('build:prod')
+
+    files_to_cp = { { from: 'node_modules/@trioptima/trids/styles/{fonts,images}' to:'triresolve/media_source/build/' },
+        { from: 'node_modules/@trioptima/trids/dist/favicon.ico', to: 'triresolve/media_source/build/images/' },
+        { from: 'triresolve/media_source/static/*', to: 'triresolve/media_source/build/' } }
+
+    for _, operation in files_to_cp do
+        files.copy(operation)
+    end
+
     shell.run([[
-        rm -rf triresolve/media_source/build/
-        mkdir -p triresolve/media_source/build/
-        yarn run build:prod
-        cp -a node_modules/@trioptima/trids/styles/{fonts,images} triresolve/media_source/build/
-        cp -a node_modules/@trioptima/trids/dist/favicon.ico triresolve/media_source/build/images/
-        cp -a triresolve/media_source/static/* triresolve/media_source/build/
         $(PYTHON_) triresolve/manage.py collectstatic --noinput | tail -1
     ]])
 
@@ -35,7 +41,7 @@ function dev_assets()
     end
 
 function assets_live()
-    yarn.run('gulp dev')
+    yarn.start('gulp dev')
 
 local dev = m.register_env{name="dev", default=true}
 local prod = m.register_env{name="prod"}

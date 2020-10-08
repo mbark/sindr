@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"time"
@@ -19,6 +20,8 @@ func getFileModule(runtime *Runtime) Module {
 	return Module{
 		exports: map[string]lua.LGFunction{
 			"delete":    delete(runtime.addCommand),
+			"copy":      copy(runtime.addCommand),
+			"mkdir":     mkdir(runtime.addCommand),
 			"newest_ts": timestamp(true),
 			"oldest_ts": timestamp(false),
 		},
@@ -74,17 +77,99 @@ func delete(addCommand func(cmd Command)) lua.LGFunction {
 		}
 
 		addCommand(Command{
-			version: func() *string {
-				files := findGlobMatches(config)
-				if len(files) > 0 {
-					return nil
-				}
-
-				return &AlwaysUpToDateVersion
-			},
 			run: func() {
 				files := findGlobMatches(config)
 				removeFiles(files)
+			},
+		})
+
+		return 0
+	}
+}
+
+func CopyFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, in)
+	if err != nil {
+		return err
+	}
+	return out.Close()
+}
+
+type copyOptions struct {
+	From string
+	To   string
+}
+
+func copy(addCommand func(cmd Command)) lua.LGFunction {
+	return func(L *lua.LState) int {
+		lv := L.Get(-1)
+
+		var opts copyOptions
+		if tbl, ok := lv.(*lua.LTable); ok {
+			if err := gluamapper.Map(tbl, &opts); err != nil {
+				panic(err)
+			}
+		} else {
+			panic("table expected")
+		}
+
+		addCommand(Command{
+			run: func() {
+				err := CopyFile(opts.From, opts.To)
+				if err != nil {
+					panic(err)
+				}
+			},
+		})
+
+		return 0
+	}
+}
+
+type mkdirOptions struct {
+	Dir string
+	All bool
+}
+
+func mkdir(addCommand func(cmd Command)) lua.LGFunction {
+	return func(L *lua.LState) int {
+		lv := L.Get(-1)
+
+		var opts mkdirOptions
+		if str, ok := lv.(lua.LString); ok {
+			opts.Dir = string(str)
+			opts.All = false
+		} else if tbl, ok := lv.(*lua.LTable); ok {
+			if err := gluamapper.Map(tbl, &opts); err != nil {
+				panic(err)
+			}
+		} else {
+			panic("table expected")
+		}
+
+		addCommand(Command{
+			run: func() {
+				var err error
+				if opts.All {
+					err = os.MkdirAll(opts.Dir, 0700)
+				} else {
+					err = os.Mkdir(opts.Dir, 0700)
+				}
+				if err != nil {
+					panic(err)
+				}
 			},
 		})
 

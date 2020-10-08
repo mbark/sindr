@@ -1,9 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/yuin/gluamapper"
 	lua "github.com/yuin/gopher-lua"
@@ -17,7 +17,8 @@ type deleteConfig struct {
 func getFileModule(runtime *Runtime) Module {
 	return Module{
 		exports: map[string]lua.LGFunction{
-			"delete": delete(runtime, runtime.addCommand),
+			"delete":    delete(runtime.addCommand),
+			"timestamp": timestamp(),
 		},
 	}
 }
@@ -28,11 +29,8 @@ func findGlobMatches(config deleteConfig) []string {
 		panic(err)
 	}
 
-	fmt.Printf("glob %s matches %s\n", config.Files, matches)
-
 	var files []string
 	for _, file := range matches {
-		fmt.Printf("found matching file %s\n", file)
 		stat, err := os.Stat(file)
 		if err != nil {
 			panic(err)
@@ -42,7 +40,6 @@ func findGlobMatches(config deleteConfig) []string {
 			continue
 		}
 
-		fmt.Printf("removing %s\n", file)
 		files = append(files, file)
 	}
 
@@ -51,7 +48,6 @@ func findGlobMatches(config deleteConfig) []string {
 
 func removeFiles(files []string) {
 	for _, file := range files {
-		fmt.Printf("removing file %s\n", file)
 		err := os.RemoveAll(file)
 		if err != nil {
 			panic(err)
@@ -59,7 +55,7 @@ func removeFiles(files []string) {
 	}
 }
 
-func delete(runtime *Runtime, addCommand func(cmd Command)) lua.LGFunction {
+func delete(addCommand func(cmd Command)) lua.LGFunction {
 	return func(L *lua.LState) int {
 		lv := L.Get(-1)
 
@@ -91,5 +87,44 @@ func delete(runtime *Runtime, addCommand func(cmd Command)) lua.LGFunction {
 		})
 
 		return 0
+	}
+}
+
+func timestamp() lua.LGFunction {
+	return func(L *lua.LState) int {
+		lv := L.Get(-1)
+
+		var config deleteConfig
+		if glob, ok := lv.(lua.LString); ok {
+			config.Files = string(glob)
+			config.OnlyDirectories = false
+		} else if tbl, ok := lv.(*lua.LTable); ok {
+			if err := gluamapper.Map(tbl, &config); err != nil {
+				panic(err)
+			}
+		} else {
+			panic("string or table expected")
+		}
+
+		files := findGlobMatches(config)
+		if len(files) == 0 {
+			L.Push(lua.LNumber(0))
+			return 1
+		}
+
+		var modTime time.Time
+		for _, f := range files {
+			stat, err := os.Stat(f)
+			if err != nil {
+				panic(err)
+			}
+
+			if stat.ModTime().After(modTime) {
+				modTime = stat.ModTime()
+			}
+		}
+
+		L.Push(lua.LNumber(modTime.Unix()))
+		return 1
 	}
 }

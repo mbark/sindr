@@ -21,6 +21,11 @@ type env struct {
 	Default bool
 }
 
+type variable struct {
+	Name  string
+	Value string
+}
+
 // Command ...
 type Command struct {
 	version func() *string
@@ -31,6 +36,7 @@ type Command struct {
 type Runtime struct {
 	tasks        map[string]task
 	environments map[string]env
+	variables    map[string]variable
 	defaultEnv   *env
 	modules      map[string]Module
 	commands     []Command
@@ -69,6 +75,7 @@ func getRuntime() *Runtime {
 	r := &Runtime{
 		tasks:        make(map[string]task),
 		environments: make(map[string]env),
+		variables:    make(map[string]variable),
 		modules:      make(map[string]Module),
 		commands:     commands,
 		cache:        NewCache(cacheDir),
@@ -86,6 +93,10 @@ func getRuntime() *Runtime {
 				if e.Default {
 					r.defaultEnv = &e
 				}
+			}),
+			"register_var": registerVar(func(v variable) {
+				fmt.Printf("registered var %s\n", v)
+				r.variables[v.Name] = v
 			}),
 		},
 	}
@@ -127,6 +138,21 @@ func registerEnv(register func(e env)) lua.LGFunction {
 
 		register(e)
 		L.Push(lua.LString(e.Name))
+		return 1
+	}
+}
+
+func registerVar(register func(v variable)) lua.LGFunction {
+	return func(L *lua.LState) int {
+		lv := L.Get(-1)
+
+		var v variable
+		if err := gluamapper.Map(lv.(*lua.LTable), &v); err != nil {
+			panic(err)
+		}
+
+		register(v)
+		L.Push(lua.LString(v.Value))
 		return 1
 	}
 }
@@ -255,7 +281,7 @@ func main() {
 							continue
 						}
 
-							fmt.Printf("command %s is up to date\n", name)
+						fmt.Printf("command %s is up to date\n", name)
 					}
 
 					return nil

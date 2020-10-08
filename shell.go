@@ -2,10 +2,12 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
 	"sync"
+	"text/template"
 
 	"github.com/logrusorgru/aurora/v3"
 	lua "github.com/yuin/gopher-lua"
@@ -14,13 +16,24 @@ import (
 func getShellModule(runtime *Runtime) Module {
 	return Module{
 		exports: map[string]lua.LGFunction{
-			"run":   run(runtime.addCommand),
+			"run":   run(runtime, runtime.addCommand),
 			"start": start(runtime.addCommand),
 		},
 	}
 }
 
-func run(addCommand func(cmd Command)) lua.LGFunction {
+func withVariables(runtime *Runtime, input string) string {
+	t := template.Must(template.New("run").Parse(input))
+	var buf bytes.Buffer
+	err := t.Execute(&buf, runtime.variables)
+	if err != nil {
+		panic(fmt.Errorf("execute template: %w", err))
+	}
+
+	return buf.String()
+}
+
+func run(runtime *Runtime, addCommand func(cmd Command)) lua.LGFunction {
 	return func(L *lua.LState) int {
 		lv := L.Get(-1)
 
@@ -34,8 +47,9 @@ func run(addCommand func(cmd Command)) lua.LGFunction {
 					return nil
 				},
 				run: func() {
-					fmt.Printf("running command %s\n", string(str))
-					cmd := exec.Command("bash", "-c", fmt.Sprintf("%s", string(str)))
+					command := withVariables(runtime, string(str))
+					fmt.Printf("running command %s\n", command)
+					cmd := exec.Command("bash", "-c", command)
 					err := cmd.Run()
 					if err != nil {
 						panic(err)
@@ -87,8 +101,6 @@ func start(addCommand func(cmd Command)) lua.LGFunction {
 
 				startCommands[key] = value
 			})
-
-			fmt.Println("add command")
 
 			addCommand(Command{
 				version: func() *string {

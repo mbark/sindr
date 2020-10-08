@@ -25,14 +25,34 @@ function start()
     })
 end
 
-function tidy()
-    if files.timestamp('go.mod') > files.timestamp('go.sum') then
+function proto()
+    if files.newest_ts('*.proto', '{{.BACKEND_PATH}}/bin/inject') > files.oldest_ts('*.pb.go') then
         shell.run([[
-            {{.GO}} mod tidy
+            {{.GO}} mod vendor
+            {{.PROTOC}} \
+                -I {{.PROTO_INC}} \
+                --validate_out="lang=go:.." \
+                --twirp_out=.. \
+                --go_out=.. \
+                {{.RPC_V1_SRC}}
+            {{.PROTOC}} \
+                -I {{.PROTO_INC}} \
+                --validate_out="lang=go:.." \
+                --twirp_out=.. \
+                --go_out=.. \
+                {{.RPC_V2_SRC}}
+            {{.PROTOC}} \
+                -I {{.PROTO_INC}} \
+                --validate_out="lang=go:.." \
+                --go_out=.. \
+                --gotemplate_out=all=true:. \
+                {{.PROTO_DIR}}/telness/event/v1/*.proto
+            {{.TOOLS_BIN}}/inject {{.BACKEND_PATH}}/src/telness/internal/rpc/*.pb.go
         ]])
+        files.delete('{{.PROTO_VND}}')
     end
-
 end
+shmake.register_task{name="proto", fn=proto, env=dev}
 
 local dev = shmake.register_env{name="dev", default=true}
 local prod = shmake.register_env{name="prod"}
@@ -40,6 +60,5 @@ local prod = shmake.register_env{name="prod"}
 shmake.register_task{name="script", fn=a_script, env=dev}
 shmake.register_task{name="clean", fn=clean, env=dev}
 shmake.register_task{name="start", fn=start, env=dev}
-shmake.register_task{name="tidy", fn=tidy, env=dev}
 
 shmake.register_task{name="prodclean", fn=prod_clean, env=prod}

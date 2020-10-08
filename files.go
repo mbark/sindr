@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -18,7 +19,8 @@ func getFileModule(runtime *Runtime) Module {
 	return Module{
 		exports: map[string]lua.LGFunction{
 			"delete":    delete(runtime.addCommand),
-			"timestamp": timestamp(),
+			"newest_ts": timestamp(true),
+			"oldest_ts": timestamp(false),
 		},
 	}
 }
@@ -90,7 +92,7 @@ func delete(addCommand func(cmd Command)) lua.LGFunction {
 	}
 }
 
-func timestamp() lua.LGFunction {
+func timestamp(useNewest bool) lua.LGFunction {
 	return func(L *lua.LState) int {
 		lv := L.Get(-1)
 
@@ -112,17 +114,31 @@ func timestamp() lua.LGFunction {
 			return 1
 		}
 
-		var modTime time.Time
+		var modTime *time.Time = nil
 		for _, f := range files {
 			stat, err := os.Stat(f)
 			if err != nil {
 				panic(err)
 			}
+			if modTime == nil {
+				mt := stat.ModTime()
+				modTime = &mt
+			}
 
-			if stat.ModTime().After(modTime) {
-				modTime = stat.ModTime()
+			if useNewest {
+				if stat.ModTime().After(*modTime) {
+					mt := stat.ModTime()
+					modTime = &mt
+				}
+			} else {
+				if stat.ModTime().Before(*modTime) {
+					mt := stat.ModTime()
+					modTime = &mt
+				}
 			}
 		}
+
+		fmt.Printf("mod time for %s: %v", config.Files, modTime.Unix())
 
 		L.Push(lua.LNumber(modTime.Unix()))
 		return 1

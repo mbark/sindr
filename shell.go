@@ -11,6 +11,7 @@ import (
 
 	"github.com/logrusorgru/aurora/v3"
 	lua "github.com/yuin/gopher-lua"
+	"go.uber.org/zap"
 )
 
 func getShellModule(runtime *Runtime) Module {
@@ -45,7 +46,7 @@ func run(runtime *Runtime, addCommand func(cmd Command)) lua.LGFunction {
 			addCommand(Command{
 				run: func() {
 					command := withVariables(runtime, string(str))
-					fmt.Printf("running command %s\n", command)
+					runtime.logger.Debug("running command", zap.String("command", command))
 					cmd := exec.Command("bash", "-c", command)
 					err := cmd.Run()
 					if err != nil {
@@ -98,7 +99,6 @@ func start(addCommand func(cmd Command)) lua.LGFunction {
 
 			addCommand(Command{
 				run: func() {
-					fmt.Println("start run()")
 					var colorIdx uint8 = 0
 
 					wg := sync.WaitGroup{}

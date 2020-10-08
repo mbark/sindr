@@ -223,8 +223,6 @@ func timestamp(useNewest bool) lua.LGFunction {
 			}
 		}
 
-		fmt.Printf("mod time for %s: %v", config.Files, modTime.Unix())
-
 		L.Push(lua.LNumber(modTime.Unix()))
 		return 1
 	}

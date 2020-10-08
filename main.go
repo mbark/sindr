@@ -5,9 +5,11 @@ import (
 	"os"
 	"path"
 
+	"github.com/logrusorgru/aurora/v3"
 	"github.com/urfave/cli/v2"
 	"github.com/yuin/gluamapper"
 	lua "github.com/yuin/gopher-lua"
+	"go.uber.org/zap"
 )
 
 type task struct {
@@ -34,9 +36,8 @@ type Runtime struct {
 	defaultEnv   *env
 	modules      map[string]Module
 	commands     []Command
+	logger       *zap.SugaredLogger
 }
-
-var AlwaysUpToDateVersion = "0"
 
 // Register a command to run, the command should return an int64 representing the
 // unix timestamp for when it was last run.
@@ -61,7 +62,12 @@ func getRuntime() *Runtime {
 
 	err := os.MkdirAll(cacheDir, 0700)
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("creating cache directory: %w", err))
+	}
+
+	logger, err := zap.NewDevelopment()
+	if err != nil {
+		panic(fmt.Sprintf("creating logger: %w", err))
 	}
 
 	var commands []Command
@@ -71,30 +77,30 @@ func getRuntime() *Runtime {
 		variables:    make(map[string]string),
 		modules:      make(map[string]Module),
 		commands:     commands,
+		logger:       logger.Sugar(),
 	}
 
 	mainModule := Module{
 		exports: map[string]lua.LGFunction{
 			"register_task": registerTask(func(t task) {
-				fmt.Printf("registered task %s\n", t.Name)
+				logger.Debug("registered task", zap.String("name", t.Name))
 				r.tasks[t.Name] = t
 			}),
 			"register_env": registerEnv(func(e env) {
-				fmt.Printf("registered env %s\n", e.Name)
+				logger.Debug("registered env", zap.String("name", e.Name))
 				r.environments[e.Name] = e
 				if e.Default {
 					r.defaultEnv = &e
 				}
 			}),
 			"register_var": registerVar(func(name, value string) {
-				fmt.Printf("registered var %s\n", value)
+				logger.Debug("registered var", zap.String("name", name), zap.String("value", value))
 				r.variables[name] = value
 			}),
 		},
 	}
 
 	r.modules["shmake.main"] = mainModule
-
 	return r
 }
 
@@ -175,7 +181,8 @@ func main() {
 	}
 
 	if err := L.DoFile("main.lua"); err != nil {
-		panic(err)
+		fmt.Fprintf(os.Stderr, "%s", aurora.Red(err))
+		os.Exit(1)
 	}
 
 	var environment string
@@ -200,7 +207,7 @@ func main() {
 		environment = r.defaultEnv.Name
 	}
 
-	fmt.Printf("environment %s\n", environment)
+	r.logger.Debug("environment set", zap.String("environment", environment))
 	if environment != "" {
 		if _, ok := r.environments[environment]; !ok {
 			panic(fmt.Sprintf("no environment %s", environment))
@@ -214,7 +221,7 @@ func main() {
 		},
 	}
 
-	fmt.Printf("commands %+v\n", r.tasks)
+	r.logger.Debug("commands available", zap.Any("commands", r.tasks))
 
 	var commands []*cli.Command
 	for nameV, tV := range r.tasks {
@@ -225,13 +232,11 @@ func main() {
 			continue
 		}
 
-		fmt.Printf("registering command with name %s\n", name)
-
 		commands = append(commands,
 			&cli.Command{
 				Name: name,
 				Action: func(c *cli.Context) error {
-					fmt.Printf("Running task %s\n", name)
+					r.logger.Debug("running command", zap.String("command", name))
 
 					err := L.CallByParam(lua.P{
 						Fn:      t.Fn,
@@ -242,7 +247,7 @@ func main() {
 						return err
 					}
 
-					fmt.Printf("task commands %v\n", r.commands)
+					r.logger.Debug("commands to run", zap.Any("commands", r.commands))
 					for _, cmd := range r.commands {
 						cmd.run()
 					}

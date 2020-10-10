@@ -1,6 +1,7 @@
 local shmake = require("shmake.main")
 local shell = require("shmake.shell")
 local files = require("shmake.files")
+local cache = require("shmake.cache")
 
 shmake.register_var({name='GO', value='go'})
 
@@ -28,6 +29,15 @@ function start()
         bar=[[ ping telness.se ]]
     })
 end
+
+function mod()
+    gomod_modtime = tostring(files.newest_ts("go.mod"))
+    if cache.diff({ name="go.mod", version=gomod_modtime }) then
+        shell.run([[ go mod tidy ]])
+        cache.store({ name="go.mod", version=gomod_modtime })
+    end
+end
+
 
 function proto()
     if files.newest_ts('*.proto', '{{.BACKEND_PATH}}/bin/inject') > files.oldest_ts('*.pb.go') then
@@ -64,5 +74,6 @@ local prod = shmake.register_env{name="prod"}
 shmake.register_task{name="script", fn=a_script, env=dev}
 shmake.register_task{name="clean", fn=clean, env=dev}
 shmake.register_task{name="start", fn=start, env=dev}
+shmake.register_task{name="mod", fn=mod, env=dev}
 
 shmake.register_task{name="prodclean", fn=prod_clean, env=prod}

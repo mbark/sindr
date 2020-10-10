@@ -35,6 +35,7 @@ type Runtime struct {
 	variables    map[string]string
 	defaultEnv   *env
 	modules      map[string]Module
+	cache        Cache
 	commands     []Command
 	logger       *zap.SugaredLogger
 }
@@ -76,6 +77,7 @@ func getRuntime() *Runtime {
 		environments: make(map[string]env),
 		variables:    make(map[string]string),
 		modules:      make(map[string]Module),
+		cache:        NewCache(cacheDir),
 		commands:     commands,
 		logger:       logger.Sugar(),
 	}
@@ -175,6 +177,7 @@ func main() {
 
 	r.modules["shmake.files"] = getFileModule(r)
 	r.modules["shmake.shell"] = getShellModule(r)
+	r.modules["shmake.cache"] = getCacheModule(r)
 
 	for name, module := range r.modules {
 		L.PreloadModule(name, module.loader)

@@ -59,16 +59,19 @@ type Module struct {
 func getRuntime() *Runtime {
 	home := os.Getenv("HOME")
 	cacheHome := xdgPath("CACHE_HOME", path.Join(home, ".cache"))
-	cacheDir := path.Join(cacheHome, "shmake")
+	shmakeCache := path.Join(cacheHome, "shmake")
+	cacheDir := path.Join(shmakeCache, "cache")
 
 	err := os.MkdirAll(cacheDir, 0700)
 	if err != nil {
 		panic(fmt.Sprintf("creating cache directory: %w", err))
 	}
 
-	logger, err := zap.NewDevelopment()
+	cfg := zap.NewProductionConfig()
+	cfg.OutputPaths = []string{path.Join(shmakeCache, "shmake.log")}
+	logger, err := cfg.Build()
 	if err != nil {
-		panic(fmt.Sprintf("creating logger: %w", err))
+		panic(fmt.Errorf("creating logger: %w", err))
 	}
 
 	var commands []Command
@@ -189,14 +192,24 @@ func main() {
 	}
 
 	var environment string
+	var verbose bool
+
+	cliFlags := []cli.Flag{
+		&cli.StringFlag{
+			Name:        "env",
+			Usage:       "set which environment to show commands for",
+			Destination: &environment,
+		},
+		&cli.BoolFlag{
+			Name:        "verbose",
+			Aliases:     []string{"v"},
+			Usage:       "print logs to stdout",
+			Destination: &verbose,
+		},
+	}
 
 	envApp := &cli.App{
-		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:        "env",
-				Destination: &environment,
-			},
-		},
+		Flags: cliFlags,
 		Action: func(c *cli.Context) error {
 			return nil
 		},
@@ -217,13 +230,6 @@ func main() {
 		}
 	}
 
-	cliFlags := []cli.Flag{
-		&cli.StringFlag{
-			Name:  "env",
-			Usage: "set which environment to show commands for",
-		},
-	}
-
 	r.logger.Debug("commands available", zap.Any("commands", r.tasks))
 
 	var commands []*cli.Command
@@ -239,6 +245,17 @@ func main() {
 			&cli.Command{
 				Name: name,
 				Action: func(c *cli.Context) error {
+					if verbose {
+						cfg := zap.NewProductionConfig()
+						cfg.OutputPaths = []string{"stdout"}
+						logger, err := cfg.Build()
+						if err != nil {
+							panic(fmt.Errorf("building zap config: %w", err))
+						}
+
+						r.logger = logger.Sugar()
+					}
+
 					r.logger.Debug("running command", zap.String("command", name))
 
 					err := L.CallByParam(lua.P{

@@ -25,8 +25,8 @@ end
 
 function start()
     shell.start({
-        foo=[[ ping google.com ]],
-        bar=[[ ping telness.se ]]
+        foo={cmd=[[ ping google.com ]], watch="./file"},
+        bar={cmd=[[ ping telness.se ]], watch="./file2"}
     })
 end
 

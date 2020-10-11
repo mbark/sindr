@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -10,6 +11,7 @@ import (
 	"text/template"
 
 	"github.com/logrusorgru/aurora/v3"
+	"github.com/yuin/gluamapper"
 	lua "github.com/yuin/gopher-lua"
 	"go.uber.org/zap"
 )
@@ -18,7 +20,7 @@ func getShellModule(runtime *Runtime) Module {
 	return Module{
 		exports: map[string]lua.LGFunction{
 			"run":   run(runtime, runtime.addCommand),
-			"start": start(runtime.addCommand),
+			"start": start(runtime, runtime.addCommand),
 		},
 	}
 }
@@ -60,7 +62,12 @@ func run(runtime *Runtime, addCommand func(cmd Command)) lua.LGFunction {
 	}
 }
 
-func start(addCommand func(cmd Command)) lua.LGFunction {
+type startOptions = map[string]struct {
+	Cmd   string
+	Watch string
+}
+
+func start(runtime *Runtime, addCommand func(cmd Command)) lua.LGFunction {
 	return func(L *lua.LState) int {
 		lv := L.Get(-1)
 
@@ -79,73 +86,56 @@ func start(addCommand func(cmd Command)) lua.LGFunction {
 
 			return 0
 		} else if tbl, ok := lv.(*lua.LTable); ok {
-			startCommands := make(map[string]string)
-			tbl.ForEach(func(luaKey lua.LValue, luaVal lua.LValue) {
-				var key, value string
-				if k, ok := luaKey.(lua.LString); ok {
-					key = string(k)
-				} else {
-					panic(fmt.Sprintf("key must string, got %v", luaKey.Type()))
-				}
-
-				if v, ok := luaVal.(lua.LString); ok {
-					value = string(v)
-				} else {
-					panic(fmt.Sprintf("value must string, got %v", luaKey.Type()))
-				}
-
-				startCommands[key] = value
-			})
-
+			var startCommands startOptions
+			if err := gluamapper.Map(tbl, &startCommands); err != nil {
+				runtime.logger.Fatal("failed to map commands", zap.Error(err))
+			}
 			addCommand(Command{
 				run: func() {
 					var colorIdx uint8 = 0
 
 					wg := sync.WaitGroup{}
 					for k, c := range startCommands {
+						runtime.logger.Debug("starting command",
+							zap.String("name", k),
+							zap.String("command", c.Cmd),
+							zap.String("watch", c.Watch))
+
 						wg.Add(1)
 						colorIdx += 1
-						go func(name, command string, colorIndex uint8) {
+						go func(name, command, watch string, colorIndex uint8) {
 							defer wg.Done()
 
-							cmd := exec.Command("bash", "-c", fmt.Sprintf("%s", command))
+							if watch != "" {
+								onChange := make(chan bool)
+								close := createWatcher(runtime, watch, onChange)
+								defer close()
 
-							stdout, err := cmd.StdoutPipe()
-							if err != nil {
-								panic(err)
-							}
+								for {
+									ctx, cancel := context.WithCancel(context.Background())
+									cmd := exec.CommandContext(ctx, "bash", "-c", fmt.Sprintf("%s", command))
+									err := startCommand(cmd, name, colorIndex)
+									if err != nil {
+										runtime.logger.Fatal("start command", zap.Error(err))
+									}
 
-							stderr, err := cmd.StderrPipe()
-							if err != nil {
-								panic(err)
-							}
+									_ = <-onChange
 
-							if err := cmd.Start(); err != nil {
-								panic(err)
-							}
-
-							go func() {
-								scanner := bufio.NewScanner(stdout)
-								scanner.Split(bufio.ScanLines)
-								for scanner.Scan() {
-									m := scanner.Text()
-									fmt.Printf("%s | %s\n", aurora.Index(colorIndex, name).Faint(), m)
+									runtime.logger.Info("restarting", zap.String("command", command))
+									cancel()
 								}
-							}()
-
-							go func() {
-								scanner := bufio.NewScanner(stderr)
-								scanner.Split(bufio.ScanLines)
-								for scanner.Scan() {
-									m := scanner.Text()
-									fmt.Printf("%s | %s\n", aurora.Index(colorIndex, name).Faint(), m)
+							} else {
+								cmd := exec.Command("bash", "-c", fmt.Sprintf("%s", command))
+								err := startCommand(cmd, name, colorIndex)
+								if err != nil {
+									runtime.logger.Fatal("start command", zap.Error(err))
 								}
-							}()
 
-							if err := cmd.Wait(); err != nil {
-								panic(err)
+								if err := cmd.Wait(); err != nil {
+									runtime.logger.Fatal("cmd wait", zap.Error(err))
+								}
 							}
-						}(k, c, colorIdx)
+						}(k, c.Cmd, c.Watch, colorIdx)
 					}
 
 					wg.Wait()
@@ -157,4 +147,40 @@ func start(addCommand func(cmd Command)) lua.LGFunction {
 
 		panic(fmt.Sprintf("unexpected type for start, got %v", lv.Type()))
 	}
+}
+
+func startCommand(cmd *exec.Cmd, name string, colorIndex uint8) error {
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("stdout pipe: %w", err)
+	}
+
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("stderr pipe: %w", err)
+	}
+
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("cmd start: %w", err)
+	}
+
+	go func() {
+		scanner := bufio.NewScanner(stdout)
+		scanner.Split(bufio.ScanLines)
+		for scanner.Scan() {
+			m := scanner.Text()
+			fmt.Printf("%s | %s\n", aurora.Index(colorIndex, name).Faint(), m)
+		}
+	}()
+
+	go func() {
+		scanner := bufio.NewScanner(stderr)
+		scanner.Split(bufio.ScanLines)
+		for scanner.Scan() {
+			m := scanner.Text()
+			fmt.Printf("%s | %s\n", aurora.Index(colorIndex, name).Faint(), m)
+		}
+	}()
+
+	return nil
 }

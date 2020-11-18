@@ -15,11 +15,14 @@ function clean(args)
     files.delete('file2')
     files.delete({ files="some_dir", only_directories=true })
     files.delete({ files="nested", only_directories=true })
+end
 
+function clean_watch()
     run.watch({
         file={fn=files.delete, args='file2', watch='./file3'}
     })
 end
+
 
 function install()
     files.chdir('./examples/yarn')

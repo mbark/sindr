@@ -41,31 +41,17 @@ type Runtime struct {
 	environments map[string]env
 	variables    map[string]string
 	varOrder     []string // varOrder keeps track of which order the variables are registered
-	commands     []Command
 
 	defaultEnv *env
 	modules    map[string]Module
 
-	runAsync bool
-	asyncCtx context.Context
-	wg       sync.WaitGroup
+	// Track all async commands being run
+	wg sync.WaitGroup
 
 	prevDir string
 
 	cache  Cache
 	logger *zap.SugaredLogger
-}
-
-func (runtime *Runtime) addCommand(cmd Command) {
-	if runtime.runAsync {
-		runtime.wg.Add(1)
-		go func() {
-			defer runtime.wg.Done()
-			cmd.run(runtime.asyncCtx)
-		}()
-	}
-
-	runtime.commands = append(runtime.commands, cmd)
 }
 
 // Module ...
@@ -93,32 +79,33 @@ func getRuntime() *Runtime {
 		panic(fmt.Errorf("creating logger: %w", err))
 	}
 
-	var commands []Command
 	r := &Runtime{
 		tasks:        make(map[string]task),
 		environments: make(map[string]env),
 		variables:    make(map[string]string),
 		modules:      make(map[string]Module),
 		cache:        NewCache(cacheDir),
-		commands:     commands,
 		logger:       logger.Sugar(),
 	}
 
 	mainModule := Module{
 		exports: map[string]lua.LGFunction{
 			"task": registerTask(func(t task) {
-				logger.Debug("registered task", zap.String("name", t.Name))
+				logger.With(zap.String("name", t.Name)).Debug("registered task")
+
 				r.tasks[t.Name] = t
 			}),
 			"env": registerEnv(func(e env) {
-				logger.Debug("registered env", zap.String("name", e.Name))
+				logger.With(zap.String("name", e.Name)).Debug("registered env")
+
 				r.environments[e.Name] = e
 				if e.Default {
 					r.defaultEnv = &e
 				}
 			}),
 			"var": registerVar(func(name, value string) {
-				logger.Debug("registered var", zap.String("name", name), zap.String("value", value))
+				logger.With(zap.String("name", name), zap.String("value", value)).Debug("registered var")
+
 				r.variables[name] = value
 				r.varOrder = append(r.varOrder, name)
 			}),
@@ -366,14 +353,10 @@ func main() {
 						args.RawSetString(k, lua.LString(v))
 					}
 
+					L.SetContext(c.Context)
 					err := L.CallByParam(lua.P{Fn: t.Fn, NRet: 1, Protect: true}, args)
 					if err != nil {
 						return err
-					}
-
-					r.logger.Debug("commands to run", zap.Any("commands", r.commands))
-					for _, cmd := range r.commands {
-						cmd.run(c.Context)
 					}
 
 					return nil

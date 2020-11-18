@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -28,20 +27,16 @@ func yarnRun(runtime *Runtime) lua.LGFunction {
 			panic("argument must be a string")
 		}
 
-		runtime.addCommand(Command{
-			run: func(ctx context.Context) {
-				args := strings.Split(string(str), " ")
-				args = append([]string{"run"}, args...)
-				cmd := exec.CommandContext(ctx, "yarn", args...)
-				cmd.Stdout = os.Stdout
-				cmd.Stderr = os.Stderr
-				err := cmd.Run()
-				if err != nil {
-					fmt.Println("yarn", "run", string(str))
-					panic(err)
-				}
-			},
-		})
+		args := strings.Split(string(str), " ")
+		args = append([]string{"run"}, args...)
+		cmd := exec.CommandContext(L.Context(), "yarn", args...)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		err := cmd.Run()
+		if err != nil {
+			fmt.Println("yarn", "run", string(str))
+			panic(err)
+		}
 
 		return 0
 	}
@@ -49,17 +44,13 @@ func yarnRun(runtime *Runtime) lua.LGFunction {
 
 func yarnInstall(runtime *Runtime) lua.LGFunction {
 	return func(L *lua.LState) int {
-		runtime.addCommand(Command{
-			run: func(ctx context.Context) {
-				cmd := exec.CommandContext(ctx, "yarn", "install")
-				cmd.Stdout = os.Stdout
-				cmd.Stderr = os.Stderr
-				err := cmd.Run()
-				if err != nil {
-					panic(err)
-				}
-			},
-		})
+		cmd := exec.CommandContext(L.Context(), "yarn", "install")
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		err := cmd.Run()
+		if err != nil {
+			panic(err)
+		}
 
 		return 0
 	}

@@ -1,8 +1,6 @@
 package main
 
 import (
-	"context"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -20,9 +18,9 @@ type deleteConfig struct {
 func getFileModule(runtime *Runtime) Module {
 	return Module{
 		exports: map[string]lua.LGFunction{
-			"delete":    delete(runtime.addCommand),
-			"copy":      copy(runtime.addCommand),
-			"mkdir":     mkdir(runtime.addCommand),
+			"delete":    delete(runtime),
+			"copy":      copy(runtime),
+			"mkdir":     mkdir(runtime),
 			"chdir":     chdir(runtime),
 			"popdir":    popdir(runtime),
 			"newest_ts": timestamp(true),
@@ -63,7 +61,7 @@ func removeFiles(files []string) {
 	}
 }
 
-func delete(addCommand func(cmd Command)) lua.LGFunction {
+func delete(runtime *Runtime) lua.LGFunction {
 	return func(L *lua.LState) int {
 		lv := L.Get(-1)
 
@@ -79,13 +77,8 @@ func delete(addCommand func(cmd Command)) lua.LGFunction {
 			panic("string or table expected")
 		}
 
-		addCommand(Command{
-			run: func(ctx context.Context) {
-				fmt.Println("deleting files", config)
-				files := findGlobMatches(config)
-				removeFiles(files)
-			},
-		})
+		files := findGlobMatches(config)
+		removeFiles(files)
 
 		return 0
 	}
@@ -116,7 +109,7 @@ type copyOptions struct {
 	To   string
 }
 
-func copy(addCommand func(cmd Command)) lua.LGFunction {
+func copy(runtime *Runtime) lua.LGFunction {
 	return func(L *lua.LState) int {
 		lv := L.Get(-1)
 
@@ -129,14 +122,10 @@ func copy(addCommand func(cmd Command)) lua.LGFunction {
 			panic("table expected")
 		}
 
-		addCommand(Command{
-			run: func(ctx context.Context) {
-				err := CopyFile(opts.From, opts.To)
-				if err != nil {
-					panic(err)
-				}
-			},
-		})
+		err := CopyFile(opts.From, opts.To)
+		if err != nil {
+			panic(err)
+		}
 
 		return 0
 	}
@@ -147,7 +136,7 @@ type mkdirOptions struct {
 	All bool
 }
 
-func mkdir(addCommand func(cmd Command)) lua.LGFunction {
+func mkdir(runtime *Runtime) lua.LGFunction {
 	return func(L *lua.LState) int {
 		lv := L.Get(-1)
 
@@ -163,19 +152,15 @@ func mkdir(addCommand func(cmd Command)) lua.LGFunction {
 			panic("table expected")
 		}
 
-		addCommand(Command{
-			run: func(ctx context.Context) {
-				var err error
-				if opts.All {
-					err = os.MkdirAll(opts.Dir, 0700)
-				} else {
-					err = os.Mkdir(opts.Dir, 0700)
-				}
-				if err != nil {
-					panic(err)
-				}
-			},
-		})
+		var err error
+		if opts.All {
+			err = os.MkdirAll(opts.Dir, 0700)
+		} else {
+			err = os.Mkdir(opts.Dir, 0700)
+		}
+		if err != nil {
+			panic(err)
+		}
 
 		return 0
 	}
@@ -241,20 +226,16 @@ func chdir(runtime *Runtime) lua.LGFunction {
 			panic("parameter must be string")
 		}
 
-		runtime.addCommand(Command{
-			run: func(ctx context.Context) {
-				cwd, err := os.Getwd()
-				if err != nil {
-					panic(err)
-				}
+		cwd, err := os.Getwd()
+		if err != nil {
+			panic(err)
+		}
 
-				runtime.prevDir = cwd
-				err = os.Chdir(string(dir))
-				if err != nil {
-					panic(err)
-				}
-			},
-		})
+		runtime.prevDir = cwd
+		err = os.Chdir(string(dir))
+		if err != nil {
+			panic(err)
+		}
 
 		return 0
 	}
@@ -262,19 +243,15 @@ func chdir(runtime *Runtime) lua.LGFunction {
 
 func popdir(runtime *Runtime) lua.LGFunction {
 	return func(L *lua.LState) int {
-		runtime.addCommand(Command{
-			run: func(ctx context.Context) {
-				if runtime.prevDir == "" {
-					panic("no previous directory stored")
-				}
+		if runtime.prevDir == "" {
+			panic("no previous directory stored")
+		}
 
-				err := os.Chdir(runtime.prevDir)
-				if err != nil {
-					panic(err)
-				}
-				runtime.prevDir = ""
-			},
-		})
+		err := os.Chdir(runtime.prevDir)
+		if err != nil {
+			panic(err)
+		}
+		runtime.prevDir = ""
 
 		return 0
 	}

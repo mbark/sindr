@@ -12,9 +12,9 @@ import (
 func getRunModule(runtime *Runtime) Module {
 	return Module{
 		exports: map[string]lua.LGFunction{
-			"async":  async(runtime),
-			"await":  await(runtime),
-			"watch":  watch(runtime),
+			"async": async(runtime),
+			"await": await(runtime),
+			"watch": watch(runtime),
 		},
 	}
 }
@@ -29,20 +29,10 @@ func async(runtime *Runtime) lua.LGFunction {
 
 		lv = L.Get(-1)
 
-		runtime.addCommand(Command{
-			run: func(ctx context.Context) {
-				runtime.runAsync = true
-				runtime.asyncCtx = ctx
-				defer func() {
-					runtime.runAsync = false
-				}()
-
-				err := L.CallByParam(lua.P{Fn: fn, NRet: 1, Protect: true}, lv)
-				if err != nil {
-					panic(err)
-				}
-			},
-		})
+		err := L.CallByParam(lua.P{Fn: fn, NRet: 1, Protect: true}, lv)
+		if err != nil {
+			panic(err)
+		}
 
 		return 0
 	}
@@ -50,12 +40,7 @@ func async(runtime *Runtime) lua.LGFunction {
 
 func await(runtime *Runtime) lua.LGFunction {
 	return func(L *lua.LState) int {
-		runtime.addCommand(Command{
-			run: func(ctx context.Context) {
-				runtime.wg.Wait()
-			},
-		})
-
+		runtime.wg.Wait()
 		return 0
 	}
 }
@@ -67,8 +52,8 @@ type watchOpts = map[string]struct {
 }
 
 type watchCommand struct {
-	Command Command
-	Watch   string
+	Run   func()
+	Watch string
 }
 
 func watch(runtime *Runtime) lua.LGFunction {
@@ -103,53 +88,49 @@ func watch(runtime *Runtime) lua.LGFunction {
 				largs = lua.LNil
 			}
 
-			err := L.CallByParam(lua.P{Fn: c.Fn, NRet: 1, Protect: true}, largs)
-			if err != nil {
-				panic(err)
+			run := func() {
+				err := L.CallByParam(lua.P{Fn: c.Fn, NRet: 1, Protect: true}, largs)
+				if err != nil {
+					panic(err)
+				}
 			}
 
-			// get the registered command and remove it from the list
-			cmd := runtime.commands[len(runtime.commands)-1]
-			runtime.commands = runtime.commands[:len(runtime.commands)-1]
-
-			cmds[k] = watchCommand{Command: cmd, Watch: c.Watch}
+			cmds[k] = watchCommand{Run: run, Watch: c.Watch}
 		}
 
-		runtime.addCommand(Command{
-			run: func(ctx context.Context) {
-				var colorIdx uint8 = 0
+		var colorIdx uint8 = 0
 
-				wg := sync.WaitGroup{}
-				for k, c := range cmds {
-					runtime.logger.Debug("starting",
-						zap.String("name", k),
-						zap.String("watch", c.Watch))
+		var wg sync.WaitGroup
+		for k, c := range cmds {
+			runtime.logger.Debug("starting",
+				zap.String("name", k),
+				zap.String("watch", c.Watch))
 
-					wg.Add(1)
-					colorIdx += 1
-					go func(name, watch string, cmd Command, colorIndex uint8) {
-						defer wg.Done()
+			wg.Add(1)
+			colorIdx += 1
+			go func(name string, cmd watchCommand, colorIndex uint8) {
+				defer wg.Done()
 
-						onChange := make(chan bool)
-						close := startWatching(runtime, watch, onChange)
-						defer close()
+				onChange := make(chan bool)
+				close := startWatching(runtime, cmd.Watch, onChange)
+				defer close()
 
-						for {
-							ctx, cancel := context.WithCancel(ctx)
-							cmd.run(ctx)
-							runtime.logger.Info("command started", zap.String("name", name))
+				for {
+					ctx, cancel := context.WithCancel(L.Context())
+					L.SetContext(ctx)
 
-							_ = <-onChange
+					cmd.Run()
+					runtime.logger.Info("command started", zap.String("name", name))
 
-							runtime.logger.Info("restarting", zap.String("name", name))
-							cancel()
-						}
-					}(k, c.Watch, c.Command, colorIdx)
+					_ = <-onChange
+
+					runtime.logger.Info("restarting", zap.String("name", name))
+					cancel()
 				}
+			}(k, c, colorIdx)
+		}
 
-				wg.Wait()
-			},
-		})
+		wg.Wait()
 
 		return 0
 	}

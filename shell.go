@@ -19,8 +19,8 @@ import (
 func getShellModule(runtime *Runtime) Module {
 	return Module{
 		exports: map[string]lua.LGFunction{
-			"run":   run(runtime, runtime.addCommand),
-			"start": start(runtime, runtime.addCommand),
+			"run":   run(runtime),
+			"start": start(runtime),
 		},
 	}
 }
@@ -36,7 +36,7 @@ func withVariables(runtime *Runtime, input string) string {
 	return buf.String()
 }
 
-func run(runtime *Runtime, addCommand func(cmd Command)) lua.LGFunction {
+func run(runtime *Runtime) lua.LGFunction {
 	return func(L *lua.LState) int {
 		lv := L.Get(-1)
 
@@ -45,17 +45,13 @@ func run(runtime *Runtime, addCommand func(cmd Command)) lua.LGFunction {
 		}
 
 		if str, ok := lv.(lua.LString); ok {
-			addCommand(Command{
-				run: func(ctx context.Context) {
-					command := withVariables(runtime, string(str))
-					runtime.logger.Debug("running command", zap.String("command", command))
-					cmd := exec.CommandContext(ctx, "bash", "-c", command)
-					err := cmd.Run()
-					if err != nil {
-						panic(err)
-					}
-				},
-			})
+			command := withVariables(runtime, string(str))
+			runtime.logger.Debug("running command", zap.String("command", command))
+			cmd := exec.CommandContext(L.Context(), "bash", "-c", command)
+			err := cmd.Run()
+			if err != nil {
+				panic(err)
+			}
 		}
 
 		return 0
@@ -67,30 +63,26 @@ type startOptions = map[string]struct {
 	Watch string
 }
 
-func start(runtime *Runtime, addCommand func(cmd Command)) lua.LGFunction {
+func start(runtime *Runtime) lua.LGFunction {
 	return func(L *lua.LState) int {
 		lv := L.Get(-1)
 
 		if str, ok := lv.(lua.LString); ok {
-			addCommand(Command{
-				run: func(ctx context.Context) {
-					c := withVariables(runtime, string(str))
+			c := withVariables(runtime, string(str))
 
-					runtime.logger.Debug("starting command", zap.String("command", c))
+			runtime.logger.Debug("starting command", zap.String("command", c))
 
-					cmd := exec.CommandContext(ctx, "bash", "-c", c)
-					cmd.Stdout = os.Stdout
-					cmd.Stderr = os.Stderr
-					err := cmd.Start()
-					if err != nil {
-						panic(err)
-					}
+			cmd := exec.CommandContext(L.Context(), "bash", "-c", c)
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			err := cmd.Start()
+			if err != nil {
+				panic(err)
+			}
 
-					if err := cmd.Wait(); err != nil {
-						panic(err)
-					}
-				},
-			})
+			if err := cmd.Wait(); err != nil {
+				panic(err)
+			}
 
 			return 0
 		} else if tbl, ok := lv.(*lua.LTable); ok {
@@ -104,60 +96,56 @@ func start(runtime *Runtime, addCommand func(cmd Command)) lua.LGFunction {
 				startCommands[k] = c
 			}
 
-			addCommand(Command{
-				run: func(ctx context.Context) {
-					var colorIdx uint8 = 0
+			var colorIdx uint8 = 0
 
-					wg := sync.WaitGroup{}
-					for k, c := range startCommands {
-						runtime.logger.Debug("starting command",
-							zap.String("name", k),
-							zap.String("command", c.Cmd),
-							zap.String("watch", c.Watch))
+			wg := sync.WaitGroup{}
+			for k, c := range startCommands {
+				runtime.logger.Debug("starting command",
+					zap.String("name", k),
+					zap.String("command", c.Cmd),
+					zap.String("watch", c.Watch))
 
-						wg.Add(1)
-						colorIdx += 1
-						go func(name, command, watch string, colorIndex uint8) {
-							defer wg.Done()
+				wg.Add(1)
+				colorIdx += 1
+				go func(name, command, watch string, colorIndex uint8) {
+					defer wg.Done()
 
-							if watch != "" {
-								onChange := make(chan bool)
-								close := startWatching(runtime, watch, onChange)
-								defer close()
+					if watch != "" {
+						onChange := make(chan bool)
+						close := startWatching(runtime, watch, onChange)
+						defer close()
 
-								for {
-									ctx, cancel := context.WithCancel(ctx)
-									cmd := exec.CommandContext(ctx, "bash", "-c", fmt.Sprintf("%s", command))
-									err := startCommand(cmd, name, colorIndex)
-									if err != nil {
-										runtime.logger.Fatal("start command", zap.Error(err))
-									}
-
-									runtime.logger.Info("command started", zap.String("command", command))
-
-									_ = <-onChange
-
-									runtime.logger.Info("restarting", zap.String("command", command))
-									cancel()
-								}
-							} else {
-								cmd := exec.CommandContext(ctx, "bash", "-c", fmt.Sprintf("%s", command))
-								err := startCommand(cmd, name, colorIndex)
-								if err != nil {
-									runtime.logger.Fatal("start command", zap.Error(err))
-								}
-								runtime.logger.Info("command started", zap.String("command", command))
-
-								if err := cmd.Wait(); err != nil {
-									runtime.logger.Fatal("cmd wait", zap.Error(err))
-								}
+						for {
+							ctx, cancel := context.WithCancel(L.Context())
+							cmd := exec.CommandContext(ctx, "bash", "-c", fmt.Sprintf("%s", command))
+							err := startCommand(cmd, name, colorIndex)
+							if err != nil {
+								runtime.logger.Fatal("start command", zap.Error(err))
 							}
-						}(k, c.Cmd, c.Watch, colorIdx)
-					}
 
-					wg.Wait()
-				},
-			})
+							runtime.logger.Info("command started", zap.String("command", command))
+
+							_ = <-onChange
+
+							runtime.logger.Info("restarting", zap.String("command", command))
+							cancel()
+						}
+					} else {
+						cmd := exec.CommandContext(L.Context(), "bash", "-c", fmt.Sprintf("%s", command))
+						err := startCommand(cmd, name, colorIndex)
+						if err != nil {
+							runtime.logger.Fatal("start command", zap.Error(err))
+						}
+						runtime.logger.Info("command started", zap.String("command", command))
+
+						if err := cmd.Wait(); err != nil {
+							runtime.logger.Fatal("cmd wait", zap.Error(err))
+						}
+					}
+				}(k, c.Cmd, c.Watch, colorIdx)
+			}
+
+			wg.Wait()
 
 			return 0
 		}

@@ -5,6 +5,7 @@ go 1.13
 require (
 	github.com/bmatcuk/doublestar/v2 v2.0.1
 	github.com/fsnotify/fsnotify v1.4.9
+	github.com/go-git/go-git/v5 v5.2.0
 	github.com/logrusorgru/aurora/v3 v3.0.0
 	github.com/mitchellh/mapstructure v1.1.2 // indirect
 	github.com/peterbourgon/diskv/v3 v3.0.0

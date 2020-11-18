@@ -10,6 +10,7 @@ import (
 	"github.com/yuin/gluamapper"
 	lua "github.com/yuin/gopher-lua"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 type task struct {
@@ -64,11 +65,13 @@ func getRuntime() *Runtime {
 
 	err := os.MkdirAll(cacheDir, 0700)
 	if err != nil {
-		panic(fmt.Sprintf("creating cache directory: %w", err))
+		panic(fmt.Errorf("creating cache directory: %w", err))
 	}
 
-	cfg := zap.NewProductionConfig()
-	cfg.OutputPaths = []string{path.Join(shmakeCache, "shmake.log")}
+	logPath := path.Join(shmakeCache, "shmake.log")
+	cfg := zap.NewDevelopmentConfig()
+	cfg.OutputPaths = []string{logPath}
+	cfg.ErrorOutputPaths = []string{logPath}
 	logger, err := cfg.Build()
 	if err != nil {
 		panic(fmt.Errorf("creating logger: %w", err))
@@ -181,6 +184,7 @@ func main() {
 	r.modules["shmake.files"] = getFileModule(r)
 	r.modules["shmake.shell"] = getShellModule(r)
 	r.modules["shmake.cache"] = getCacheModule(r)
+	r.modules["shmake.git"] = getGitModule(r)
 
 	for name, module := range r.modules {
 		L.PreloadModule(name, module.loader)
@@ -246,8 +250,10 @@ func main() {
 				Name: name,
 				Action: func(c *cli.Context) error {
 					if verbose {
-						cfg := zap.NewProductionConfig()
+						cfg := zap.NewDevelopmentConfig()
+						cfg.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 						cfg.OutputPaths = []string{"stdout"}
+						cfg.ErrorOutputPaths = []string{"stdout"}
 						logger, err := cfg.Build()
 						if err != nil {
 							panic(fmt.Errorf("building zap config: %w", err))
@@ -256,6 +262,7 @@ func main() {
 						r.logger = logger.Sugar()
 					}
 
+					defer r.logger.Sync()
 					r.logger.Debug("running command", zap.String("command", name))
 
 					err := L.CallByParam(lua.P{

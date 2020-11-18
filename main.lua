@@ -2,6 +2,7 @@ local shmake = require("shmake.main")
 local shell = require("shmake.shell")
 local files = require("shmake.files")
 local cache = require("shmake.cache")
+local git = require("shmake.git")
 
 shmake.register_var({name='GO', value='go'})
 
@@ -38,7 +39,6 @@ function mod()
     end
 end
 
-
 function proto()
     if files.newest_ts('*.proto', '{{.BACKEND_PATH}}/bin/inject') > files.oldest_ts('*.pb.go') then
         shell.run([[
@@ -66,7 +66,15 @@ function proto()
         files.delete('{{.PROTO_VND}}')
     end
 end
-shmake.register_task{name="proto", fn=proto, env=dev}
+
+function update_mod()
+    head = git.head()
+    if cache.diff({ name="tidy", version=head }) then
+        shell.run([[ go mod tidy ]])
+        cache.store({ name="tidy", version=head })
+    end
+end
+
 
 local dev = shmake.register_env{name="dev", default=true}
 local prod = shmake.register_env{name="prod"}
@@ -74,6 +82,10 @@ local prod = shmake.register_env{name="prod"}
 shmake.register_task{name="script", fn=a_script, env=dev}
 shmake.register_task{name="clean", fn=clean, env=dev}
 shmake.register_task{name="start", fn=start, env=dev}
+
 shmake.register_task{name="mod", fn=mod, env=dev}
+shmake.register_task{name="proto", fn=proto, env=dev}
+
+shmake.register_task{name="update_mod", fn=update_mod, env=dev}
 
 shmake.register_task{name="prodclean", fn=prod_clean, env=prod}

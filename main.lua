@@ -66,8 +66,6 @@ function proto()
 end
 
 function update_mod(args)
-    print("args", args['foo'], args['bar'])
-
     head = git.head()
     if cache.diff({ name="tidy", version=head }) then
         shell.run([[ go mod tidy ]])

@@ -1,9 +1,11 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 
 	"github.com/iancoleman/strcase"
 	"github.com/logrusorgru/aurora/v3"
@@ -182,6 +184,31 @@ func xdgPath(name, defaultPath string) string {
 	return defaultPath
 }
 
+func findPathUpdwards(search string) (string, error) {
+	dir := "."
+
+	for {
+		// If we hit the root, we're done
+		if rel, _ := filepath.Rel("/", search); rel == "." {
+			break
+		}
+
+		_, err := os.Stat(filepath.Join(dir, search))
+		if err != nil {
+			if os.IsNotExist(err) {
+				dir += "/.."
+				continue
+			}
+
+			panic(err)
+		}
+
+		return filepath.Abs(dir)
+	}
+
+	return "", errors.New("path not found")
+}
+
 func main() {
 	L := lua.NewState()
 	defer L.Close()
@@ -197,8 +224,19 @@ func main() {
 		L.PreloadModule(name, module.loader)
 	}
 
+	dir, err := findPathUpdwards("main.lua")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", aurora.Red(err))
+		os.Exit(1)
+	}
+	err = os.Chdir(dir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", aurora.Red(err))
+		os.Exit(1)
+	}
+
 	if err := L.DoFile("main.lua"); err != nil {
-		fmt.Fprintf(os.Stderr, "%s", aurora.Red(err))
+		fmt.Fprintf(os.Stderr, "%s\n", aurora.Red(err))
 		os.Exit(1)
 	}
 
@@ -231,7 +269,6 @@ func main() {
 			Value:   value,
 		})
 	}
-
 
 	envApp := &cli.App{
 		Flags: cliFlags,
@@ -340,8 +377,7 @@ func main() {
 		Commands: commands,
 	}
 
-	err := app.Run(os.Args)
-	if err != nil {
+	if err := app.Run(os.Args); err != nil {
 		panic(err)
 	}
 }

@@ -122,7 +122,7 @@ func start(runtime *Runtime, addCommand func(cmd Command)) lua.LGFunction {
 
 							if watch != "" {
 								onChange := make(chan bool)
-								close := createWatcher(runtime, watch, onChange)
+								close := startWatching(runtime, watch, onChange)
 								defer close()
 
 								for {

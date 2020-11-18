@@ -131,7 +131,7 @@ func watch(runtime *Runtime) lua.LGFunction {
 						defer wg.Done()
 
 						onChange := make(chan bool)
-						close := createWatcher(runtime, watch, onChange)
+						close := startWatching(runtime, watch, onChange)
 						defer close()
 
 						for {

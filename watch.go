@@ -1,58 +1,70 @@
 package main
 
 import (
-	"github.com/bmatcuk/doublestar/v2"
-	"github.com/fsnotify/fsnotify"
+	"os"
+	"path/filepath"
+	"time"
+
 	"go.uber.org/zap"
+
+	"github.com/gobwas/glob"
+	"github.com/radovskyb/watcher"
 )
 
-func createWatcher(runtime *Runtime, watchGlob string, onChange chan bool) func() {
-	runtime.logger.Debug("creating watcher for file glob", zap.String("glob", watchGlob))
-	files, err := doublestar.Glob(watchGlob)
+func startWatching(runtime *Runtime, watchGlob string, onChange chan bool) func() {
+	w := watcher.New()
+	w.SetMaxEvents(1)
+
+	cwd, err := os.Getwd()
 	if err != nil {
-		runtime.logger.Fatal("unable to parse file glob", zap.Error(err))
+		panic(err)
 	}
 
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		runtime.logger.Fatal(err)
-	}
+	g := glob.MustCompile(watchGlob)
+
+	w.AddFilterHook(func(info os.FileInfo, fullPath string) error {
+		relPath, err := filepath.Rel(cwd, fullPath)
+		if err != nil {
+			return err
+		}
+
+		// If it doesn't match try it with the relative path appended
+		if g.Match(relPath) || g.Match("./"+relPath) {
+			return nil
+		} else {
+			return watcher.ErrSkip
+		}
+	})
 
 	go func() {
 		for {
 			select {
-			case event, ok := <-watcher.Events:
-				if !ok {
-					return
-				}
-
+			case event := <-w.Event:
 				runtime.logger.Debug("watcher event", zap.String("event", event.String()))
-				if event.Op&fsnotify.Write == fsnotify.Write || event.Op&fsnotify.Chmod == fsnotify.Chmod {
-					runtime.logger.Debug("onChange triggered", zap.String("event", event.String()))
-					onChange <- true
-				}
-			case err, ok := <-watcher.Errors:
-				if !ok {
-					return
-				}
-
-				runtime.logger.Error("watch error", zap.Error(err))
+				onChange <- true
+			case err := <-w.Error:
+				panic(err)
+			case <-w.Closed:
+				return
 			}
 		}
 	}()
+	if err := w.AddRecursive("."); err != nil {
+		panic(err)
+	}
 
-	for _, file := range files {
-		runtime.logger.Debug("watching", zap.String("file", file))
-		err = watcher.Add(file)
-		if err != nil {
-			runtime.logger.Fatal("failed to add file to watch",
-				zap.String("file", file),
-				zap.Error(err))
+	var paths []string
+	for path := range w.WatchedFiles() {
+		paths = append(paths, path)
+	}
+
+	runtime.logger.Debug("watching files", zap.Strings("files", paths))
+
+	go func() {
+		if err := w.Start(time.Millisecond * 100); err != nil {
+			panic(err)
 		}
-	}
+	}()
 
-	return func() {
-		err := watcher.Close()
-		runtime.logger.Error("closing watcher", zap.Error(err))
-	}
+	return w.Close
 }

@@ -3,22 +3,30 @@ local shell = require("shmake.shell")
 local files = require("shmake.files")
 local cache = require("shmake.cache")
 local git = require("shmake.git")
+local run = require("shmake.run")
 
 function prod_clean()
     files.delete('*.pyc')
 end
 
 function clean(args)
-    files.delete('file')
-    files.delete('file2')
-    files.delete({ files="some_dir", only_directories=true })
-    files.delete({ files="nested", only_directories=true })
+    run.async(files.delete, 'file')
+    run.async(files.delete, 'file2')
+    run.async(files.delete, { files="some_dir", only_directories=true })
+    run.async(files.delete, { files="nested", only_directories=true })
+    run.await()
+end
+
+function async()
+    run.async(shell.run, 'sleep 2; echo "first"')
+    run.async(shell.run, 'sleep 2; echo "second"')
+    run.wait()
+    shell.start('echo "fourth"')
 end
 
 function a_script()
     shell.run([[ touch "file" ]])
     files.copy({ from='file', to='file2' })
-    files.mkdir('some_dir')
     files.mkdir({dir='nested/directory', all=true})
 end
 
@@ -85,6 +93,7 @@ shmake.task{name="clean", fn=clean, env=dev}
 shmake.task{name="start", fn=start, env=dev}
 
 shmake.task{name="mod", fn=mod, env=dev}
+shmake.task{name="async", fn=async, env=dev}
 shmake.task{name="proto", fn=proto, env=dev}
 
 shmake.task{name="update_mod", fn=update_mod, env=dev, args={foo="bar", bar="{{.Project}}/foo"}}

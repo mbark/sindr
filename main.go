@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sync"
 
 	"github.com/iancoleman/strcase"
 	"github.com/logrusorgru/aurora/v3"
@@ -44,18 +45,22 @@ type Runtime struct {
 	defaultEnv *env
 	modules    map[string]Module
 
+	runAsync bool
+	wg sync.WaitGroup
+
 	cache  Cache
 	logger *zap.SugaredLogger
 }
 
-// Register a command to run, the command should return an int64 representing the
-// unix timestamp for when it was last run.
-// There are special values you can return:
-// * -1 is always out of date, meaning that it will always be rerun (and
-//   thus all commands after it as well)
-// *  0 is always up to date, meaning it will never rerun unless a previous command
-//    was out of date
 func (runtime *Runtime) addCommand(cmd Command) {
+	if runtime.runAsync {
+		runtime.wg.Add(1)
+		go func() {
+			defer runtime.wg.Done()
+			cmd.run()
+		}()
+	}
+
 	runtime.commands = append(runtime.commands, cmd)
 }
 
@@ -219,6 +224,7 @@ func main() {
 	r.modules["shmake.shell"] = getShellModule(r)
 	r.modules["shmake.cache"] = getCacheModule(r)
 	r.modules["shmake.git"] = getGitModule(r)
+	r.modules["shmake.run"] = getRunModule(r)
 
 	for name, module := range r.modules {
 		L.PreloadModule(name, module.loader)

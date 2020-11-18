@@ -76,11 +76,17 @@ func start(runtime *Runtime, addCommand func(cmd Command)) lua.LGFunction {
 				run: func() {
 					c := withVariables(runtime, string(str))
 
+					runtime.logger.Debug("starting command", zap.String("command", c))
+
 					cmd := exec.Command("bash", "-c", c)
 					cmd.Stdout = os.Stdout
 					cmd.Stderr = os.Stderr
 					err := cmd.Start()
 					if err != nil {
+						panic(err)
+					}
+
+					if err := cmd.Wait(); err != nil {
 						panic(err)
 					}
 				},

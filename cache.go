@@ -20,6 +20,8 @@ func getCacheModule(runtime *Runtime) Module {
 
 type Cache struct {
 	diskv *diskv.Diskv
+
+	ForceOutOfDate bool // ForceOutOfDate makes all gets return nil
 }
 
 func NewCache(file string) Cache {
@@ -37,6 +39,10 @@ func (c Cache) StoreVersion(name, version string) error {
 }
 
 func (c Cache) GetVersion(name string) (*string, error) {
+	if c.ForceOutOfDate {
+		return nil, nil
+	}
+
 	if !c.diskv.Has(name) {
 		return nil, nil
 	}

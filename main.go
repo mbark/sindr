@@ -34,11 +34,13 @@ type Runtime struct {
 	tasks        map[string]task
 	environments map[string]env
 	variables    map[string]string
-	defaultEnv   *env
-	modules      map[string]Module
-	cache        Cache
 	commands     []Command
-	logger       *zap.SugaredLogger
+
+	defaultEnv *env
+	modules    map[string]Module
+
+	cache  Cache
+	logger *zap.SugaredLogger
 }
 
 // Register a command to run, the command should return an int64 representing the
@@ -196,7 +198,7 @@ func main() {
 	}
 
 	var environment string
-	var verbose bool
+	var verbose, noCache bool
 
 	cliFlags := []cli.Flag{
 		&cli.StringFlag{
@@ -209,6 +211,11 @@ func main() {
 			Aliases:     []string{"v"},
 			Usage:       "print logs to stdout",
 			Destination: &verbose,
+		},
+		&cli.BoolFlag{
+			Name:        "no-cache",
+			Usage:       "ignore stored values in the cache",
+			Destination: &noCache,
 		},
 	}
 
@@ -233,6 +240,8 @@ func main() {
 			panic(fmt.Sprintf("no environment %s", environment))
 		}
 	}
+
+	r.cache.ForceOutOfDate = noCache
 
 	r.logger.Debug("commands available", zap.Any("commands", r.tasks))
 

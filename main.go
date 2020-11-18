@@ -18,6 +18,7 @@ type task struct {
 	Name string
 	Fn   *lua.LFunction
 	Env  string
+	Args map[string]string
 }
 
 type env struct {
@@ -94,18 +95,18 @@ func getRuntime() *Runtime {
 
 	mainModule := Module{
 		exports: map[string]lua.LGFunction{
-			"register_task": registerTask(func(t task) {
+			"task": registerTask(func(t task) {
 				logger.Debug("registered task", zap.String("name", t.Name))
 				r.tasks[t.Name] = t
 			}),
-			"register_env": registerEnv(func(e env) {
+			"env": registerEnv(func(e env) {
 				logger.Debug("registered env", zap.String("name", e.Name))
 				r.environments[e.Name] = e
 				if e.Default {
 					r.defaultEnv = &e
 				}
 			}),
-			"register_var": registerVar(func(name, value string) {
+			"var": registerVar(func(name, value string) {
 				logger.Debug("registered var", zap.String("name", name), zap.String("value", value))
 				r.variables[name] = value
 				r.varOrder = append(r.varOrder, name)
@@ -128,8 +129,10 @@ func registerTask(register func(t task)) lua.LGFunction {
 	return func(L *lua.LState) int {
 		lv := L.Get(-1)
 
+		mapper := gluamapper.NewMapper(gluamapper.Option{NameFunc: func(n string) string { return n }})
+
 		var t task
-		if err := gluamapper.Map(lv.(*lua.LTable), &t); err != nil {
+		if err := mapper.Map(lv.(*lua.LTable), &t); err != nil {
 			panic(err)
 		}
 
@@ -221,6 +224,15 @@ func main() {
 		},
 	}
 
+	for name, value := range r.variables {
+		cliFlags = append(cliFlags, &cli.StringFlag{
+			Name:    strcase.ToKebab(name),
+			EnvVars: []string{strcase.ToScreamingSnake(name)},
+			Value:   value,
+		})
+	}
+
+
 	envApp := &cli.App{
 		Flags: cliFlags,
 		Action: func(c *cli.Context) error {
@@ -247,15 +259,6 @@ func main() {
 
 	r.logger.Debug("commands available", zap.Any("commands", r.tasks))
 
-	commandFlags := []cli.Flag{}
-	for name, value := range r.variables {
-		commandFlags = append(commandFlags, &cli.StringFlag{
-			Name:    strcase.ToKebab(name),
-			EnvVars: []string{strcase.ToScreamingSnake(name)},
-			Value:   value,
-		})
-	}
-
 	var commands []*cli.Command
 	for nameV, tV := range r.tasks {
 		name := nameV
@@ -265,10 +268,19 @@ func main() {
 			continue
 		}
 
+		var cmdFlags []cli.Flag
+		for name, value := range t.Args {
+			cmdFlags = append(cmdFlags, &cli.StringFlag{
+				Name:    strcase.ToKebab(name),
+				EnvVars: []string{strcase.ToScreamingSnake(name)},
+				Value:   value,
+			})
+		}
+
 		commands = append(commands,
 			&cli.Command{
 				Name:  name,
-				Flags: commandFlags,
+				Flags: cmdFlags,
 				Action: func(c *cli.Context) error {
 					if verbose {
 						cfg := zap.NewDevelopmentConfig()
@@ -300,11 +312,13 @@ func main() {
 						L.SetGlobal(name, lua.LString(value))
 					}
 
-					err := L.CallByParam(lua.P{
-						Fn:      t.Fn,
-						NRet:    1,
-						Protect: true,
-					})
+					args := &lua.LTable{Metatable: lua.LNil}
+					for k, v := range t.Args {
+						v = withVariables(r, v)
+						args.RawSetString(k, lua.LString(v))
+					}
+
+					err := L.CallByParam(lua.P{Fn: t.Fn, NRet: 1, Protect: true}, args)
 					if err != nil {
 						return err
 					}

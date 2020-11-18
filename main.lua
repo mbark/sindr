@@ -8,7 +8,7 @@ function prod_clean()
     files.delete('*.pyc')
 end
 
-function clean()
+function clean(args)
     files.delete('file')
     files.delete('file2')
     files.delete({ files="some_dir", only_directories=true })
@@ -65,7 +65,9 @@ function proto()
     end
 end
 
-function update_mod()
+function update_mod(args)
+    print("args", args['foo'], args['bar'])
+
     head = git.head()
     if cache.diff({ name="tidy", version=head }) then
         shell.run([[ go mod tidy ]])
@@ -73,20 +75,20 @@ function update_mod()
     end
 end
 
-shmake.register_var({name='Project', value='./../../..'})
-shmake.register_var({name='BackendPath', value='{{.Project}}/backend'})
-shmake.register_var({name='ToolsBin', value='{{.BackendPath}}/backend'})
+shmake.var({name='Project', value='./../../..'})
+shmake.var({name='BackendPath', value='{{.Project}}/backend'})
+shmake.var({name='ToolsBin', value='{{.BackendPath}}/backend'})
 
-local dev = shmake.register_env{name="dev", default=true}
-local prod = shmake.register_env{name="prod"}
+local dev = shmake.env{name="dev", default=true}
+local prod = shmake.env{name="prod"}
 
-shmake.register_task{name="script", fn=a_script, env=dev}
-shmake.register_task{name="clean", fn=clean, env=dev}
-shmake.register_task{name="start", fn=start, env=dev}
+shmake.task{name="script", fn=a_script, env=dev}
+shmake.task{name="clean", fn=clean, env=dev}
+shmake.task{name="start", fn=start, env=dev}
 
-shmake.register_task{name="mod", fn=mod, env=dev}
-shmake.register_task{name="proto", fn=proto, env=dev}
+shmake.task{name="mod", fn=mod, env=dev}
+shmake.task{name="proto", fn=proto, env=dev}
 
-shmake.register_task{name="update_mod", fn=update_mod, env=dev}
+shmake.task{name="update_mod", fn=update_mod, env=dev, args={foo="bar", bar="{{.Project}}/foo"}}
 
-shmake.register_task{name="prodclean", fn=prod_clean, env=prod}
+shmake.task{name="prodclean", fn=prod_clean, env=prod}

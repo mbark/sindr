@@ -5,6 +5,7 @@ import (
 	"os"
 	"path"
 
+	"github.com/iancoleman/strcase"
 	"github.com/logrusorgru/aurora/v3"
 	"github.com/urfave/cli/v2"
 	"github.com/yuin/gluamapper"
@@ -34,6 +35,7 @@ type Runtime struct {
 	tasks        map[string]task
 	environments map[string]env
 	variables    map[string]string
+	varOrder     []string // varOrder keeps track of which order the variables are registered
 	commands     []Command
 
 	defaultEnv *env
@@ -106,6 +108,7 @@ func getRuntime() *Runtime {
 			"register_var": registerVar(func(name, value string) {
 				logger.Debug("registered var", zap.String("name", name), zap.String("value", value))
 				r.variables[name] = value
+				r.varOrder = append(r.varOrder, name)
 			}),
 		},
 	}
@@ -163,8 +166,7 @@ func registerVar(register func(name, value string)) lua.LGFunction {
 		}
 
 		register(v.Name, v.Value)
-		L.Push(lua.LString(v.Value))
-		return 1
+		return 0
 	}
 }
 
@@ -245,6 +247,15 @@ func main() {
 
 	r.logger.Debug("commands available", zap.Any("commands", r.tasks))
 
+	commandFlags := []cli.Flag{}
+	for name, value := range r.variables {
+		commandFlags = append(commandFlags, &cli.StringFlag{
+			Name:    strcase.ToKebab(name),
+			EnvVars: []string{strcase.ToScreamingSnake(name)},
+			Value:   value,
+		})
+	}
+
 	var commands []*cli.Command
 	for nameV, tV := range r.tasks {
 		name := nameV
@@ -256,7 +267,8 @@ func main() {
 
 		commands = append(commands,
 			&cli.Command{
-				Name: name,
+				Name:  name,
+				Flags: commandFlags,
 				Action: func(c *cli.Context) error {
 					if verbose {
 						cfg := zap.NewDevelopmentConfig()
@@ -273,6 +285,20 @@ func main() {
 
 					defer r.logger.Sync()
 					r.logger.Debug("running command", zap.String("command", name))
+
+					for _, name := range r.varOrder {
+						value := r.variables[name]
+
+						v := c.String(strcase.ToKebab(name))
+						if v != "" {
+							value = v
+						}
+
+						value = withVariables(r, value)
+						r.variables[name] = value
+
+						L.SetGlobal(name, lua.LString(value))
+					}
 
 					err := L.CallByParam(lua.P{
 						Fn:      t.Fn,

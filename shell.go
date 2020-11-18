@@ -74,7 +74,9 @@ func start(runtime *Runtime, addCommand func(cmd Command)) lua.LGFunction {
 		if str, ok := lv.(lua.LString); ok {
 			addCommand(Command{
 				run: func() {
-					cmd := exec.Command("bash", "-c", fmt.Sprintf("%s", string(str)))
+					c := withVariables(runtime, string(str))
+
+					cmd := exec.Command("bash", "-c", c)
 					cmd.Stdout = os.Stdout
 					cmd.Stderr = os.Stderr
 					err := cmd.Start()
@@ -90,6 +92,12 @@ func start(runtime *Runtime, addCommand func(cmd Command)) lua.LGFunction {
 			if err := gluamapper.Map(tbl, &startCommands); err != nil {
 				runtime.logger.Fatal("failed to map commands", zap.Error(err))
 			}
+
+			for k, c := range startCommands {
+				c.Cmd = withVariables(runtime, c.Cmd)
+				startCommands[k] = c
+			}
+
 			addCommand(Command{
 				run: func() {
 					var colorIdx uint8 = 0

@@ -4,8 +4,6 @@ local files = require("shmake.files")
 local cache = require("shmake.cache")
 local git = require("shmake.git")
 
-shmake.register_var({name='GO', value='go'})
-
 function prod_clean()
     files.delete('*.pyc')
 end
@@ -42,7 +40,7 @@ end
 function proto()
     if files.newest_ts('*.proto', '{{.BACKEND_PATH}}/bin/inject') > files.oldest_ts('*.pb.go') then
         shell.run([[
-            {{.GO}} mod vendor
+            go mod vendor
             {{.PROTOC}} \
                 -I {{.PROTO_INC}} \
                 --validate_out="lang=go:.." \
@@ -75,6 +73,9 @@ function update_mod()
     end
 end
 
+shmake.register_var({name='Project', value='./../../..'})
+shmake.register_var({name='BackendPath', value='{{.Project}}/backend'})
+shmake.register_var({name='ToolsBin', value='{{.BackendPath}}/backend'})
 
 local dev = shmake.register_env{name="dev", default=true}
 local prod = shmake.register_env{name="prod"}

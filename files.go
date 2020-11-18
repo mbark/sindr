@@ -23,6 +23,8 @@ func getFileModule(runtime *Runtime) Module {
 			"delete":    delete(runtime.addCommand),
 			"copy":      copy(runtime.addCommand),
 			"mkdir":     mkdir(runtime.addCommand),
+			"chdir":     chdir(runtime),
+			"popdir":    popdir(runtime),
 			"newest_ts": timestamp(true),
 			"oldest_ts": timestamp(false),
 		},
@@ -227,5 +229,53 @@ func timestamp(useNewest bool) lua.LGFunction {
 
 		L.Push(lua.LNumber(modTime.Unix()))
 		return 1
+	}
+}
+
+func chdir(runtime *Runtime) lua.LGFunction {
+	return func(L *lua.LState) int {
+		lv := L.Get(-1)
+
+		dir, ok := lv.(lua.LString)
+		if !ok {
+			panic("parameter must be string")
+		}
+
+		runtime.addCommand(Command{
+			run: func(ctx context.Context) {
+				cwd, err := os.Getwd()
+				if err != nil {
+					panic(err)
+				}
+
+				runtime.prevDir = cwd
+				err = os.Chdir(string(dir))
+				if err != nil {
+					panic(err)
+				}
+			},
+		})
+
+		return 0
+	}
+}
+
+func popdir(runtime *Runtime) lua.LGFunction {
+	return func(L *lua.LState) int {
+		runtime.addCommand(Command{
+			run: func(ctx context.Context) {
+				if runtime.prevDir == "" {
+					panic("no previous directory stored")
+				}
+
+				err := os.Chdir(runtime.prevDir)
+				if err != nil {
+					panic(err)
+				}
+				runtime.prevDir = ""
+			},
+		})
+
+		return 0
 	}
 }

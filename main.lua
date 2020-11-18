@@ -3,6 +3,7 @@ local shell = require("shmake.shell")
 local files = require("shmake.files")
 local cache = require("shmake.cache")
 local git = require("shmake.git")
+local yarn = require("shmake.yarn")
 local run = require("shmake.run")
 
 function prod_clean()
@@ -18,6 +19,13 @@ function clean(args)
     run.watch({
         file={fn=files.delete, args='file2', watch='./file3'}
     })
+end
+
+function install()
+    files.chdir('./examples/yarn')
+    yarn.install()
+    yarn.run('prettier -w package.json')
+    files.popdir()
 end
 
 function async()
@@ -98,6 +106,7 @@ shmake.task{name="start", fn=start, env=dev}
 shmake.task{name="mod", fn=mod, env=dev}
 shmake.task{name="async", fn=async, env=dev}
 shmake.task{name="proto", fn=proto, env=dev}
+shmake.task{name="install", fn=install, env=dev}
 
 shmake.task{name="update_mod", fn=update_mod, env=dev, args={foo="bar", bar="{{.Project}}/foo"}}
 

@@ -48,7 +48,9 @@ type Runtime struct {
 
 	runAsync bool
 	asyncCtx context.Context
-	wg sync.WaitGroup
+	wg       sync.WaitGroup
+
+	prevDir string
 
 	cache  Cache
 	logger *zap.SugaredLogger
@@ -226,6 +228,7 @@ func main() {
 	r.modules["shmake.shell"] = getShellModule(r)
 	r.modules["shmake.cache"] = getCacheModule(r)
 	r.modules["shmake.git"] = getGitModule(r)
+	r.modules["shmake.yarn"] = getYarnModule(r)
 	r.modules["shmake.run"] = getRunModule(r)
 
 	for name, module := range r.modules {

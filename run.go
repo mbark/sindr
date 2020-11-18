@@ -12,9 +12,9 @@ import (
 func getRunModule(runtime *Runtime) Module {
 	return Module{
 		exports: map[string]lua.LGFunction{
-			"async": async(runtime),
-			"await": await(runtime),
-			"watch": watch(runtime),
+			"async":  async(runtime),
+			"await":  await(runtime),
+			"watch":  watch(runtime),
 		},
 	}
 }

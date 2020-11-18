@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -76,7 +78,8 @@ func delete(addCommand func(cmd Command)) lua.LGFunction {
 		}
 
 		addCommand(Command{
-			run: func() {
+			run: func(ctx context.Context) {
+				fmt.Println("deleting files", config)
 				files := findGlobMatches(config)
 				removeFiles(files)
 			},
@@ -125,7 +128,7 @@ func copy(addCommand func(cmd Command)) lua.LGFunction {
 		}
 
 		addCommand(Command{
-			run: func() {
+			run: func(ctx context.Context) {
 				err := CopyFile(opts.From, opts.To)
 				if err != nil {
 					panic(err)
@@ -159,7 +162,7 @@ func mkdir(addCommand func(cmd Command)) lua.LGFunction {
 		}
 
 		addCommand(Command{
-			run: func() {
+			run: func(ctx context.Context) {
 				var err error
 				if opts.All {
 					err = os.MkdirAll(opts.Dir, 0700)

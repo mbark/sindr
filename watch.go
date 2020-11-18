@@ -28,6 +28,7 @@ func createWatcher(runtime *Runtime, watchGlob string, onChange chan bool) func(
 
 				runtime.logger.Debug("watcher event", zap.String("event", event.String()))
 				if event.Op&fsnotify.Write == fsnotify.Write || event.Op&fsnotify.Chmod == fsnotify.Chmod {
+					runtime.logger.Debug("onChange triggered", zap.String("event", event.String()))
 					onChange <- true
 				}
 			case err, ok := <-watcher.Errors:
@@ -52,6 +53,6 @@ func createWatcher(runtime *Runtime, watchGlob string, onChange chan bool) func(
 
 	return func() {
 		err := watcher.Close()
-		runtime.logger.Error("closing wathcer", zap.Error(err))
+		runtime.logger.Error("closing watcher", zap.Error(err))
 	}
 }

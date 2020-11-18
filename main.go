@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -31,7 +32,7 @@ type env struct {
 
 // Command ...
 type Command struct {
-	run func()
+	run func(ctx context.Context)
 }
 
 // Runtime ...
@@ -46,6 +47,7 @@ type Runtime struct {
 	modules    map[string]Module
 
 	runAsync bool
+	asyncCtx context.Context
 	wg sync.WaitGroup
 
 	cache  Cache
@@ -57,7 +59,7 @@ func (runtime *Runtime) addCommand(cmd Command) {
 		runtime.wg.Add(1)
 		go func() {
 			defer runtime.wg.Done()
-			cmd.run()
+			cmd.run(runtime.asyncCtx)
 		}()
 	}
 
@@ -368,7 +370,7 @@ func main() {
 
 					r.logger.Debug("commands to run", zap.Any("commands", r.commands))
 					for _, cmd := range r.commands {
-						cmd.run()
+						cmd.run(c.Context)
 					}
 
 					return nil

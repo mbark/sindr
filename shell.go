@@ -46,10 +46,10 @@ func run(runtime *Runtime, addCommand func(cmd Command)) lua.LGFunction {
 
 		if str, ok := lv.(lua.LString); ok {
 			addCommand(Command{
-				run: func() {
+				run: func(ctx context.Context) {
 					command := withVariables(runtime, string(str))
 					runtime.logger.Debug("running command", zap.String("command", command))
-					cmd := exec.Command("bash", "-c", command)
+					cmd := exec.CommandContext(ctx, "bash", "-c", command)
 					err := cmd.Run()
 					if err != nil {
 						panic(err)
@@ -73,12 +73,12 @@ func start(runtime *Runtime, addCommand func(cmd Command)) lua.LGFunction {
 
 		if str, ok := lv.(lua.LString); ok {
 			addCommand(Command{
-				run: func() {
+				run: func(ctx context.Context) {
 					c := withVariables(runtime, string(str))
 
 					runtime.logger.Debug("starting command", zap.String("command", c))
 
-					cmd := exec.Command("bash", "-c", c)
+					cmd := exec.CommandContext(ctx, "bash", "-c", c)
 					cmd.Stdout = os.Stdout
 					cmd.Stderr = os.Stderr
 					err := cmd.Start()
@@ -105,7 +105,7 @@ func start(runtime *Runtime, addCommand func(cmd Command)) lua.LGFunction {
 			}
 
 			addCommand(Command{
-				run: func() {
+				run: func(ctx context.Context) {
 					var colorIdx uint8 = 0
 
 					wg := sync.WaitGroup{}
@@ -126,12 +126,14 @@ func start(runtime *Runtime, addCommand func(cmd Command)) lua.LGFunction {
 								defer close()
 
 								for {
-									ctx, cancel := context.WithCancel(context.Background())
+									ctx, cancel := context.WithCancel(ctx)
 									cmd := exec.CommandContext(ctx, "bash", "-c", fmt.Sprintf("%s", command))
 									err := startCommand(cmd, name, colorIndex)
 									if err != nil {
 										runtime.logger.Fatal("start command", zap.Error(err))
 									}
+
+									runtime.logger.Info("command started", zap.String("command", command))
 
 									_ = <-onChange
 
@@ -139,11 +141,12 @@ func start(runtime *Runtime, addCommand func(cmd Command)) lua.LGFunction {
 									cancel()
 								}
 							} else {
-								cmd := exec.Command("bash", "-c", fmt.Sprintf("%s", command))
+								cmd := exec.CommandContext(ctx, "bash", "-c", fmt.Sprintf("%s", command))
 								err := startCommand(cmd, name, colorIndex)
 								if err != nil {
 									runtime.logger.Fatal("start command", zap.Error(err))
 								}
+								runtime.logger.Info("command started", zap.String("command", command))
 
 								if err := cmd.Wait(); err != nil {
 									runtime.logger.Fatal("cmd wait", zap.Error(err))

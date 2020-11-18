@@ -10,11 +10,14 @@ function prod_clean()
 end
 
 function clean(args)
-    run.async(files.delete, 'file')
-    run.async(files.delete, 'file2')
-    run.async(files.delete, { files="some_dir", only_directories=true })
-    run.async(files.delete, { files="nested", only_directories=true })
-    run.await()
+    files.delete('file')
+    files.delete('file2')
+    files.delete({ files="some_dir", only_directories=true })
+    files.delete({ files="nested", only_directories=true })
+
+    run.watch({
+        file={fn=files.delete, args='file2', watch='./file3'}
+    })
 end
 
 function async()

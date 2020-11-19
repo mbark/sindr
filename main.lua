@@ -6,6 +6,13 @@ local git = require("shmake.git")
 local yarn = require("shmake.yarn")
 local run = require("shmake.run")
 
+shmake.var({name='Project', value='./../../..'})
+shmake.var({name='BackendPath', value='{{.Project}}/backend'})
+shmake.var({name='ToolsBin', value='{{.BackendPath}}/backend'})
+
+local dev = shmake.env{name="dev", default=true}
+local prod = shmake.env{name="prod"}
+
 function prod_clean()
     files.delete('*.pyc')
 end
@@ -88,19 +95,15 @@ function proto()
 end
 
 function update_mod(args)
+    -- local variables can be accessed CamelCased in templates
+    shell.run([[ echo '{{.Bar}}' ]])
+    print(args['bar'])
     head = git.head()
     if cache.diff({ name="tidy", version=head }) then
         shell.run([[ go mod tidy ]])
         cache.store({ name="tidy", version=head })
     end
 end
-
-shmake.var({name='Project', value='./../../..'})
-shmake.var({name='BackendPath', value='{{.Project}}/backend'})
-shmake.var({name='ToolsBin', value='{{.BackendPath}}/backend'})
-
-local dev = shmake.env{name="dev", default=true}
-local prod = shmake.env{name="prod"}
 
 shmake.cmd{name="script", fn=a_script, env=dev}
 shmake.cmd{name="clean", fn=clean, env=dev}

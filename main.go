@@ -353,6 +353,12 @@ func main() {
 						log = log.With(zap.String("arg."+k, v))
 					}
 
+					for k, v := range t.Args {
+						k = strcase.ToCamel(k)
+						r.variables[k] = withVariables(r, v)
+						r.varOrder = append(r.varOrder, k)
+					}
+
 					log.Debug("running cmd")
 
 					L.SetContext(c.Context)

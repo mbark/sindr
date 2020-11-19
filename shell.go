@@ -45,6 +45,8 @@ func run(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 
 	command := withVariables(runtime, string(str))
 
+	runtime.logger.With(zap.String("command", command)).Debug("running shell command")
+
 	cmd := exec.CommandContext(L.Context(), "bash", "-c", command)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

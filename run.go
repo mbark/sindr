@@ -1,10 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"sync"
 
-	"github.com/yuin/gluamapper"
 	lua "github.com/yuin/gopher-lua"
 	"go.uber.org/zap"
 )
@@ -21,9 +19,9 @@ func getRunModule(runtime *Runtime) Module {
 
 func async(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 	lv := L.Get(-2)
-	fn, ok := lv.(*lua.LFunction)
-	if !ok {
-		L.TypeError(1, lua.LTFunction)
+	fn, err := MapFunction(1, lv)
+	if err != nil {
+		return nil, err
 	}
 
 	lv = L.Get(-1)
@@ -61,14 +59,10 @@ type watchedFn struct {
 func watch(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 	lv := L.Get(-1)
 
-	tbl, ok := lv.(*lua.LTable)
-	if !ok {
-		L.TypeError(1, lua.LTTable)
-	}
-
 	var opts watchOpts
-	if err := gluamapper.Map(tbl, &opts); err != nil {
-		L.ArgError(1, fmt.Errorf("invalid config: %w", err).Error())
+	err := MapTable(1, lv, &opts)
+	if err != nil {
+		return nil, err
 	}
 
 	cmds := make(map[string]watchedFn)
@@ -80,7 +74,6 @@ func watch(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 			largs = lua.LString(a)
 
 		case []interface{}:
-			tbl = &lua.LTable{}
 
 		case map[string]string:
 			largs = &lua.LTable{}

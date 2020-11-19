@@ -10,7 +10,6 @@ import (
 	"text/template"
 
 	"github.com/logrusorgru/aurora/v3"
-	"github.com/yuin/gluamapper"
 	lua "github.com/yuin/gopher-lua"
 	"go.uber.org/zap"
 )
@@ -38,13 +37,12 @@ func withVariables(runtime *Runtime, input string) string {
 
 func run(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 	lv := L.Get(-1)
-
-	str, ok := lv.(lua.LString)
-	if !ok {
-		L.TypeError(1, lua.LTString)
+	c, err := MapString(1, lv)
+	if err != nil {
+		return nil, err
 	}
 
-	command := withVariables(runtime, string(str))
+	command := withVariables(runtime, c)
 
 	runtime.logger.With(zap.String("command", command)).Debug("running shell command")
 
@@ -52,7 +50,7 @@ func run(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	err := cmd.Run()
+	err = cmd.Run()
 	if err != nil {
 		return nil, fmt.Errorf("running shell cmd failed: %w", err)
 	}
@@ -63,12 +61,12 @@ func run(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 func output(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 	lv := L.Get(-1)
 
-	str, ok := lv.(lua.LString)
-	if !ok {
-		L.TypeError(1, lua.LTString)
+	c, err := MapString(1, lv)
+	if err != nil {
+		return nil, err
 	}
 
-	command := withVariables(runtime, string(str))
+	command := withVariables(runtime, c)
 
 	runtime.logger.With(zap.String("command", command)).Debug("running shell command and returning output")
 
@@ -89,14 +87,10 @@ type startOptions = map[string]struct {
 func start(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 	lv := L.Get(-1)
 
-	tbl, ok := lv.(*lua.LTable)
-	if !ok {
-		L.TypeError(1, lua.LTTable)
-	}
-
 	var startCommands startOptions
-	if err := gluamapper.Map(tbl, &startCommands); err != nil {
-		L.ArgError(1, fmt.Errorf("invalid config: %w", err).Error())
+	err := MapTable(1, lv, &startCommands)
+	if err != nil {
+		return nil, err
 	}
 
 	for k, c := range startCommands {

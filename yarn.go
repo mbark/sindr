@@ -21,12 +21,12 @@ func getYarnModule(runtime *Runtime) Module {
 func yarnRun(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 	lv := L.Get(-1)
 
-	str, ok := lv.(lua.LString)
-	if !ok {
-		L.TypeError(1, lua.LTString)
+	c, err := MapString(1, lv)
+	if err != nil {
+		return nil, err
 	}
 
-	args := strings.Split(string(str), " ")
+	args := strings.Split(c, " ")
 	args = append([]string{"run"}, args...)
 
 	runtime.logger.With(zap.Strings("args", args)).Debug("yarn run")

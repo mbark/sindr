@@ -117,6 +117,15 @@ func (module Module) loader(runtime *Runtime) lua.LGFunction {
 			exports[name] = func(L *lua.LState) int {
 				rets, err := f(runtime, L)
 				if err != nil {
+					var et ErrBadType
+					var ea ErrBadArg
+					if ok := errors.As(err, &et); ok {
+						L.TypeError(et.Index, et.Typ)
+					}
+					if ok := errors.As(err, &ea); ok {
+						L.ArgError(ea.Index, ea.Message)
+					}
+
 					L.RaiseError(err.Error())
 				}
 
@@ -146,47 +155,42 @@ func registerCmd(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 	lv2 := L.Get(-2) // table if three arguments have been passed
 	lv3 := L.Get(-3) // table if three arguments have been passed
 
+	var err error
 	var t cmdOpts
 	var name string
 	var fn *lua.LFunction
 
 	// Three arguments passed, should be string, fn, table
 	if lv1.Type() != lua.LTNil && lv2.Type() != lua.LTNil && lv3.Type() != lua.LTNil {
-		s, ok := lv3.(lua.LString)
-		if !ok {
-			L.TypeError(1, lua.LTString)
+		name, err = MapString(1, lv3)
+		if err != nil {
+			return nil, err
 		}
 
-		f, ok := lv2.(*lua.LFunction)
-		if !ok {
-			L.TypeError(2, lua.LTFunction)
+		fn, err = MapFunction(2, lv2)
+		if err != nil {
+			return nil, err
 		}
 
 		tbl, ok := lv1.(*lua.LTable)
 		if !ok {
-			L.TypeError(3, lua.LTTable)
+			return nil, ErrBadType{Index: 3, Typ: lua.LTTable}
 		}
-
-		name = string(s)
-		fn = f
 
 		mapper := gluamapper.NewMapper(gluamapper.Option{NameFunc: func(n string) string { return n }})
 		if err := mapper.Map(tbl, &t); err != nil {
-			return nil, fmt.Errorf("invalid config: %w", err)
+			return nil, ErrBadArg{Index: 3, Message: fmt.Errorf("invalid config: %w", err).Error()}
 		}
 	} else if lv1.Type() != lua.LTNil && lv2.Type() != lua.LTNil && lv3.Type() == lua.LTNil {
-		s, ok := lv2.(lua.LString)
-		if !ok {
-			L.TypeError(1, lua.LTString)
+		name, err = MapString(1, lv2)
+		if err != nil {
+			return nil, err
 		}
 
-		f, ok := lv1.(*lua.LFunction)
-		if !ok {
-			L.TypeError(2, lua.LTFunction)
+		fn, err = MapFunction(2, lv1)
+		if err != nil {
+			return nil, err
 		}
-
-		name = string(s)
-		fn = f
 	} else {
 		L.RaiseError("wrong number of arguments passed to cmd")
 	}
@@ -205,8 +209,9 @@ func registerEnv(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 	lv := L.Get(-1)
 
 	var e Env
-	if err := gluamapper.Map(lv.(*lua.LTable), &e); err != nil {
-		return nil, fmt.Errorf("invalid config: %w", err)
+	err := MapTable(1, lv, &e)
+	if err != nil {
+		return nil, err
 	}
 
 	runtime.environments[e.Name] = e
@@ -224,8 +229,9 @@ func registerVar(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 		Name  string
 		Value string
 	}
-	if err := gluamapper.Map(lv.(*lua.LTable), &v); err != nil {
-		return nil, fmt.Errorf("invalid config: %w", err)
+	err := MapTable(1, lv, &v)
+	if err != nil {
+		return nil, err
 	}
 
 	runtime.variables[v.Name] = v.Value

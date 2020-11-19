@@ -2,13 +2,11 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"time"
 
-	"github.com/yuin/gluamapper"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -61,12 +59,13 @@ func delete(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 	if glob, ok := lv.(lua.LString); ok {
 		config.Files = string(glob)
 		config.OnlyDirectories = false
-	} else if tbl, ok := lv.(*lua.LTable); ok {
-		if err := gluamapper.Map(tbl, &config); err != nil {
-			L.ArgError(1, fmt.Errorf("invalid config: %w", err).Error())
+	} else if _, ok := lv.(*lua.LTable); ok {
+		err := MapTable(1, lv, &config)
+		if err != nil {
+			return nil, err
 		}
 	} else {
-		L.ArgError(1, "string or table expected")
+		return nil, ErrBadArg{Index: 1, Message: "string or table expected"}
 	}
 
 	files, err := findGlobMatches(config)
@@ -113,16 +112,12 @@ func copy(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 	lv := L.Get(-1)
 
 	var opts copyOptions
-	tbl, ok := lv.(*lua.LTable)
-	if !ok {
-		L.TypeError(1, lua.LTTable)
+	err := MapTable(1, lv, &opts)
+	if err != nil {
+		return nil, err
 	}
 
-	if err := gluamapper.Map(tbl, &opts); err != nil {
-		L.ArgError(1, fmt.Errorf("invalid config: %w", err).Error())
-	}
-
-	err := CopyFile(opts.From, opts.To)
+	err = CopyFile(opts.From, opts.To)
 	if err != nil {
 		return nil, err
 	}
@@ -142,12 +137,13 @@ func mkdir(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 	if str, ok := lv.(lua.LString); ok {
 		opts.Dir = string(str)
 		opts.All = false
-	} else if tbl, ok := lv.(*lua.LTable); ok {
-		if err := gluamapper.Map(tbl, &opts); err != nil {
-			L.ArgError(1, fmt.Errorf("invalid config: %w", err).Error())
+	} else if _, ok := lv.(*lua.LTable); ok {
+		err := MapTable(1, lv, &opts)
+		if err != nil {
+			return nil, err
 		}
 	} else {
-		L.ArgError(1, "string or table expected")
+		return nil, ErrBadArg{Index: 1, Message: "string or table expected"}
 	}
 
 	var err error
@@ -171,12 +167,13 @@ func timestamp(useNewest bool) ModuleFunction {
 		if glob, ok := lv.(lua.LString); ok {
 			config.Files = string(glob)
 			config.OnlyDirectories = false
-		} else if tbl, ok := lv.(*lua.LTable); ok {
-			if err := gluamapper.Map(tbl, &config); err != nil {
-				L.ArgError(1, fmt.Errorf("invalid config: %w", err).Error())
+		} else if _, ok := lv.(*lua.LTable); ok {
+			err := MapTable(1, lv, &config)
+			if err != nil {
+				return nil, err
 			}
 		} else {
-			L.ArgError(1, "string or table expected")
+			return nil, ErrBadArg{Index: 1, Message: "string or table expected"}
 		}
 
 		files, err := findGlobMatches(config)
@@ -218,10 +215,9 @@ func timestamp(useNewest bool) ModuleFunction {
 
 func chdir(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 	lv := L.Get(-1)
-
-	dir, ok := lv.(lua.LString)
-	if !ok {
-		L.TypeError(1, lua.LTString)
+	dir, err := MapString(1, lv)
+	if err != nil {
+		return nil, err
 	}
 
 	cwd, err := os.Getwd()
@@ -230,7 +226,7 @@ func chdir(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 	}
 
 	runtime.prevDir = cwd
-	err = os.Chdir(string(dir))
+	err = os.Chdir(dir)
 	if err != nil {
 		return nil, err
 	}

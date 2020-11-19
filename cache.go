@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/peterbourgon/diskv/v3"
-	"github.com/yuin/gluamapper"
 	lua "github.com/yuin/gopher-lua"
 	"go.uber.org/zap"
 )
@@ -65,13 +64,9 @@ func diff(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 	lv := L.Get(-1)
 
 	var options cacheDiffOptions
-	tbl, ok := lv.(*lua.LTable)
-	if !ok {
-		L.TypeError(1, lua.LTTable)
-	}
-
-	if err := gluamapper.Map(tbl, &options); err != nil {
-		L.ArgError(1, fmt.Errorf("invalid config: %w", err).Error())
+	err := MapTable(1, lv, &options)
+	if err != nil {
+		return nil, err
 	}
 
 	currentVersion, err := runtime.cache.GetVersion(options.Name)
@@ -88,13 +83,9 @@ func store(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 	lv := L.Get(-1)
 
 	var options cacheDiffOptions
-	tbl, ok := lv.(*lua.LTable)
-	if !ok {
-		L.TypeError(1, lua.LTTable)
-	}
-
-	if err := gluamapper.Map(tbl, &options); err != nil {
-		L.ArgError(1, fmt.Errorf("invalid config: %w", err).Error())
+	err := MapTable(1, lv, &options)
+	if err != nil {
+		return nil, err
 	}
 
 	runtime.logger.

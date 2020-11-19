@@ -51,7 +51,7 @@ func run(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 
 	err := cmd.Run()
 	if err != nil {
-		return nil, fmt.Errorf("running command failed: %w", err)
+		return nil, fmt.Errorf("running shell cmd failed: %w", err)
 	}
 
 	return NoReturnVal, nil
@@ -98,7 +98,7 @@ func start(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 				cmd := exec.CommandContext(L.Context(), "bash", "-c", fmt.Sprintf("%s", command))
 				err := startCommand(cmd, name, colorIndex)
 				if err != nil {
-					runtime.logger.Fatal("start command", zap.Error(err))
+					runtime.logger.With(zap.Error(err)).Fatal("start command")
 				}
 
 				log.Debug("command started")
@@ -111,7 +111,7 @@ func start(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 				close, err := startWatching(runtime, watch, onChange)
 				defer close()
 				if err != nil {
-					panic(fmt.Errorf("start watching %s: %w", watch, err))
+					log.With(zap.Error(err)).Panic("failed to start watcher")
 				}
 
 				for {

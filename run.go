@@ -103,31 +103,30 @@ func watch(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 
 	var wg sync.WaitGroup
 	for k, c := range cmds {
-		runtime.logger.Debug("starting",
-			zap.String("name", k),
-			zap.String("watch", c.Watch))
-
 		wg.Add(1)
 		colorIdx += 1
 		go func(name string, cmd watchCommand, colorIndex uint8) {
 			defer wg.Done()
 
+			log := runtime.logger.With(zap.String("watch", cmd.Watch)).With(zap.String("name", name))
+
 			onChange := make(chan bool)
 			close, err := startWatching(runtime, cmd.Watch, onChange)
 			defer close()
 			if err != nil {
-				panic(fmt.Errorf("start watching %s: %w", cmd.Watch, err))
+				log.With(zap.Error(err)).Fatal("sarting watcher failed")
 			}
 
 			for {
 				Lt, cancel := L.NewThread()
 
+				log.Debug("running command")
 				cmd.Run(Lt)
-				runtime.logger.Info("command started", zap.String("name", name))
 
+				log.Debug("waiting for change")
 				_ = <-onChange
 
-				runtime.logger.Info("restarting", zap.String("name", name))
+				log.Info("restarting")
 				cancel()
 			}
 		}(k, c, colorIdx)

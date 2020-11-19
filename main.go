@@ -63,21 +63,29 @@ type Module struct {
 	exports map[string]ModuleFunction
 }
 
-func NewRuntime() (*Runtime, error) {
+func cacheHome() string {
 	home := os.Getenv("HOME")
-	cacheHome := xdgPath("CACHE_HOME", path.Join(home, ".cache"))
-	shmakeCache := path.Join(cacheHome, "shmake")
-	cacheDir := path.Join(shmakeCache, "cache")
+	cacheDir := xdgPath("CACHE_HOME", path.Join(home, ".cache"))
+	return path.Join(cacheDir, "shmake")
+}
+
+func logPath(cacheDir string) string {
+	return path.Join(cacheDir, "shmake.log")
+}
+
+func NewRuntime() (*Runtime, error) {
+	cacheDir := cacheHome()
+	logPath := logPath(cacheDir)
 
 	err := os.MkdirAll(cacheDir, 0700)
 	if err != nil {
 		return nil, fmt.Errorf("creating cache directory: %w", err)
 	}
 
-	logPath := path.Join(shmakeCache, "shmake.log")
 	cfg := zap.NewDevelopmentConfig()
 	cfg.OutputPaths = []string{logPath}
 	cfg.ErrorOutputPaths = []string{logPath}
+
 	logger, err := cfg.Build()
 	if err != nil {
 		return nil, fmt.Errorf("creating logger: %w", err)
@@ -278,11 +286,12 @@ func main() {
 	err = envApp.Run(os.Args)
 	checkErr(err)
 
+	r.cache.ForceOutOfDate = noCache
 	if verbose {
 		cfg := zap.NewDevelopmentConfig()
 		cfg.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
-		cfg.OutputPaths = []string{"stdout"}
-		cfg.ErrorOutputPaths = []string{"stdout"}
+		cfg.OutputPaths = []string{"stdout", logPath(cacheHome())}
+		cfg.ErrorOutputPaths = []string{"stderr", logPath(cacheHome())}
 
 		logger, err := cfg.Build()
 		checkErr(err)
@@ -294,16 +303,12 @@ func main() {
 		environment = r.defaultEnv.Name
 	}
 
-	r.logger.Debug("environment set", zap.String("environment", environment))
+	r.logger.With(zap.String("env", environment)).Debug("environment set")
 	if environment != "" {
 		if _, ok := r.environments[environment]; !ok {
 			checkErr(errors.New(fmt.Sprintf("no environment with name %s", environment)))
 		}
 	}
-
-	r.cache.ForceOutOfDate = noCache
-
-	r.logger.Debug("commands available", zap.Any("commands", r.tasks))
 
 	var commands []*cli.Command
 	for nameV, tV := range r.tasks {
@@ -329,7 +334,7 @@ func main() {
 				Flags: cmdFlags,
 				Action: func(c *cli.Context) error {
 					defer r.logger.Sync()
-					r.logger.Debug("running command", zap.String("command", name))
+					log := r.logger.With(zap.String("command", name))
 
 					for _, name := range r.varOrder {
 						value := r.variables[name]
@@ -349,7 +354,11 @@ func main() {
 					for k, v := range t.Args {
 						v = withVariables(r, v)
 						args.RawSetString(k, lua.LString(v))
+
+						log = log.With(zap.String("arg."+k, v))
 					}
+
+					log.Debug("running command")
 
 					L.SetContext(c.Context)
 					err := L.CallByParam(lua.P{Fn: t.Fn, NRet: 1, Protect: true}, args)

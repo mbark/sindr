@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -37,14 +36,16 @@ func startWatching(runtime *Runtime, watchGlob string, onChange chan bool) (func
 		}
 	})
 
+	log := runtime.logger.With(zap.String("glob", watchGlob))
+
 	go func() {
 		for {
 			select {
 			case event := <-w.Event:
-				runtime.logger.Debug("watcher event", zap.String("event", event.String()))
+				log.With(zap.String("event", event.String())).Debug("watcher event")
 				onChange <- true
 			case err := <-w.Error:
-				panic(fmt.Errorf("watcher got error: %w", err))
+				log.With(zap.Error(err)).Error("watcher failed")
 			case <-w.Closed:
 				return
 			}
@@ -59,11 +60,11 @@ func startWatching(runtime *Runtime, watchGlob string, onChange chan bool) (func
 		paths = append(paths, path)
 	}
 
-	runtime.logger.Debug("watching files", zap.Strings("files", paths))
+	log.With(zap.Strings("files", paths)).Debug("watching files")
 
 	go func() {
 		if err := w.Start(time.Millisecond * 100); err != nil {
-			panic(fmt.Errorf("starting watcher failed: %w", err))
+			log.With(zap.Error(err)).Error("starting watcher failed")
 		}
 	}()
 

@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/iancoleman/strcase"
@@ -18,6 +19,8 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
+
+const version = "0.0.1"
 
 // NoReturnVal is a shorthand for an empty array of LValues
 var NoReturnVal = []lua.LValue{}
@@ -322,7 +325,6 @@ func main() {
 		},
 		&cli.BoolFlag{
 			Name:        "verbose",
-			Aliases:     []string{"v"},
 			Usage:       "print logs to stdout",
 			Destination: &verbose,
 		},
@@ -343,11 +345,17 @@ func main() {
 
 	envApp := &cli.App{
 		Flags:           cliFlags,
+		HideVersion:     true,
 		HideHelp:        true,
 		HideHelpCommand: true,
 		OnUsageError: func(context *cli.Context, err error, isSubcommand bool) error {
 			// Ignore errors when trying to get help, let the other app handle that
 			if errors.Is(err, flag.ErrHelp) {
+				return nil
+			}
+
+			// ignore unrecognized flags here
+			if strings.Contains(err.Error(), "flag provided but not defined") {
 				return nil
 			}
 
@@ -452,6 +460,7 @@ func main() {
 	app := &cli.App{
 		Name:     "shmake",
 		Usage:    "make shmake",
+		Version:  version,
 		Flags:    cliFlags,
 		Commands: commands,
 	}

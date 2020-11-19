@@ -9,6 +9,7 @@ local run = require("shmake.run")
 shmake.var({name='Project', value='./../../..'})
 shmake.var({name='BackendPath', value='{{.Project}}/backend'})
 shmake.var({name='ToolsBin', value='{{.BackendPath}}/backend'})
+shmake.var({name='Path', value=shell.output('echo $PATH')})
 
 local dev = shmake.env{name="dev", default=true}
 local prod = shmake.env{name="prod"}

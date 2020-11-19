@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -269,6 +270,10 @@ func findPathUpdwards(search string) (string, error) {
 func main() {
 	L := lua.NewState()
 	defer L.Close()
+
+	// Ensure we have a context before the app starts
+	ctx := context.Background()
+	L.SetContext(ctx)
 
 	checkErr := func(err error) {
 		if err != nil {

@@ -18,8 +18,9 @@ import (
 func getShellModule(runtime *Runtime) Module {
 	return Module{
 		exports: map[string]ModuleFunction{
-			"run":   run,
-			"start": start,
+			"run":    run,
+			"output": output,
+			"start":  start,
 		},
 	}
 }
@@ -57,6 +58,27 @@ func run(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 	}
 
 	return NoReturnVal, nil
+}
+
+func output(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
+	lv := L.Get(-1)
+
+	str, ok := lv.(lua.LString)
+	if !ok {
+		L.TypeError(1, lua.LTString)
+	}
+
+	command := withVariables(runtime, string(str))
+
+	runtime.logger.With(zap.String("command", command)).Debug("running shell command and returning output")
+
+	cmd := exec.CommandContext(L.Context(), "bash", "-c", command)
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("running shell cmd failed: %w", err)
+	}
+
+	return []lua.LValue{lua.LString(string(output))}, nil
 }
 
 type startOptions = map[string]struct {

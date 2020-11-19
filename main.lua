@@ -34,7 +34,7 @@ end
 function async()
     run.async(shell.run, 'sleep 2; echo "first"')
     run.async(shell.run, 'sleep 2; echo "second"')
-    run.wait()
+    run.await()
     shell.start('echo "fourth"')
 end
 

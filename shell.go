@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -116,8 +115,8 @@ func start(runtime *Runtime) lua.LGFunction {
 						defer close()
 
 						for {
-							ctx, cancel := context.WithCancel(L.Context())
-							cmd := exec.CommandContext(ctx, "bash", "-c", fmt.Sprintf("%s", command))
+							Lt, cancel := L.NewThread()
+							cmd := exec.CommandContext(Lt.Context(), "bash", "-c", fmt.Sprintf("%s", command))
 							err := startCommand(cmd, name, colorIndex)
 							if err != nil {
 								runtime.logger.Fatal("start command", zap.Error(err))

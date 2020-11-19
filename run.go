@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"sync"
 
 	"github.com/yuin/gluamapper"
@@ -29,10 +28,16 @@ func async(runtime *Runtime) lua.LGFunction {
 
 		lv = L.Get(-1)
 
-		err := L.CallByParam(lua.P{Fn: fn, NRet: 1, Protect: true}, lv)
-		if err != nil {
-			panic(err)
-		}
+		runtime.wg.Add(1)
+		Lt, _ := L.NewThread()
+		go func() {
+			defer runtime.wg.Done()
+
+			err := Lt.CallByParam(lua.P{Fn: fn, NRet: 1, Protect: true}, lv)
+			if err != nil {
+				panic(err)
+			}
+		}()
 
 		return 0
 	}
@@ -52,7 +57,7 @@ type watchOpts = map[string]struct {
 }
 
 type watchCommand struct {
-	Run   func()
+	Run   func(*lua.LState)
 	Watch string
 }
 
@@ -88,7 +93,7 @@ func watch(runtime *Runtime) lua.LGFunction {
 				largs = lua.LNil
 			}
 
-			run := func() {
+			run := func(L *lua.LState) {
 				err := L.CallByParam(lua.P{Fn: c.Fn, NRet: 1, Protect: true}, largs)
 				if err != nil {
 					panic(err)
@@ -116,10 +121,9 @@ func watch(runtime *Runtime) lua.LGFunction {
 				defer close()
 
 				for {
-					ctx, cancel := context.WithCancel(L.Context())
-					L.SetContext(ctx)
+					Lt, cancel := L.NewThread()
 
-					cmd.Run()
+					cmd.Run(Lt)
 					runtime.logger.Info("command started", zap.String("name", name))
 
 					_ = <-onChange

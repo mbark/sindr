@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -71,10 +72,10 @@ func delete(runtime *Runtime) lua.LGFunction {
 			config.OnlyDirectories = false
 		} else if tbl, ok := lv.(*lua.LTable); ok {
 			if err := gluamapper.Map(tbl, &config); err != nil {
-				panic(err)
+				L.ArgError(1, fmt.Errorf("invalid config: %w", err).Error())
 			}
 		} else {
-			panic("string or table expected")
+			L.ArgError(1, "string or table expected")
 		}
 
 		files := findGlobMatches(config)
@@ -114,12 +115,13 @@ func copy(runtime *Runtime) lua.LGFunction {
 		lv := L.Get(-1)
 
 		var opts copyOptions
-		if tbl, ok := lv.(*lua.LTable); ok {
-			if err := gluamapper.Map(tbl, &opts); err != nil {
-				panic(err)
-			}
-		} else {
-			panic("table expected")
+		tbl, ok := lv.(*lua.LTable)
+		if !ok {
+			L.TypeError(1, lua.LTTable)
+		}
+
+		if err := gluamapper.Map(tbl, &opts); err != nil {
+			L.ArgError(1, fmt.Errorf("invalid config: %w", err).Error())
 		}
 
 		err := CopyFile(opts.From, opts.To)
@@ -149,7 +151,7 @@ func mkdir(runtime *Runtime) lua.LGFunction {
 				panic(err)
 			}
 		} else {
-			panic("table expected")
+			L.ArgError(1, "string or table expected")
 		}
 
 		var err error
@@ -176,10 +178,10 @@ func timestamp(useNewest bool) lua.LGFunction {
 			config.OnlyDirectories = false
 		} else if tbl, ok := lv.(*lua.LTable); ok {
 			if err := gluamapper.Map(tbl, &config); err != nil {
-				panic(err)
+				L.ArgError(1, fmt.Errorf("invalid config: %w", err).Error())
 			}
 		} else {
-			panic("string or table expected")
+			L.ArgError(1, "string or table expected")
 		}
 
 		files := findGlobMatches(config)
@@ -223,7 +225,7 @@ func chdir(runtime *Runtime) lua.LGFunction {
 
 		dir, ok := lv.(lua.LString)
 		if !ok {
-			panic("parameter must be string")
+			L.TypeError(1, lua.LTString)
 		}
 
 		cwd, err := os.Getwd()

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/yuin/gluamapper"
@@ -23,7 +24,7 @@ func async(runtime *Runtime) lua.LGFunction {
 		lv := L.Get(-2)
 		fn, ok := lv.(*lua.LFunction)
 		if !ok {
-			panic("first argument must be a function")
+			L.TypeError(1, lua.LTFunction)
 		}
 
 		lv = L.Get(-1)
@@ -67,12 +68,12 @@ func watch(runtime *Runtime) lua.LGFunction {
 
 		tbl, ok := lv.(*lua.LTable)
 		if !ok {
-			panic("argument must be a table")
+			L.TypeError(1, lua.LTTable)
 		}
 
 		var opts watchOpts
 		if err := gluamapper.Map(tbl, &opts); err != nil {
-			runtime.logger.Fatal("failed to map commands", zap.Error(err))
+			L.ArgError(1, fmt.Errorf("invalid config: %w", err).Error())
 		}
 
 		cmds := make(map[string]watchCommand)

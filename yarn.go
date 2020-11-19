@@ -24,7 +24,7 @@ func yarnRun(runtime *Runtime) lua.LGFunction {
 
 		str, ok := lv.(lua.LString)
 		if !ok {
-			panic("argument must be a string")
+			L.TypeError(1, lua.LTString)
 		}
 
 		args := strings.Split(string(str), " ")

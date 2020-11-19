@@ -32,10 +32,10 @@ function install()
 end
 
 function async()
-    run.async(shell.run, 'sleep 2; echo "first"')
+    run.async(shell.run, 'sleep 2; echo "{{.Project}}"; echo "first"')
     run.async(shell.run, 'sleep 2; echo "second"')
     run.await()
-    shell.start('echo "fourth"')
+    shell.run('echo "fourth"')
 end
 
 function a_script()

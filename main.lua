@@ -102,15 +102,15 @@ shmake.var({name='ToolsBin', value='{{.BackendPath}}/backend'})
 local dev = shmake.env{name="dev", default=true}
 local prod = shmake.env{name="prod"}
 
-shmake.task{name="script", fn=a_script, env=dev}
-shmake.task{name="clean", fn=clean, env=dev}
-shmake.task{name="start", fn=start, env=dev}
+shmake.cmd{name="script", fn=a_script, env=dev}
+shmake.cmd{name="clean", fn=clean, env=dev}
+shmake.cmd{name="start", fn=start, env=dev}
 
-shmake.task{name="mod", fn=mod, env=dev}
-shmake.task{name="async", fn=async, env=dev}
-shmake.task{name="proto", fn=proto, env=dev}
-shmake.task{name="install", fn=install, env=dev}
+shmake.cmd{name="mod", fn=mod, env=dev}
+shmake.cmd{name="async", fn=async, env=dev}
+shmake.cmd{name="proto", fn=proto, env=dev}
+shmake.cmd{name="install", fn=install, env=dev}
 
-shmake.task{name="update_mod", fn=update_mod, env=dev, args={foo="bar", bar="{{.Project}}/foo"}}
+shmake.cmd{name="update_mod", fn=update_mod, env=dev, args={foo="bar", bar="{{.Project}}/foo"}}
 
-shmake.task{name="prodclean", fn=prod_clean, env=prod}
+shmake.cmd{name="prodclean", fn=prod_clean, env=prod}

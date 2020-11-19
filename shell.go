@@ -96,15 +96,15 @@ func start(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 
 			if watch == "" {
 				cmd := exec.CommandContext(L.Context(), "bash", "-c", fmt.Sprintf("%s", command))
-				err := startCommand(cmd, name, colorIndex)
+				err := startShellCmd(cmd, name, colorIndex)
 				if err != nil {
 					runtime.logger.With(zap.Error(err)).Fatal("start command")
 				}
 
-				log.Debug("command started")
+				log.Debug("shell command started")
 
 				if err := cmd.Wait(); err != nil {
-					log.With(zap.Error(err)).Fatal("command failed")
+					log.With(zap.Error(err)).Fatal("shell command failed")
 				}
 			} else {
 				onChange := make(chan bool)
@@ -117,15 +117,15 @@ func start(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 				for {
 					Lt, cancel := L.NewThread()
 					cmd := exec.CommandContext(Lt.Context(), "bash", "-c", fmt.Sprintf("%s", command))
-					err := startCommand(cmd, name, colorIndex)
+					err := startShellCmd(cmd, name, colorIndex)
 					if err != nil {
-						log.With(zap.Error(err)).Fatal("start command failed")
+						log.With(zap.Error(err)).Fatal("start shell command failed")
 					}
-					log.Debug("command started")
+					log.Debug("shell command started")
 
 					_ = <-onChange
 
-					log.Debug("restarting")
+					log.Debug("shell command restarting")
 					cancel()
 				}
 			}
@@ -136,7 +136,7 @@ func start(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 	return NoReturnVal, nil
 }
 
-func startCommand(cmd *exec.Cmd, name string, colorIndex uint8) error {
+func startShellCmd(cmd *exec.Cmd, name string, colorIndex uint8) error {
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return fmt.Errorf("stdout pipe: %w", err)

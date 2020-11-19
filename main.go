@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -18,31 +17,36 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-type task struct {
+// NoReturnVal is a shorthand for an empty array of LValues
+var NoReturnVal = []lua.LValue{}
+
+type Cmd struct {
 	Name string
 	Fn   *lua.LFunction
 	Env  string
 	Args map[string]string
 }
 
-type env struct {
+type Env struct {
 	Name    string
 	Default bool
 }
 
-// Command ...
-type Command struct {
-	run func(ctx context.Context)
+type Var = string
+
+type ModuleFunction = func(runtime *Runtime, L *lua.LState) ([]lua.LValue, error)
+
+type Module struct {
+	exports map[string]ModuleFunction
 }
 
-// Runtime ...
 type Runtime struct {
-	tasks        map[string]task
-	environments map[string]env
-	variables    map[string]string
+	commands     map[string]Cmd
+	environments map[string]Env
+	variables    map[string]Var
 	varOrder     []string // varOrder keeps track of which order the variables are registered
 
-	defaultEnv *env
+	defaultEnv *Env
 	modules    map[string]Module
 
 	// Track all async commands being run
@@ -52,15 +56,6 @@ type Runtime struct {
 
 	cache  Cache
 	logger *zap.SugaredLogger
-}
-
-var NoReturnVal = []lua.LValue{}
-
-type ModuleFunction = func(runtime *Runtime, L *lua.LState) ([]lua.LValue, error)
-
-// Module ...
-type Module struct {
-	exports map[string]ModuleFunction
 }
 
 func cacheHome() string {
@@ -92,9 +87,9 @@ func NewRuntime() (*Runtime, error) {
 	}
 
 	r := &Runtime{
-		tasks:        make(map[string]task),
-		environments: make(map[string]env),
-		variables:    make(map[string]string),
+		commands:     make(map[string]Cmd),
+		environments: make(map[string]Env),
+		variables:    make(map[string]Var),
 		modules:      make(map[string]Module),
 		cache:        NewCache(cacheDir),
 		logger:       logger.Sugar(),
@@ -102,9 +97,9 @@ func NewRuntime() (*Runtime, error) {
 
 	mainModule := Module{
 		exports: map[string]ModuleFunction{
-			"task": registerTask,
-			"env":  registerEnv,
-			"var":  registerVar,
+			"cmd": registerCmd,
+			"env": registerEnv,
+			"var": registerVar,
 		},
 	}
 
@@ -138,24 +133,24 @@ func (module Module) loader(runtime *Runtime) lua.LGFunction {
 	}
 }
 
-func registerTask(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
+func registerCmd(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 	lv := L.Get(-1)
 
 	mapper := gluamapper.NewMapper(gluamapper.Option{NameFunc: func(n string) string { return n }})
 
-	var t task
+	var t Cmd
 	if err := mapper.Map(lv.(*lua.LTable), &t); err != nil {
 		return nil, fmt.Errorf("invalid config: %w", err)
 	}
 
-	runtime.tasks[t.Name] = t
+	runtime.commands[t.Name] = t
 	return NoReturnVal, nil
 }
 
 func registerEnv(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 	lv := L.Get(-1)
 
-	var e env
+	var e Env
 	if err := gluamapper.Map(lv.(*lua.LTable), &e); err != nil {
 		return nil, fmt.Errorf("invalid config: %w", err)
 	}
@@ -311,7 +306,7 @@ func main() {
 	}
 
 	var commands []*cli.Command
-	for nameV, tV := range r.tasks {
+	for nameV, tV := range r.commands {
 		name := nameV
 		t := tV
 
@@ -334,7 +329,7 @@ func main() {
 				Flags: cmdFlags,
 				Action: func(c *cli.Context) error {
 					defer r.logger.Sync()
-					log := r.logger.With(zap.String("command", name))
+					log := r.logger.With(zap.String("cmd", name))
 
 					for _, name := range r.varOrder {
 						value := r.variables[name]
@@ -358,7 +353,7 @@ func main() {
 						log = log.With(zap.String("arg."+k, v))
 					}
 
-					log.Debug("running command")
+					log.Debug("running cmd")
 
 					L.SetContext(c.Context)
 					err := L.CallByParam(lua.P{Fn: t.Fn, NRet: 1, Protect: true}, args)

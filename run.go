@@ -53,7 +53,7 @@ type watchOpts = map[string]struct {
 	Watch string
 }
 
-type watchCommand struct {
+type watchedFn struct {
 	Run   func(*lua.LState)
 	Watch string
 }
@@ -71,7 +71,7 @@ func watch(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 		L.ArgError(1, fmt.Errorf("invalid config: %w", err).Error())
 	}
 
-	cmds := make(map[string]watchCommand)
+	cmds := make(map[string]watchedFn)
 
 	for k, c := range opts {
 		var largs lua.LValue
@@ -96,7 +96,7 @@ func watch(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 			}
 		}
 
-		cmds[k] = watchCommand{Run: run, Watch: c.Watch}
+		cmds[k] = watchedFn{Run: run, Watch: c.Watch}
 	}
 
 	var colorIdx uint8 = 0
@@ -105,7 +105,7 @@ func watch(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 	for k, c := range cmds {
 		wg.Add(1)
 		colorIdx += 1
-		go func(name string, cmd watchCommand, colorIndex uint8) {
+		go func(name string, cmd watchedFn, colorIndex uint8) {
 			defer wg.Done()
 
 			log := runtime.logger.With(zap.String("watch", cmd.Watch)).With(zap.String("name", name))
@@ -120,7 +120,7 @@ func watch(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 			for {
 				Lt, cancel := L.NewThread()
 
-				log.Debug("running command")
+				log.Debug("running fn")
 				cmd.Run(Lt)
 
 				log.Debug("waiting for change")
@@ -133,6 +133,5 @@ func watch(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 	}
 
 	wg.Wait()
-
 	return NoReturnVal, nil
 }

@@ -134,18 +134,70 @@ func (module Module) loader(runtime *Runtime) lua.LGFunction {
 	}
 }
 
+type cmdOpts struct {
+	Env  string
+	Args map[string]string
+}
+
+// registerCmd fn = shmake.cmd('name', function(args) end, { opts... })
 func registerCmd(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
-	lv := L.Get(-1)
+	lv1 := L.Get(-1) // table if three arguments have been passed
+	lv2 := L.Get(-2) // table if three arguments have been passed
+	lv3 := L.Get(-3) // table if three arguments have been passed
 
-	mapper := gluamapper.NewMapper(gluamapper.Option{NameFunc: func(n string) string { return n }})
+	var t cmdOpts
+	var name string
+	var fn *lua.LFunction
 
-	var t Cmd
-	if err := mapper.Map(lv.(*lua.LTable), &t); err != nil {
-		return nil, fmt.Errorf("invalid config: %w", err)
+	// Three arguments passed, should be string, fn, table
+	if lv1.Type() != lua.LTNil && lv2.Type() != lua.LTNil && lv3.Type() != lua.LTNil {
+		s, ok := lv3.(lua.LString)
+		if !ok {
+			L.TypeError(1, lua.LTString)
+		}
+
+		f, ok := lv2.(*lua.LFunction)
+		if !ok {
+			L.TypeError(2, lua.LTFunction)
+		}
+
+		tbl, ok := lv1.(*lua.LTable)
+		if !ok {
+			L.TypeError(3, lua.LTTable)
+		}
+
+		name = string(s)
+		fn = f
+
+		mapper := gluamapper.NewMapper(gluamapper.Option{NameFunc: func(n string) string { return n }})
+		if err := mapper.Map(tbl, &t); err != nil {
+			return nil, fmt.Errorf("invalid config: %w", err)
+		}
+	} else if lv1.Type() != lua.LTNil && lv2.Type() != lua.LTNil && lv3.Type() == lua.LTNil {
+		s, ok := lv2.(lua.LString)
+		if !ok {
+			L.TypeError(1, lua.LTString)
+		}
+
+		f, ok := lv1.(*lua.LFunction)
+		if !ok {
+			L.TypeError(2, lua.LTFunction)
+		}
+
+		name = string(s)
+		fn = f
+	} else {
+		L.RaiseError("wrong number of arguments passed to cmd")
 	}
 
-	runtime.commands[t.Name] = t
-	return NoReturnVal, nil
+	runtime.commands[name] = Cmd{
+		Name: name,
+		Fn:   fn,
+		Env:  t.Env,
+		Args: t.Args,
+	}
+
+	return []lua.LValue{fn}, nil
 }
 
 func registerEnv(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
@@ -279,8 +331,8 @@ func main() {
 	}
 
 	envApp := &cli.App{
-		Flags: cliFlags,
-		HideHelp: true,
+		Flags:           cliFlags,
+		HideHelp:        true,
 		HideHelpCommand: true,
 		OnUsageError: func(context *cli.Context, err error, isSubcommand bool) error {
 			// Ignore errors when trying to get help, let the other app handle that

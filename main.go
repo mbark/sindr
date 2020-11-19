@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"os"
 	"path"
@@ -277,7 +278,20 @@ func main() {
 		})
 	}
 
-	envApp := &cli.App{Flags: cliFlags, Action: func(c *cli.Context) error { return nil }}
+	envApp := &cli.App{
+		Flags: cliFlags,
+		HideHelp: true,
+		HideHelpCommand: true,
+		OnUsageError: func(context *cli.Context, err error, isSubcommand bool) error {
+			// Ignore errors when trying to get help, let the other app handle that
+			if errors.Is(err, flag.ErrHelp) {
+				return nil
+			}
+
+			return err
+		},
+		Action: func(c *cli.Context) error { return nil },
+	}
 	err = envApp.Run(os.Args)
 	checkErr(err)
 

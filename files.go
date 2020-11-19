@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -18,29 +19,29 @@ type deleteConfig struct {
 
 func getFileModule(runtime *Runtime) Module {
 	return Module{
-		exports: map[string]lua.LGFunction{
-			"delete":    delete(runtime),
-			"copy":      copy(runtime),
-			"mkdir":     mkdir(runtime),
-			"chdir":     chdir(runtime),
-			"popdir":    popdir(runtime),
+		exports: map[string]ModuleFunction{
+			"delete":    delete,
+			"copy":      copy,
+			"mkdir":     mkdir,
+			"chdir":     chdir,
+			"popdir":    popdir,
 			"newest_ts": timestamp(true),
 			"oldest_ts": timestamp(false),
 		},
 	}
 }
 
-func findGlobMatches(config deleteConfig) []string {
+func findGlobMatches(config deleteConfig) ([]string, error) {
 	matches, err := filepath.Glob(config.Files)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	var files []string
 	for _, file := range matches {
 		stat, err := os.Stat(file)
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 
 		if config.OnlyDirectories && !stat.Mode().IsDir() {
@@ -50,39 +51,37 @@ func findGlobMatches(config deleteConfig) []string {
 		files = append(files, file)
 	}
 
-	return files
+	return files, nil
 }
 
-func removeFiles(files []string) {
+func delete(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
+	lv := L.Get(-1)
+
+	var config deleteConfig
+	if glob, ok := lv.(lua.LString); ok {
+		config.Files = string(glob)
+		config.OnlyDirectories = false
+	} else if tbl, ok := lv.(*lua.LTable); ok {
+		if err := gluamapper.Map(tbl, &config); err != nil {
+			L.ArgError(1, fmt.Errorf("invalid config: %w", err).Error())
+		}
+	} else {
+		L.ArgError(1, "string or table expected")
+	}
+
+	files, err := findGlobMatches(config)
+	if err != nil {
+		return nil, err
+	}
+
 	for _, file := range files {
 		err := os.RemoveAll(file)
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 	}
-}
 
-func delete(runtime *Runtime) lua.LGFunction {
-	return func(L *lua.LState) int {
-		lv := L.Get(-1)
-
-		var config deleteConfig
-		if glob, ok := lv.(lua.LString); ok {
-			config.Files = string(glob)
-			config.OnlyDirectories = false
-		} else if tbl, ok := lv.(*lua.LTable); ok {
-			if err := gluamapper.Map(tbl, &config); err != nil {
-				L.ArgError(1, fmt.Errorf("invalid config: %w", err).Error())
-			}
-		} else {
-			L.ArgError(1, "string or table expected")
-		}
-
-		files := findGlobMatches(config)
-		removeFiles(files)
-
-		return 0
-	}
+	return NoReturnVal, nil
 }
 
 func CopyFile(src, dst string) error {
@@ -110,27 +109,25 @@ type copyOptions struct {
 	To   string
 }
 
-func copy(runtime *Runtime) lua.LGFunction {
-	return func(L *lua.LState) int {
-		lv := L.Get(-1)
+func copy(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
+	lv := L.Get(-1)
 
-		var opts copyOptions
-		tbl, ok := lv.(*lua.LTable)
-		if !ok {
-			L.TypeError(1, lua.LTTable)
-		}
-
-		if err := gluamapper.Map(tbl, &opts); err != nil {
-			L.ArgError(1, fmt.Errorf("invalid config: %w", err).Error())
-		}
-
-		err := CopyFile(opts.From, opts.To)
-		if err != nil {
-			panic(err)
-		}
-
-		return 0
+	var opts copyOptions
+	tbl, ok := lv.(*lua.LTable)
+	if !ok {
+		L.TypeError(1, lua.LTTable)
 	}
+
+	if err := gluamapper.Map(tbl, &opts); err != nil {
+		L.ArgError(1, fmt.Errorf("invalid config: %w", err).Error())
+	}
+
+	err := CopyFile(opts.From, opts.To)
+	if err != nil {
+		return nil, err
+	}
+
+	return NoReturnVal, nil
 }
 
 type mkdirOptions struct {
@@ -138,38 +135,36 @@ type mkdirOptions struct {
 	All bool
 }
 
-func mkdir(runtime *Runtime) lua.LGFunction {
-	return func(L *lua.LState) int {
-		lv := L.Get(-1)
+func mkdir(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
+	lv := L.Get(-1)
 
-		var opts mkdirOptions
-		if str, ok := lv.(lua.LString); ok {
-			opts.Dir = string(str)
-			opts.All = false
-		} else if tbl, ok := lv.(*lua.LTable); ok {
-			if err := gluamapper.Map(tbl, &opts); err != nil {
-				panic(err)
-			}
-		} else {
-			L.ArgError(1, "string or table expected")
+	var opts mkdirOptions
+	if str, ok := lv.(lua.LString); ok {
+		opts.Dir = string(str)
+		opts.All = false
+	} else if tbl, ok := lv.(*lua.LTable); ok {
+		if err := gluamapper.Map(tbl, &opts); err != nil {
+			L.ArgError(1, fmt.Errorf("invalid config: %w", err).Error())
 		}
-
-		var err error
-		if opts.All {
-			err = os.MkdirAll(opts.Dir, 0700)
-		} else {
-			err = os.Mkdir(opts.Dir, 0700)
-		}
-		if err != nil {
-			panic(err)
-		}
-
-		return 0
+	} else {
+		L.ArgError(1, "string or table expected")
 	}
+
+	var err error
+	if opts.All {
+		err = os.MkdirAll(opts.Dir, 0700)
+	} else {
+		err = os.Mkdir(opts.Dir, 0700)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return NoReturnVal, nil
 }
 
-func timestamp(useNewest bool) lua.LGFunction {
-	return func(L *lua.LState) int {
+func timestamp(useNewest bool) ModuleFunction {
+	return func(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 		lv := L.Get(-1)
 
 		var config deleteConfig
@@ -184,17 +179,20 @@ func timestamp(useNewest bool) lua.LGFunction {
 			L.ArgError(1, "string or table expected")
 		}
 
-		files := findGlobMatches(config)
+		files, err := findGlobMatches(config)
+		if err != nil {
+			return nil, err
+		}
+
 		if len(files) == 0 {
-			L.Push(lua.LNumber(0))
-			return 1
+			return []lua.LValue{lua.LNumber(0)}, nil
 		}
 
 		var modTime *time.Time = nil
 		for _, f := range files {
 			stat, err := os.Stat(f)
 			if err != nil {
-				panic(err)
+				return nil, err
 			}
 			if modTime == nil {
 				mt := stat.ModTime()
@@ -214,47 +212,42 @@ func timestamp(useNewest bool) lua.LGFunction {
 			}
 		}
 
-		L.Push(lua.LNumber(modTime.Unix()))
-		return 1
+		return []lua.LValue{lua.LNumber(0)}, nil
 	}
 }
 
-func chdir(runtime *Runtime) lua.LGFunction {
-	return func(L *lua.LState) int {
-		lv := L.Get(-1)
+func chdir(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
+	lv := L.Get(-1)
 
-		dir, ok := lv.(lua.LString)
-		if !ok {
-			L.TypeError(1, lua.LTString)
-		}
-
-		cwd, err := os.Getwd()
-		if err != nil {
-			panic(err)
-		}
-
-		runtime.prevDir = cwd
-		err = os.Chdir(string(dir))
-		if err != nil {
-			panic(err)
-		}
-
-		return 0
+	dir, ok := lv.(lua.LString)
+	if !ok {
+		L.TypeError(1, lua.LTString)
 	}
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+
+	runtime.prevDir = cwd
+	err = os.Chdir(string(dir))
+	if err != nil {
+		return nil, err
+	}
+
+	return NoReturnVal, nil
 }
 
-func popdir(runtime *Runtime) lua.LGFunction {
-	return func(L *lua.LState) int {
-		if runtime.prevDir == "" {
-			panic("no previous directory stored")
-		}
-
-		err := os.Chdir(runtime.prevDir)
-		if err != nil {
-			panic(err)
-		}
-		runtime.prevDir = ""
-
-		return 0
+func popdir(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
+	if runtime.prevDir == "" {
+		return nil, errors.New("no previous directory stored")
 	}
+
+	err := os.Chdir(runtime.prevDir)
+	if err != nil {
+		return nil, err
+	}
+	runtime.prevDir = ""
+
+	return NoReturnVal, nil
 }

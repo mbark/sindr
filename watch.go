@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -11,13 +12,13 @@ import (
 	"github.com/radovskyb/watcher"
 )
 
-func startWatching(runtime *Runtime, watchGlob string, onChange chan bool) func() {
+func startWatching(runtime *Runtime, watchGlob string, onChange chan bool) (func(), error) {
 	w := watcher.New()
 	w.SetMaxEvents(1)
 
 	cwd, err := os.Getwd()
 	if err != nil {
-		panic(err)
+		return w.Close, err
 	}
 
 	g := glob.MustCompile(watchGlob)
@@ -43,14 +44,14 @@ func startWatching(runtime *Runtime, watchGlob string, onChange chan bool) func(
 				runtime.logger.Debug("watcher event", zap.String("event", event.String()))
 				onChange <- true
 			case err := <-w.Error:
-				panic(err)
+				panic(fmt.Errorf("watcher got error: %w", err))
 			case <-w.Closed:
 				return
 			}
 		}
 	}()
 	if err := w.AddRecursive("."); err != nil {
-		panic(err)
+		return w.Close, err
 	}
 
 	var paths []string
@@ -62,9 +63,9 @@ func startWatching(runtime *Runtime, watchGlob string, onChange chan bool) func(
 
 	go func() {
 		if err := w.Start(time.Millisecond * 100); err != nil {
-			panic(err)
+			panic(fmt.Errorf("starting watcher failed: %w", err))
 		}
 	}()
 
-	return w.Close
+	return w.Close, nil
 }

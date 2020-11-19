@@ -17,9 +17,9 @@ import (
 
 func getShellModule(runtime *Runtime) Module {
 	return Module{
-		exports: map[string]lua.LGFunction{
-			"run":   run(runtime),
-			"start": start(runtime),
+		exports: map[string]ModuleFunction{
+			"run":   run,
+			"start": start,
 		},
 	}
 }
@@ -29,33 +29,32 @@ func withVariables(runtime *Runtime, input string) string {
 	var buf bytes.Buffer
 	err := t.Execute(&buf, runtime.variables)
 	if err != nil {
-		panic(fmt.Errorf("execute template: %w", err))
+		runtime.logger.With(zap.Error(err)).Fatal("execute template")
 	}
 
 	return buf.String()
 }
 
-func run(runtime *Runtime) lua.LGFunction {
-	return func(L *lua.LState) int {
-		lv := L.Get(-1)
+func run(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
+	lv := L.Get(-1)
 
-		str, ok := lv.(lua.LString)
-		if !ok {
-			L.TypeError(1, lua.LTString)
-		}
-
-		command := withVariables(runtime, string(str))
-		runtime.logger.Debug("running command", zap.String("command", command))
-		cmd := exec.CommandContext(L.Context(), "bash", "-c", command)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		err := cmd.Run()
-		if err != nil {
-			panic(err)
-		}
-
-		return 0
+	str, ok := lv.(lua.LString)
+	if !ok {
+		L.TypeError(1, lua.LTString)
 	}
+
+	command := withVariables(runtime, string(str))
+
+	cmd := exec.CommandContext(L.Context(), "bash", "-c", command)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	err := cmd.Run()
+	if err != nil {
+		return nil, fmt.Errorf("running command failed: %w", err)
+	}
+
+	return NoReturnVal, nil
 }
 
 type startOptions = map[string]struct {
@@ -63,78 +62,78 @@ type startOptions = map[string]struct {
 	Watch string
 }
 
-func start(runtime *Runtime) lua.LGFunction {
-	return func(L *lua.LState) int {
-		lv := L.Get(-1)
+func start(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
+	lv := L.Get(-1)
 
-		tbl, ok := lv.(*lua.LTable)
-		if !ok {
-			L.TypeError(1, lua.LTTable)
-		}
+	tbl, ok := lv.(*lua.LTable)
+	if !ok {
+		L.TypeError(1, lua.LTTable)
+	}
 
-		var startCommands startOptions
-		if err := gluamapper.Map(tbl, &startCommands); err != nil {
-			runtime.logger.Fatal("failed to map commands", zap.Error(err))
-		}
+	var startCommands startOptions
+	if err := gluamapper.Map(tbl, &startCommands); err != nil {
+		L.ArgError(1, fmt.Errorf("invalid config: %w", err).Error())
+	}
 
-		for k, c := range startCommands {
-			c.Cmd = withVariables(runtime, c.Cmd)
-			startCommands[k] = c
-		}
+	for k, c := range startCommands {
+		c.Cmd = withVariables(runtime, c.Cmd)
+		startCommands[k] = c
+	}
 
-		var colorIdx uint8 = 0
+	var colorIdx uint8 = 0
 
-		wg := sync.WaitGroup{}
-		for k, c := range startCommands {
-			runtime.logger.Debug("starting command",
-				zap.String("name", k),
-				zap.String("command", c.Cmd),
-				zap.String("watch", c.Watch))
+	wg := sync.WaitGroup{}
+	for k, c := range startCommands {
+		log := runtime.logger.
+			With(zap.String("name", k)).
+			With(zap.String("command", c.Cmd)).
+			With(zap.String("watch", c.Watch))
 
-			wg.Add(1)
-			colorIdx += 1
-			go func(name, command, watch string, colorIndex uint8) {
-				defer wg.Done()
+		wg.Add(1)
+		colorIdx += 1
+		go func(name, command, watch string, colorIndex uint8) {
+			defer wg.Done()
 
-				if watch != "" {
-					onChange := make(chan bool)
-					close := startWatching(runtime, watch, onChange)
-					defer close()
+			if watch == "" {
+				cmd := exec.CommandContext(L.Context(), "bash", "-c", fmt.Sprintf("%s", command))
+				err := startCommand(cmd, name, colorIndex)
+				if err != nil {
+					runtime.logger.Fatal("start command", zap.Error(err))
+				}
 
-					for {
-						Lt, cancel := L.NewThread()
-						cmd := exec.CommandContext(Lt.Context(), "bash", "-c", fmt.Sprintf("%s", command))
-						err := startCommand(cmd, name, colorIndex)
-						if err != nil {
-							runtime.logger.Fatal("start command", zap.Error(err))
-						}
+				log.Debug("command started")
 
-						runtime.logger.Info("command started", zap.String("command", command))
+				if err := cmd.Wait(); err != nil {
+					log.With(zap.Error(err)).Fatal("command failed")
+				}
+			} else {
+				onChange := make(chan bool)
+				close, err := startWatching(runtime, watch, onChange)
+				defer close()
+				if err != nil {
+					panic(fmt.Errorf("start watching %s: %w", watch, err))
+				}
 
-						_ = <-onChange
-
-						runtime.logger.Info("restarting", zap.String("command", command))
-						cancel()
-					}
-				} else {
-					cmd := exec.CommandContext(L.Context(), "bash", "-c", fmt.Sprintf("%s", command))
+				for {
+					Lt, cancel := L.NewThread()
+					cmd := exec.CommandContext(Lt.Context(), "bash", "-c", fmt.Sprintf("%s", command))
 					err := startCommand(cmd, name, colorIndex)
 					if err != nil {
-						runtime.logger.Fatal("start command", zap.Error(err))
+						log.With(zap.Error(err)).Fatal("start command failed")
 					}
-					runtime.logger.Info("command started", zap.String("command", command))
+					log.Debug("command started")
 
-					if err := cmd.Wait(); err != nil {
-						runtime.logger.Fatal("cmd wait", zap.Error(err))
-					}
+					_ = <-onChange
+
+					log.Debug("restarting")
+					cancel()
 				}
-			}(k, c.Cmd, c.Watch, colorIdx)
-		}
-
-		wg.Wait()
-
-		return 0
+			}
+		}(k, c.Cmd, c.Watch, colorIdx)
 	}
+	wg.Wait()
+
+	return NoReturnVal, nil
 }
 
 func startCommand(cmd *exec.Cmd, name string, colorIndex uint8) error {

@@ -9,30 +9,27 @@ import (
 
 func getGitModule(runtime *Runtime) Module {
 	return Module{
-		exports: map[string]lua.LGFunction{
-			"head": head(runtime),
+		exports: map[string]ModuleFunction{
+			"head": head,
 		},
 	}
 }
 
-func head(runtime *Runtime) lua.LGFunction {
-	return func(L *lua.LState) int {
-		dir, err := findPathUpdwards(git.GitDirName)
-		if err != nil {
-			panic(err)
-		}
-
-		repo, err := git.PlainOpen(path.Join(dir, git.GitDirName))
-		if err != nil {
-			panic(err)
-		}
-
-		head, err := repo.Head()
-		if err != nil {
-			panic(err)
-		}
-
-		L.Push(lua.LString(head.Hash().String()))
-		return 1
+func head(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
+	dir, err := findPathUpdwards(git.GitDirName)
+	if err != nil {
+		return nil, err
 	}
+
+	repo, err := git.PlainOpen(path.Join(dir, git.GitDirName))
+	if err != nil {
+		return nil, err
+	}
+
+	head, err := repo.Head()
+	if err != nil {
+		return nil, err
+	}
+
+	return []lua.LValue{lua.LString(head.Hash().String())}, nil
 }

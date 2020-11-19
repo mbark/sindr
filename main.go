@@ -54,12 +54,16 @@ type Runtime struct {
 	logger *zap.SugaredLogger
 }
 
+var NoReturnVal = []lua.LValue{}
+
+type ModuleFunction = func(runtime *Runtime, L *lua.LState) ([]lua.LValue, error)
+
 // Module ...
 type Module struct {
-	exports map[string]lua.LGFunction
+	exports map[string]ModuleFunction
 }
 
-func getRuntime() *Runtime {
+func NewRuntime() (*Runtime, error) {
 	home := os.Getenv("HOME")
 	cacheHome := xdgPath("CACHE_HOME", path.Join(home, ".cache"))
 	shmakeCache := path.Join(cacheHome, "shmake")
@@ -67,7 +71,7 @@ func getRuntime() *Runtime {
 
 	err := os.MkdirAll(cacheDir, 0700)
 	if err != nil {
-		panic(fmt.Errorf("creating cache directory: %w", err))
+		return nil, fmt.Errorf("creating cache directory: %w", err)
 	}
 
 	logPath := path.Join(shmakeCache, "shmake.log")
@@ -76,7 +80,7 @@ func getRuntime() *Runtime {
 	cfg.ErrorOutputPaths = []string{logPath}
 	logger, err := cfg.Build()
 	if err != nil {
-		panic(fmt.Errorf("creating logger: %w", err))
+		return nil, fmt.Errorf("creating logger: %w", err)
 	}
 
 	r := &Runtime{
@@ -89,86 +93,87 @@ func getRuntime() *Runtime {
 	}
 
 	mainModule := Module{
-		exports: map[string]lua.LGFunction{
-			"task": registerTask(func(t task) {
-				logger.With(zap.String("name", t.Name)).Debug("registered task")
-
-				r.tasks[t.Name] = t
-			}),
-			"env": registerEnv(func(e env) {
-				logger.With(zap.String("name", e.Name)).Debug("registered env")
-
-				r.environments[e.Name] = e
-				if e.Default {
-					r.defaultEnv = &e
-				}
-			}),
-			"var": registerVar(func(name, value string) {
-				logger.With(zap.String("name", name), zap.String("value", value)).Debug("registered var")
-
-				r.variables[name] = value
-				r.varOrder = append(r.varOrder, name)
-			}),
+		exports: map[string]ModuleFunction{
+			"task": registerTask,
+			"env":  registerEnv,
+			"var":  registerVar,
 		},
 	}
 
 	r.modules["shmake.main"] = mainModule
-	return r
+	return r, nil
 }
 
-func (module Module) loader(L *lua.LState) int {
-	mod := L.SetFuncs(L.NewTable(), module.exports)
-
-	L.Push(mod)
-	return 1
-}
-
-func registerTask(register func(t task)) lua.LGFunction {
+func (module Module) loader(runtime *Runtime) lua.LGFunction {
 	return func(L *lua.LState) int {
-		lv := L.Get(-1)
+		exports := make(map[string]lua.LGFunction)
+		for name, fn := range module.exports {
+			f := fn
+			exports[name] = func(L *lua.LState) int {
+				rets, err := f(runtime, L)
+				if err != nil {
+					L.RaiseError(err.Error())
+				}
 
-		mapper := gluamapper.NewMapper(gluamapper.Option{NameFunc: func(n string) string { return n }})
+				for _, ret := range rets {
+					L.Push(ret)
+				}
 
-		var t task
-		if err := mapper.Map(lv.(*lua.LTable), &t); err != nil {
-			panic(err)
+				return len(rets)
+			}
 		}
 
-		register(t)
-		return 0
-	}
-}
+		mod := L.SetFuncs(L.NewTable(), exports)
 
-func registerEnv(register func(e env)) lua.LGFunction {
-	return func(L *lua.LState) int {
-		lv := L.Get(-1)
-
-		var e env
-		if err := gluamapper.Map(lv.(*lua.LTable), &e); err != nil {
-			panic(err)
-		}
-
-		register(e)
-		L.Push(lua.LString(e.Name))
+		L.Push(mod)
 		return 1
 	}
 }
 
-func registerVar(register func(name, value string)) lua.LGFunction {
-	return func(L *lua.LState) int {
-		lv := L.Get(-1)
+func registerTask(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
+	lv := L.Get(-1)
 
-		var v struct {
-			Name  string
-			Value string
-		}
-		if err := gluamapper.Map(lv.(*lua.LTable), &v); err != nil {
-			panic(err)
-		}
+	mapper := gluamapper.NewMapper(gluamapper.Option{NameFunc: func(n string) string { return n }})
 
-		register(v.Name, v.Value)
-		return 0
+	var t task
+	if err := mapper.Map(lv.(*lua.LTable), &t); err != nil {
+		return nil, fmt.Errorf("invalid config: %w", err)
 	}
+
+	runtime.tasks[t.Name] = t
+	return NoReturnVal, nil
+}
+
+func registerEnv(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
+	lv := L.Get(-1)
+
+	var e env
+	if err := gluamapper.Map(lv.(*lua.LTable), &e); err != nil {
+		return nil, fmt.Errorf("invalid config: %w", err)
+	}
+
+	runtime.environments[e.Name] = e
+	if e.Default {
+		runtime.defaultEnv = &e
+	}
+
+	return []lua.LValue{lua.LString(e.Name)}, nil
+}
+
+func registerVar(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
+	lv := L.Get(-1)
+
+	var v struct {
+		Name  string
+		Value string
+	}
+	if err := gluamapper.Map(lv.(*lua.LTable), &v); err != nil {
+		return nil, fmt.Errorf("invalid config: %w", err)
+	}
+
+	runtime.variables[v.Name] = v.Value
+	runtime.varOrder = append(runtime.varOrder, v.Name)
+	return NoReturnVal, nil
 }
 
 func xdgPath(name, defaultPath string) string {
@@ -196,7 +201,7 @@ func findPathUpdwards(search string) (string, error) {
 				continue
 			}
 
-			panic(err)
+			return "", err
 		}
 
 		return filepath.Abs(dir)
@@ -209,7 +214,15 @@ func main() {
 	L := lua.NewState()
 	defer L.Close()
 
-	r := getRuntime()
+	checkErr := func(err error) {
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%s\n", aurora.Red(err))
+			os.Exit(1)
+		}
+	}
+
+	r, err := NewRuntime()
+	checkErr(err)
 
 	r.modules["shmake.files"] = getFileModule(r)
 	r.modules["shmake.shell"] = getShellModule(r)
@@ -219,24 +232,17 @@ func main() {
 	r.modules["shmake.run"] = getRunModule(r)
 
 	for name, module := range r.modules {
-		L.PreloadModule(name, module.loader)
+		L.PreloadModule(name, module.loader(r))
 	}
 
 	dir, err := findPathUpdwards("main.lua")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s\n", aurora.Red(err))
-		os.Exit(1)
-	}
-	err = os.Chdir(dir)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s\n", aurora.Red(err))
-		os.Exit(1)
-	}
+	checkErr(err)
 
-	if err := L.DoFile("main.lua"); err != nil {
-		fmt.Fprintf(os.Stderr, "%s\n", aurora.Red(err))
-		os.Exit(1)
-	}
+	err = os.Chdir(dir)
+	checkErr(err)
+
+	err = L.DoFile("main.lua")
+	checkErr(err)
 
 	var environment string
 	var verbose, noCache bool
@@ -268,15 +274,20 @@ func main() {
 		})
 	}
 
-	envApp := &cli.App{
-		Flags: cliFlags,
-		Action: func(c *cli.Context) error {
-			return nil
-		},
-	}
+	envApp := &cli.App{Flags: cliFlags, Action: func(c *cli.Context) error { return nil }}
+	err = envApp.Run(os.Args)
+	checkErr(err)
 
-	if err := envApp.Run(os.Args); err != nil {
-		panic(err)
+	if verbose {
+		cfg := zap.NewDevelopmentConfig()
+		cfg.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+		cfg.OutputPaths = []string{"stdout"}
+		cfg.ErrorOutputPaths = []string{"stdout"}
+
+		logger, err := cfg.Build()
+		checkErr(err)
+
+		r.logger = logger.Sugar()
 	}
 
 	if environment == "" && r.defaultEnv != nil {
@@ -286,7 +297,7 @@ func main() {
 	r.logger.Debug("environment set", zap.String("environment", environment))
 	if environment != "" {
 		if _, ok := r.environments[environment]; !ok {
-			panic(fmt.Sprintf("no environment %s", environment))
+			checkErr(errors.New(fmt.Sprintf("no environment with name %s", environment)))
 		}
 	}
 
@@ -317,19 +328,6 @@ func main() {
 				Name:  name,
 				Flags: cmdFlags,
 				Action: func(c *cli.Context) error {
-					if verbose {
-						cfg := zap.NewDevelopmentConfig()
-						cfg.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
-						cfg.OutputPaths = []string{"stdout"}
-						cfg.ErrorOutputPaths = []string{"stdout"}
-						logger, err := cfg.Build()
-						if err != nil {
-							panic(fmt.Errorf("building zap config: %w", err))
-						}
-
-						r.logger = logger.Sugar()
-					}
-
 					defer r.logger.Sync()
 					r.logger.Debug("running command", zap.String("command", name))
 
@@ -371,7 +369,6 @@ func main() {
 		Commands: commands,
 	}
 
-	if err := app.Run(os.Args); err != nil {
-		panic(err)
-	}
+	app.Run(os.Args)
+	checkErr(err)
 }

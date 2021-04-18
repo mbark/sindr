@@ -6,29 +6,29 @@ local git = require("shmake.git")
 local yarn = require("shmake.yarn")
 local run = require("shmake.run")
 
-shmake.var({name='Project', value='./../../..'})
-shmake.var({name='BackendPath', value='{{.Project}}/backend'})
-shmake.var({name='ToolsBin', value='{{.BackendPath}}/backend'})
-shmake.var({name='Path', value=shell.output('echo $PATH')})
+shmake.var({ name = 'Project', value = './../../..' })
+shmake.var({ name = 'BackendPath', value = '{{.Project}}/backend' })
+shmake.var({ name = 'ToolsBin', value = '{{.BackendPath}}/backend' })
+shmake.var({ name = 'Path', value = shell.output('echo $PATH') })
 
-local dev = shmake.env{name="dev", default=true}
-local prod = shmake.env{name="prod"}
+local dev = shmake.env { name = "dev", default = true }
+local prod = shmake.env { name = "prod" }
 
 prod_clean = shmake.cmd('prod_clean', function()
     files.delete('*.pyc')
-end, { env=prod })
+end, { env = prod })
 
-shmake.cmd('clean', function(args)
+shmake.cmd('clean', function()
     prod_clean()
     files.delete('file')
     files.delete('file2')
-    files.delete({ files="some_dir", only_directories=true })
-    files.delete({ files="nested", only_directories=true })
+    files.delete({ files = "some_dir", only_directories = true })
+    files.delete({ files = "nested", only_directories = true })
 end)
 
 shmake.cmd('clean_watch', function()
     run.watch({
-        file={fn=files.delete, args='file2', watch='./file3'}
+        file = { fn = files.delete, args = 'file2', watch = './file3' }
     })
 end)
 
@@ -48,22 +48,22 @@ end)
 
 shmake.cmd('a_script', function()
     shell.run([[ touch "file" ]])
-    files.copy({ from='file', to='file2' })
-    files.mkdir({dir='nested/directory', all=true})
+    files.copy({ from = 'file', to = 'file2' })
+    files.mkdir({ dir = 'nested/directory', all = true })
 end)
 
 shmake.cmd('start', function()
     shell.start({
-        foo={cmd=[[ ping google.com ]], watch="./file"},
-        bar={cmd=[[ ping telness.se ]], watch="./file2"}
+        foo = { cmd = [[ ping google.com ]], watch = "./file" },
+        bar = { cmd = [[ ping telness.se ]], watch = "./file2" }
     })
 end)
 
 shmake.cmd('mod', function()
     gomod_modtime = tostring(files.newest_ts("go.mod"))
-    if cache.diff({ name="go.mod", version=gomod_modtime }) then
+    if cache.diff({ name = "go.mod", version = gomod_modtime }) then
         shell.run([[ go mod tidy ]])
-        cache.store({ name="go.mod", version=gomod_modtime })
+        cache.store({ name = "go.mod", version = gomod_modtime })
     end
 end)
 
@@ -100,8 +100,8 @@ shmake.cmd('update_mod', function(args)
     shell.run([[ echo '{{.Bar}}' ]])
     print(args['bar'])
     head = git.head()
-    if cache.diff({ name="tidy", version=head }) then
+    if cache.diff({ name = "tidy", version = head }) then
         shell.run([[ go mod tidy ]])
-        cache.store({ name="tidy", version=head })
+        cache.store({ name = "tidy", version = head })
     end
-end, { env=dev, args={foo="bar", bar="{{.Project}}/foo"} })
+end, { env = dev, args = { foo = "bar", bar = "{{.Project}}/foo" } })

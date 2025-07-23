@@ -94,14 +94,3 @@ shmake.cmd('proto', function()
         files.delete('{{.PROTO_VND}}')
     end
 end)
-
-shmake.cmd('update_mod', function(args)
-    -- local variables can be accessed CamelCased in templates
-    shell.run([[ echo '{{.Bar}}' ]])
-    print(args['bar'])
-    head = git.head()
-    if cache.diff({ name = "tidy", version = head }) then
-        shell.run([[ go mod tidy ]])
-        cache.store({ name = "tidy", version = head })
-    end
-end, { env = dev, args = { foo = "bar", bar = "{{.Project}}/foo" } })

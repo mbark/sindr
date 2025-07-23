@@ -465,7 +465,6 @@ func main() {
 		Flags:    cliFlags,
 		Commands: commands,
 	}
-
-	app.Run(os.Args)
+	err = app.Run(os.Args)
 	checkErr(err)
 }

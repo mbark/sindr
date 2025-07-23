@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"log/slog"
 	"os"
 	"path"
 	"path/filepath"
@@ -13,11 +14,11 @@ import (
 
 	"github.com/iancoleman/strcase"
 	"github.com/logrusorgru/aurora/v3"
+	"github.com/mbark/devslog"
+	slogmulti "github.com/samber/slog-multi"
 	"github.com/urfave/cli/v2"
 	"github.com/yuin/gluamapper"
 	lua "github.com/yuin/gopher-lua"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 )
 
 const version = "0.0.1"
@@ -60,7 +61,7 @@ type Runtime struct {
 	prevDir string
 
 	cache  Cache
-	logger *zap.SugaredLogger
+	logger *slog.Logger
 }
 
 func cacheHome() string {
@@ -73,7 +74,7 @@ func logPath(cacheDir string) string {
 	return path.Join(cacheDir, "shmake.log")
 }
 
-func NewRuntime() (*Runtime, error) {
+func getSlogFileHandler() (slog.Handler, error) {
 	cacheDir := cacheHome()
 	logPath := logPath(cacheDir)
 
@@ -82,13 +83,19 @@ func NewRuntime() (*Runtime, error) {
 		return nil, fmt.Errorf("creating cache directory: %w", err)
 	}
 
-	cfg := zap.NewDevelopmentConfig()
-	cfg.OutputPaths = []string{logPath}
-	cfg.ErrorOutputPaths = []string{logPath}
-
-	logger, err := cfg.Build()
+	buf, err := os.Open(logPath)
 	if err != nil {
-		return nil, fmt.Errorf("creating logger: %w", err)
+		return nil, fmt.Errorf("opening log file: %w", err)
+	}
+
+	return slog.NewJSONHandler(buf, &slog.HandlerOptions{}), nil
+}
+
+func NewRuntime() (*Runtime, error) {
+	cacheDir := cacheHome()
+	logger, err := getSlogFileHandler()
+	if err != nil {
+		return nil, err
 	}
 
 	r := &Runtime{
@@ -97,7 +104,7 @@ func NewRuntime() (*Runtime, error) {
 		variables:    make(map[string]Var),
 		modules:      make(map[string]Module),
 		cache:        NewCache(cacheDir),
-		logger:       logger.Sugar(),
+		logger:       slog.New(logger),
 	}
 
 	mainModule := Module{
@@ -286,7 +293,7 @@ func main() {
 
 	checkErr := func(err error) {
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "%s\n", aurora.Red(err))
+			_, _ = fmt.Fprintf(os.Stderr, "%s\n", aurora.Red(err))
 			os.Exit(1)
 		}
 	}
@@ -295,11 +302,11 @@ func main() {
 	checkErr(err)
 
 	r.modules["shmake.files"] = getFileModule(r)
-	r.modules["shmake.shell"] = getShellModule(r)
+	r.modules["shmake.shell"] = getShellModule()
 	r.modules["shmake.cache"] = getCacheModule(r)
 	r.modules["shmake.git"] = getGitModule(r)
 	r.modules["shmake.yarn"] = getYarnModule(r)
-	r.modules["shmake.run"] = getRunModule(r)
+	r.modules["shmake.run"] = getRunModule()
 
 	for name, module := range r.modules {
 		L.PreloadModule(name, module.loader(r))
@@ -368,22 +375,17 @@ func main() {
 
 	r.cache.ForceOutOfDate = noCache
 	if verbose {
-		cfg := zap.NewDevelopmentConfig()
-		cfg.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
-		cfg.OutputPaths = []string{"stdout", logPath(cacheHome())}
-		cfg.ErrorOutputPaths = []string{"stderr", logPath(cacheHome())}
-
-		logger, err := cfg.Build()
-		checkErr(err)
-
-		r.logger = logger.Sugar()
+		r.logger = slog.New(slogmulti.Fanout(
+			r.logger.Handler(),
+			devslog.NewHandler(os.Stdout, nil),
+		))
 	}
 
 	if environment == "" && r.defaultEnv != nil {
 		environment = r.defaultEnv.Name
 	}
 
-	r.logger.With(zap.String("env", environment)).Debug("environment set")
+	r.logger.With(slog.String("env", environment)).Debug("environment set")
 	if environment != "" {
 		if _, ok := r.environments[environment]; !ok {
 			checkErr(errors.New(fmt.Sprintf("no environment with name %s", environment)))
@@ -413,8 +415,7 @@ func main() {
 				Name:  name,
 				Flags: cmdFlags,
 				Action: func(c *cli.Context) error {
-					defer r.logger.Sync()
-					log := r.logger.With(zap.String("cmd", name))
+					log := r.logger.With(slog.String("cmd", name))
 
 					for _, name := range r.varOrder {
 						value := r.variables[name]
@@ -435,7 +436,7 @@ func main() {
 						v = withVariables(r, v)
 						args.RawSetString(k, lua.LString(v))
 
-						log = log.With(zap.String("arg."+k, v))
+						log = log.With(slog.String("arg."+k, v))
 					}
 
 					for k, v := range t.Args {

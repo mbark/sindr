@@ -1,11 +1,10 @@
 package main
 
 import (
+	"log/slog"
 	"os"
 	"path/filepath"
 	"time"
-
-	"go.uber.org/zap"
 
 	"github.com/gobwas/glob"
 	"github.com/radovskyb/watcher"
@@ -36,16 +35,16 @@ func startWatching(runtime *Runtime, watchGlob string, onChange chan bool) (func
 		}
 	})
 
-	log := runtime.logger.With(zap.String("glob", watchGlob))
+	log := runtime.logger.With(slog.String("glob", watchGlob))
 
 	go func() {
 		for {
 			select {
 			case event := <-w.Event:
-				log.With(zap.String("event", event.String())).Debug("watcher event")
+				log.With(slog.String("event", event.String())).Debug("watcher event")
 				onChange <- true
 			case err := <-w.Error:
-				log.With(zap.Error(err)).Error("watcher failed")
+				log.With(slog.Any("err", err)).Error("watcher failed")
 			case <-w.Closed:
 				return
 			}
@@ -60,11 +59,11 @@ func startWatching(runtime *Runtime, watchGlob string, onChange chan bool) (func
 		paths = append(paths, path)
 	}
 
-	log.With(zap.Strings("files", paths)).Debug("watching files")
+	log.With(slog.Any("files", paths)).Debug("watching files")
 
 	go func() {
 		if err := w.Start(time.Millisecond * 100); err != nil {
-			log.With(zap.Error(err)).Error("starting watcher failed")
+			log.With(slog.Any("err", err)).Error("starting watcher failed")
 		}
 	}()
 

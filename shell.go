@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"sync"
@@ -11,10 +12,9 @@ import (
 
 	"github.com/logrusorgru/aurora/v3"
 	lua "github.com/yuin/gopher-lua"
-	"go.uber.org/zap"
 )
 
-func getShellModule(runtime *Runtime) Module {
+func getShellModule() Module {
 	return Module{
 		exports: map[string]ModuleFunction{
 			"run":    run,
@@ -29,7 +29,7 @@ func withVariables(runtime *Runtime, input string) string {
 	var buf bytes.Buffer
 	err := t.Execute(&buf, runtime.variables)
 	if err != nil {
-		runtime.logger.With(zap.Error(err)).Fatal("execute template")
+		runtime.logger.With(slog.Any("err", err)).Error("execute template")
 	}
 
 	return buf.String()
@@ -44,7 +44,7 @@ func run(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 
 	command := withVariables(runtime, c)
 
-	runtime.logger.With(zap.String("command", command)).Debug("running shell command")
+	runtime.logger.With(slog.String("command", command)).Debug("running shell command")
 
 	cmd := exec.CommandContext(L.Context(), "bash", "-c", command)
 	cmd.Stdout = os.Stdout
@@ -68,7 +68,7 @@ func output(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 
 	command := withVariables(runtime, c)
 
-	runtime.logger.With(zap.String("command", command)).Debug("running shell command and returning output")
+	runtime.logger.With(slog.String("command", command)).Debug("running shell command and returning output")
 
 	cmd := exec.CommandContext(L.Context(), "bash", "-c", command)
 	output, err := cmd.Output()
@@ -103,9 +103,9 @@ func start(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 	wg := sync.WaitGroup{}
 	for k, c := range startCommands {
 		log := runtime.logger.
-			With(zap.String("name", k)).
-			With(zap.String("command", c.Cmd)).
-			With(zap.String("watch", c.Watch))
+			With(slog.String("name", k)).
+			With(slog.String("command", c.Cmd)).
+			With(slog.String("watch", c.Watch))
 
 		wg.Add(1)
 		colorIdx += 1
@@ -116,20 +116,20 @@ func start(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 				cmd := exec.CommandContext(L.Context(), "bash", "-c", fmt.Sprintf("%s", command))
 				err := startShellCmd(cmd, name, colorIndex)
 				if err != nil {
-					runtime.logger.With(zap.Error(err)).Fatal("start command")
+					runtime.logger.With(slog.Any("err", err)).Error("start command")
 				}
 
 				log.Debug("shell command started")
 
 				if err := cmd.Wait(); err != nil {
-					log.With(zap.Error(err)).Fatal("shell command failed")
+					log.With(slog.Any("err", err)).Error("shell command failed")
 				}
 			} else {
 				onChange := make(chan bool)
 				close, err := startWatching(runtime, watch, onChange)
 				defer close()
 				if err != nil {
-					log.With(zap.Error(err)).Panic("failed to start watcher")
+					log.With(slog.Any("err", err)).Error("failed to start watcher")
 				}
 
 				for {
@@ -137,7 +137,7 @@ func start(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 					cmd := exec.CommandContext(Lt.Context(), "bash", "-c", fmt.Sprintf("%s", command))
 					err := startShellCmd(cmd, name, colorIndex)
 					if err != nil {
-						log.With(zap.Error(err)).Fatal("start shell command failed")
+						log.With(slog.Any("err", err)).Error("start shell command failed")
 					}
 					log.Debug("shell command started")
 

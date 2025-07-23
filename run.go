@@ -1,13 +1,13 @@
 package main
 
 import (
+	"log/slog"
 	"sync"
 
 	lua "github.com/yuin/gopher-lua"
-	"go.uber.org/zap"
 )
 
-func getRunModule(runtime *Runtime) Module {
+func getRunModule() Module {
 	return Module{
 		exports: map[string]ModuleFunction{
 			"async": async,
@@ -101,13 +101,14 @@ func watch(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 		go func(name string, cmd watchedFn, colorIndex uint8) {
 			defer wg.Done()
 
-			log := runtime.logger.With(zap.String("watch", cmd.Watch)).With(zap.String("name", name))
+			log := runtime.logger.With(slog.String("watch", cmd.Watch)).With(slog.String("name", name))
 
 			onChange := make(chan bool)
 			close, err := startWatching(runtime, cmd.Watch, onChange)
 			defer close()
 			if err != nil {
-				log.With(zap.Error(err)).Fatal("sarting watcher failed")
+				log.With(slog.Any("err", err)).Error("starting watcher failed")
+				return
 			}
 
 			for {

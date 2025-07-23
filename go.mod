@@ -7,12 +7,13 @@ require (
 	github.com/gobwas/glob v0.2.3
 	github.com/iancoleman/strcase v0.3.0
 	github.com/logrusorgru/aurora/v3 v3.0.0
+	github.com/mbark/devslog v0.0.1
 	github.com/peterbourgon/diskv/v3 v3.0.1
 	github.com/radovskyb/watcher v1.0.7
+	github.com/samber/slog-multi v1.4.1
 	github.com/urfave/cli/v2 v2.27.7
 	github.com/yuin/gluamapper v0.0.0-20150323120927-d836955830e7
 	github.com/yuin/gopher-lua v1.1.1
-	go.uber.org/zap v1.27.0
 )
 
 require (
@@ -32,13 +33,15 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/pjbgf/sha1cd v0.4.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
+	github.com/samber/lo v1.51.0 // indirect
+	github.com/samber/slog-common v0.19.0 // indirect
 	github.com/sergi/go-diff v1.4.0 // indirect
 	github.com/skeema/knownhosts v1.3.1 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/xrash/smetrics v0.0.0-20250705151800-55b8f293f342 // indirect
-	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.40.0 // indirect
 	golang.org/x/net v0.42.0 // indirect
 	golang.org/x/sys v0.34.0 // indirect
+	golang.org/x/text v0.27.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )

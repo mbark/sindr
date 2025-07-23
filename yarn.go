@@ -1,12 +1,12 @@
 package main
 
 import (
+	"log/slog"
 	"os"
 	"os/exec"
 	"strings"
 
 	lua "github.com/yuin/gopher-lua"
-	"go.uber.org/zap"
 )
 
 func getYarnModule(runtime *Runtime) Module {
@@ -29,7 +29,7 @@ func yarnRun(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 	args := strings.Split(c, " ")
 	args = append([]string{"run"}, args...)
 
-	runtime.logger.With(zap.Strings("args", args)).Debug("yarn run")
+	runtime.logger.With(slog.Any("args", args)).Debug("yarn run")
 
 	cmd := exec.CommandContext(L.Context(), "yarn", args...)
 	cmd.Stdout = os.Stdout

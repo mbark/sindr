@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/peterbourgon/diskv/v3"
 	lua "github.com/yuin/gopher-lua"
-	"go.uber.org/zap"
 )
 
 func getCacheModule(runtime *Runtime) Module {
@@ -89,8 +89,8 @@ func store(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 	}
 
 	runtime.logger.
-		With(zap.String("version", options.Version)).
-		With(zap.String("name", options.Name)).
+		With(slog.String("version", options.Version)).
+		With(slog.String("name", options.Name)).
 		Info("storing cache version")
 
 	runtime.cache.StoreVersion(options.Name, options.Version)

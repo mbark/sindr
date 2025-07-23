@@ -40,6 +40,21 @@ func MapTable(idx int, lv lua.LValue, i interface{}) error {
 	return nil
 }
 
+func MapArray[T any](idx int, lv lua.LValue) ([]T, error) {
+	_, ok := lv.(*lua.LTable)
+	if !ok {
+		return nil, ErrBadType{Index: idx, Typ: lua.LTTable}
+	}
+
+	val := gluamapper.ToGoValue(lv, gluamapper.Option{})
+	v, ok := val.([]T)
+	if !ok {
+		return nil, ErrBadArg{Index: idx, Message: fmt.Errorf("invalid array, expected %T, got %T", v, val).Error()}
+	}
+
+	return v, nil
+}
+
 func MapString(idx int, lv lua.LValue) (string, error) {
 	str, ok := lv.(lua.LString)
 	if !ok {

@@ -26,11 +26,11 @@ shmake.cmd('clean', function()
     files.delete({ files = "nested", only_directories = true })
 end)
 
-shmake.cmd('clean_watch', function()
-    run.watch({
-        file = { fn = files.delete, args = 'file2', watch = './file3' }
-    })
-end)
+-- shmake.sub_cmd({'clean', 'watch'}, function()
+--     run.watch({
+--         file = { fn = files.delete, args = 'file2', watch = './file3' }
+--     })
+-- end)
 
 shmake.cmd('install', function()
     files.chdir('./examples/yarn')

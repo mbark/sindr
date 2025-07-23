@@ -18,7 +18,6 @@ import (
 	"github.com/mbark/devslog"
 	slogmulti "github.com/samber/slog-multi"
 	"github.com/urfave/cli/v2"
-	"github.com/yuin/gluamapper"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -28,10 +27,11 @@ const version = "0.0.1"
 var NoReturnVal = []lua.LValue{}
 
 type Cmd struct {
-	Name string
-	Fn   *lua.LFunction
-	Env  string
-	Args map[string]string
+	Name       string
+	SubCmdPath []string
+	Fn         *lua.LFunction
+	Env        string
+	Args       map[string]string
 }
 
 type Env struct {
@@ -97,6 +97,7 @@ func (m Module) loader(runtime *Runtime) lua.LGFunction {
 
 type Runtime struct {
 	commands     map[string]Cmd
+	subCommands  map[string]Cmd
 	environments map[string]Env
 	variables    map[string]Var
 	varOrder     []string // varOrder keeps track of which order the variables are registered
@@ -195,13 +196,8 @@ func registerCmd(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 			return nil, err
 		}
 
-		tbl, ok := lv1.(*lua.LTable)
-		if !ok {
-			return nil, ErrBadType{Index: 3, Typ: lua.LTTable}
-		}
-
-		mapper := gluamapper.NewMapper(gluamapper.Option{NameFunc: func(n string) string { return n }})
-		if err := mapper.Map(tbl, &t); err != nil {
+		err = MapTable(3, lv1, &t)
+		if err != nil {
 			return nil, ErrBadArg{Index: 3, Message: fmt.Errorf("invalid config: %w", err).Error()}
 		}
 	} else if lv1.Type() != lua.LTNil && lv2.Type() != lua.LTNil && lv3.Type() == lua.LTNil {
@@ -217,12 +213,71 @@ func registerCmd(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 	} else {
 		L.RaiseError("wrong number of arguments passed to cmd")
 	}
+	if strings.Contains(name, " ") {
+		L.RaiseError("name can't contain spaces")
+	}
 
 	runtime.commands[name] = Cmd{
 		Name: name,
 		Fn:   fn,
 		Env:  t.Env,
 		Args: t.Args,
+	}
+
+	return []lua.LValue{fn}, nil
+}
+
+// registerSubCmd fn = shmake.sub_cmd('name', function(args) end, { opts... })
+func registerSubCmd(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
+	lv1 := L.Get(-1) // table if three arguments have been passed
+	lv2 := L.Get(-2) // table if three arguments have been passed
+	lv3 := L.Get(-3) // table if three arguments have been passed
+
+	var err error
+	var t cmdOpts
+	var path []string
+	var fn *lua.LFunction
+
+	// Three arguments passed, should be table, fn, table
+	if lv1.Type() != lua.LTNil && lv2.Type() != lua.LTNil && lv3.Type() != lua.LTNil {
+		path, err = MapArray[string](1, lv3)
+		if err != nil {
+			return nil, err
+		}
+
+		fn, err = MapFunction(2, lv2)
+		if err != nil {
+			return nil, err
+		}
+
+		err = MapTable(3, lv1, &t)
+		if err != nil {
+			return nil, ErrBadArg{Index: 3, Message: fmt.Errorf("invalid config: %w", err).Error()}
+		}
+	} else if lv1.Type() != lua.LTNil && lv2.Type() != lua.LTNil && lv3.Type() == lua.LTNil {
+		path, err = MapArray[string](1, lv2)
+		if err != nil {
+			return nil, err
+		}
+
+		fn, err = MapFunction(2, lv1)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		L.RaiseError("wrong number of arguments passed to cmd")
+	}
+	for _, name := range path {
+		if strings.Contains(name, " ") {
+			L.RaiseError("command name can't contain spaces")
+		}
+	}
+
+	runtime.commands[strings.Join(path, " ")] = Cmd{
+		SubCmdPath: path,
+		Fn:         fn,
+		Env:        t.Env,
+		Args:       t.Args,
 	}
 
 	return []lua.LValue{fn}, nil
@@ -413,10 +468,8 @@ func main() {
 	}
 
 	var commands []*cli.Command
-	for nameV, tV := range r.commands {
-		name := nameV
-		t := tV
-
+	for name, t := range r.commands {
+		// TODO: allow handling of sub commands here by moving out this logic
 		if t.Env != "" && t.Env != environment {
 			continue
 		}

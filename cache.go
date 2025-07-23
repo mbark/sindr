@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log/slog"
+	"strconv"
 
 	"github.com/peterbourgon/diskv/v3"
 	lua "github.com/yuin/gopher-lua"
@@ -56,8 +57,9 @@ func (c Cache) GetVersion(name string) (*string, error) {
 }
 
 type cacheDiffOptions struct {
-	Name    string
-	Version string
+	Name       string
+	Version    string
+	IntVersion int
 }
 
 func diff(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
@@ -69,12 +71,22 @@ func diff(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 		return nil, err
 	}
 
+	if options.Version == "" {
+		options.Version = strconv.Itoa(options.IntVersion)
+	}
+
 	currentVersion, err := runtime.cache.GetVersion(options.Name)
 	if err != nil {
 		return nil, err
 	}
 
 	isDiff := currentVersion == nil || *currentVersion != options.Version
+
+	runtime.logger.
+		With(slog.String("version", options.Version)).
+		With(slog.Any("current_version", currentVersion)).
+		With(slog.String("name", options.Name)).
+		Info("diffing cache version")
 
 	return []lua.LValue{lua.LBool(isDiff)}, nil
 }
@@ -88,12 +100,15 @@ func store(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 		return nil, err
 	}
 
+	if options.Version == "" {
+		options.Version = strconv.Itoa(options.IntVersion)
+	}
+
 	runtime.logger.
 		With(slog.String("version", options.Version)).
 		With(slog.String("name", options.Name)).
 		Info("storing cache version")
 
-	runtime.cache.StoreVersion(options.Name, options.Version)
-
+	err = runtime.cache.StoreVersion(options.Name, options.Version)
 	return NoReturnVal, nil
 }

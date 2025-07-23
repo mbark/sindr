@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"path"
@@ -46,83 +47,23 @@ type Module struct {
 	exports map[string]ModuleFunction
 }
 
-type Runtime struct {
-	commands     map[string]Cmd
-	environments map[string]Env
-	variables    map[string]Var
-	varOrder     []string // varOrder keeps track of which order the variables are registered
-
-	defaultEnv *Env
-	modules    map[string]Module
-
-	// Track all async commands being run
-	wg sync.WaitGroup
-
-	prevDir string
-
-	cache  Cache
-	logger *slog.Logger
+func (m Module) withLogging() Module {
+	for k, fn := range m.exports {
+		m.exports[k] = func(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
+			logger := runtime.logger.With(slog.String("fn", k))
+			logger.Debug("running")
+			res, err := fn(runtime, L)
+			logger.With(slog.Any("err", err), slog.Any("res", res)).Debug("done")
+			return res, err
+		}
+	}
+	return m
 }
 
-func cacheHome() string {
-	home := os.Getenv("HOME")
-	cacheDir := xdgPath("CACHE_HOME", path.Join(home, ".cache"))
-	return path.Join(cacheDir, "shmake")
-}
-
-func logPath(cacheDir string) string {
-	return path.Join(cacheDir, "shmake.log")
-}
-
-func getSlogFileHandler() (slog.Handler, error) {
-	cacheDir := cacheHome()
-	logPath := logPath(cacheDir)
-
-	err := os.MkdirAll(cacheDir, 0700)
-	if err != nil {
-		return nil, fmt.Errorf("creating cache directory: %w", err)
-	}
-
-	buf, err := os.Open(logPath)
-	if err != nil {
-		return nil, fmt.Errorf("opening log file: %w", err)
-	}
-
-	return slog.NewJSONHandler(buf, &slog.HandlerOptions{}), nil
-}
-
-func NewRuntime() (*Runtime, error) {
-	cacheDir := cacheHome()
-	logger, err := getSlogFileHandler()
-	if err != nil {
-		return nil, err
-	}
-
-	r := &Runtime{
-		commands:     make(map[string]Cmd),
-		environments: make(map[string]Env),
-		variables:    make(map[string]Var),
-		modules:      make(map[string]Module),
-		cache:        NewCache(cacheDir),
-		logger:       slog.New(logger),
-	}
-
-	mainModule := Module{
-		exports: map[string]ModuleFunction{
-			"cmd": registerCmd,
-			"env": registerEnv,
-			"var": registerVar,
-		},
-	}
-
-	r.modules["shmake.main"] = mainModule
-	return r, nil
-}
-
-func (module Module) loader(runtime *Runtime) lua.LGFunction {
+func (m Module) loader(runtime *Runtime) lua.LGFunction {
 	return func(L *lua.LState) int {
 		exports := make(map[string]lua.LGFunction)
-		for name, fn := range module.exports {
+		for name, fn := range m.exports {
 			f := fn
 			exports[name] = func(L *lua.LState) int {
 				rets, err := f(runtime, L)
@@ -152,6 +93,78 @@ func (module Module) loader(runtime *Runtime) lua.LGFunction {
 		L.Push(mod)
 		return 1
 	}
+}
+
+type Runtime struct {
+	commands     map[string]Cmd
+	environments map[string]Env
+	variables    map[string]Var
+	varOrder     []string // varOrder keeps track of which order the variables are registered
+
+	defaultEnv *Env
+	modules    map[string]Module
+
+	// Track all async commands being run
+	wg sync.WaitGroup
+
+	prevDir string
+
+	cache  Cache
+	logger *slog.Logger
+}
+
+func cacheHome() string {
+	home := os.Getenv("HOME")
+	cacheDir := xdgPath("CACHE_HOME", path.Join(home, ".cache"))
+	return path.Join(cacheDir, "shmake")
+}
+
+func logPath(cacheDir string) string {
+	return path.Join(cacheDir, "shmake.log")
+}
+
+func getLogFile() (io.WriteCloser, error) {
+	cacheDir := cacheHome()
+	logFile := logPath(cacheDir)
+
+	err := os.MkdirAll(cacheDir, 0700)
+	if err != nil {
+		return nil, fmt.Errorf("creating cache directory: %w", err)
+	}
+
+	_, err = os.Stat(logFile)
+	var buf io.WriteCloser
+	if errors.Is(err, os.ErrNotExist) {
+		buf, err = os.Create(logFile)
+	} else if err != nil {
+		return nil, fmt.Errorf("creating cache directory: %w", err)
+	} else {
+		buf, err = os.OpenFile(logFile, os.O_APPEND|os.O_WRONLY, 0600)
+	}
+	return buf, err
+}
+
+func NewRuntime(logFile io.WriteCloser) (*Runtime, error) {
+	cacheDir := cacheHome()
+	r := &Runtime{
+		commands:     make(map[string]Cmd),
+		environments: make(map[string]Env),
+		variables:    make(map[string]Var),
+		modules:      make(map[string]Module),
+		cache:        NewCache(cacheDir),
+		logger:       slog.New(slog.NewJSONHandler(logFile, nil)),
+	}
+
+	mainModule := Module{
+		exports: map[string]ModuleFunction{
+			"cmd": registerCmd,
+			"env": registerEnv,
+			"var": registerVar,
+		},
+	}
+
+	r.modules["shmake.main"] = mainModule
+	return r, nil
 }
 
 type cmdOpts struct {
@@ -298,7 +311,11 @@ func main() {
 		}
 	}
 
-	r, err := NewRuntime()
+	logFile, err := getLogFile()
+	checkErr(err)
+	defer func() { _ = logFile.Close() }()
+
+	r, err := NewRuntime(logFile)
 	checkErr(err)
 
 	r.modules["shmake.files"] = getFileModule(r)
@@ -309,7 +326,7 @@ func main() {
 	r.modules["shmake.run"] = getRunModule()
 
 	for name, module := range r.modules {
-		L.PreloadModule(name, module.loader(r))
+		L.PreloadModule(name, module.withLogging().loader(r))
 	}
 
 	dir, err := findPathUpdwards("main.lua")
@@ -375,10 +392,13 @@ func main() {
 
 	r.cache.ForceOutOfDate = noCache
 	if verbose {
+		slog.SetLogLoggerLevel(slog.LevelDebug)
+		opts := &slog.HandlerOptions{Level: slog.LevelDebug}
 		r.logger = slog.New(slogmulti.Fanout(
-			r.logger.Handler(),
-			devslog.NewHandler(os.Stdout, nil),
+			slog.NewJSONHandler(logFile, opts),
+			devslog.NewHandler(os.Stdout, &devslog.Options{HandlerOptions: opts}),
 		))
+
 	}
 
 	if environment == "" && r.defaultEnv != nil {
@@ -458,6 +478,7 @@ func main() {
 			})
 	}
 
+	r.logger.Debug("starting app")
 	app := &cli.App{
 		Name:     "shmake",
 		Usage:    "make shmake",

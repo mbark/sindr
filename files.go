@@ -209,7 +209,7 @@ func timestamp(useNewest bool) ModuleFunction {
 			}
 		}
 
-		return []lua.LValue{lua.LNumber(0)}, nil
+		return []lua.LValue{lua.LNumber(modTime.Unix())}, nil
 	}
 }
 

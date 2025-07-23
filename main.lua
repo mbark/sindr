@@ -60,10 +60,12 @@ shmake.cmd('start', function()
 end)
 
 shmake.cmd('mod', function()
+--     cache.with_version("go.mod", { int_version = files.newest_ts("go.mod")}, function()
+--     end)
     gomod_modtime = tostring(files.newest_ts("go.mod"))
-    if cache.diff({ name = "go.mod", version = gomod_modtime }) then
+    if cache.diff({ name = "go.mod", int_version = gomod_modtime }) then
         shell.run([[ go mod tidy ]])
-        cache.store({ name = "go.mod", version = gomod_modtime })
+        cache.store({ name = "go.mod", int_version = gomod_modtime })
     end
 end)
 

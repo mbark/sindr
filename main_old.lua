@@ -8,12 +8,6 @@ local run = require("shmake.run")
 
 local cli = shmake.new{}
 
--- Add commands
-cli:command("mycmd", "My command description",
-    function(parsed, command, app)
-        print("You activated `mycmd` command")
-    end)
-
 shmake.var({ name = 'Project', value = './../../..' })
 shmake.var({ name = 'BackendPath', value = '{{.Project}}/backend' })
 shmake.var({ name = 'ToolsBin', value = '{{.BackendPath}}/backend' })

@@ -5,7 +5,6 @@ go 1.24
 require (
 	github.com/go-git/go-git/v5 v5.16.2
 	github.com/gobwas/glob v0.2.3
-	github.com/iancoleman/strcase v0.3.0
 	github.com/logrusorgru/aurora/v3 v3.0.0
 	github.com/mbark/devslog v0.0.1
 	github.com/peterbourgon/diskv/v3 v3.0.1

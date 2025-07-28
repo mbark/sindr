@@ -1,21 +1,24 @@
-function dump(o)
-   if type(o) == 'table' then
-      local s = '{ '
-      for k,v in pairs(o) do
-         if type(k) ~= 'number' then k = '"'..k..'"' end
-         s = s .. '['..k..'] = ' .. dump(v) .. ','
-      end
-      return s .. '} '
-   else
-      return tostring(o)
-   end
-end
+local shell = require("shmake.shell")
+local files = require("shmake.files")
+local cache = require("shmake.cache")
+local git = require("shmake.git")
+local yarn = require("shmake.yarn")
+local run = require("shmake.run")
 
 local cli = shmake.new()
 
-cli:command("mycmd", "My command description",
-    function(parsed, command, app)
-        print("You activated `mycmd` command")
+cli:command("start", "start pinging", function()
+    shell.start({
+        foo = { cmd = [[ ping google.com ]], watch = "./file" },
+        bar = { cmd = [[ ping telness.se ]], watch = "./file2" }
+    })
+end)
+
+cli:command("mod", "go mod tidy on git change", function()
+    cache.with_version({ name = "go.mod", int_version = files.newest_ts("go.mod")}, function()
+        shell.run([[ go mod tidy ]])
     end)
+end)
+
 
 cli:run()

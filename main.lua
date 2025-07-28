@@ -7,18 +7,18 @@ local run = require("shmake.run")
 
 local cli = shmake.new()
 
-cli:command("start", "start pinging", function()
+cli:command("start", function()
     shell.start({
         foo = { cmd = [[ ping google.com ]], watch = "./file" },
         bar = { cmd = [[ ping telness.se ]], watch = "./file2" }
     })
-end)
+end, { usage = "start pinging" })
 
-cli:command("mod", "go mod tidy on git change", function()
+cli:command("mod", function()
     cache.with_version({ name = "go.mod", int_version = files.newest_ts("go.mod")}, function()
         shell.run([[ go mod tidy ]])
     end)
-end)
+end, { usage = "go mod tidy on git change" })
 
 
 cli:run()

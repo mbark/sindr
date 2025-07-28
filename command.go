@@ -48,14 +48,24 @@ func isShmake(L *lua.LState) *Shmake {
 	return nil
 }
 
+type commandOptions struct {
+	Usage string
+}
+
 func shmakeAddCommand(L *lua.LState) int {
 	p := isShmake(L)
 	name := L.CheckString(2)
-	description := L.CheckString(3)
-	action := L.CheckFunction(4)
+	action := L.CheckFunction(3)
+
+	var options commandOptions
+	err := MapTable(4, L.Get(4), &options)
+	if err != nil {
+		L.RaiseError("invalid options: %v", err)
+	}
+
 	p.Commands = append(p.Commands, &cli.Command{
-		Name:        name,
-		Description: description,
+		Name:  name,
+		Usage: options.Usage,
 		Action: func(ctx *cli.Context) error {
 			L.SetContext(ctx.Context)
 			return L.CallByParam(lua.P{Fn: action, NRet: 1, Protect: true})

@@ -2,13 +2,11 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
 	"log/slog"
 	"os"
 	"os/exec"
 	"sync"
-	"text/template"
 
 	"github.com/logrusorgru/aurora/v3"
 	lua "github.com/yuin/gopher-lua"
@@ -24,16 +22,16 @@ func getShellModule() Module {
 	}
 }
 
-func withVariables(runtime *Runtime, input string) string {
-	t := template.Must(template.New("run").Parse(input))
-	var buf bytes.Buffer
-	err := t.Execute(&buf, runtime.variables)
-	if err != nil {
-		runtime.logger.With(slog.Any("err", err)).Error("execute template")
-	}
-
-	return buf.String()
-}
+//func withVariables(runtime *Runtime, input string) string {
+//	t := template.Must(template.New("run").Parse(input))
+//	var buf bytes.Buffer
+//	err := t.Execute(&buf, runtime.variables)
+//	if err != nil {
+//		runtime.logger.With(slog.Any("err", err)).Error("execute template")
+//	}
+//
+//	return buf.String()
+//}
 
 func run(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 	lv := L.Get(-1)
@@ -42,11 +40,11 @@ func run(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 		return nil, err
 	}
 
-	command := withVariables(runtime, c)
+	//command := withVariables(runtime, c)
 
-	runtime.logger.With(slog.String("command", command)).Debug("running shell command")
+	runtime.logger.With(slog.String("command", c)).Debug("running shell command")
 
-	cmd := exec.CommandContext(L.Context(), "bash", "-c", command)
+	cmd := exec.CommandContext(L.Context(), "bash", "-c", c)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
@@ -66,11 +64,11 @@ func output(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 		return nil, err
 	}
 
-	command := withVariables(runtime, c)
+	//command := withVariables(runtime, c)
 
-	runtime.logger.With(slog.String("command", command)).Debug("running shell command and returning output")
+	runtime.logger.With(slog.String("command", c)).Debug("running shell command and returning output")
 
-	cmd := exec.CommandContext(L.Context(), "bash", "-c", command)
+	cmd := exec.CommandContext(L.Context(), "bash", "-c", c)
 	output, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("running shell cmd failed: %w", err)
@@ -94,7 +92,7 @@ func start(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 	}
 
 	for k, c := range startCommands {
-		c.Cmd = withVariables(runtime, c.Cmd)
+		//c.Cmd = withVariables(runtime, c.Cmd)
 		startCommands[k] = c
 	}
 

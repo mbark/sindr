@@ -18,21 +18,10 @@ const version = "0.0.1"
 // NoReturnVal is shorthand for an empty array of LValues
 var NoReturnVal = []lua.LValue{}
 
-type Cmd struct {
-	Name       string
-	SubCmdPath []string
-	Fn         *lua.LFunction
-	Env        string
-	Args       map[string]string
-}
-
-type Var = string
-
 type ModuleFunction = func(runtime *Runtime, L *lua.LState) ([]lua.LValue, error)
 
 type Module struct {
 	exports map[string]ModuleFunction
-	types   map[string]func(L *lua.LState)
 }
 
 func (m Module) withLogging() Module {
@@ -74,10 +63,6 @@ func (m Module) loader(runtime *Runtime) lua.LGFunction {
 
 				return len(rets)
 			}
-		}
-		for typeName, register := range m.types {
-			runtime.logger.Debug("registering", slog.String("type", typeName))
-			register(L)
 		}
 
 		mod := L.SetFuncs(L.NewTable(), exports)
@@ -134,7 +119,7 @@ func main() {
 	r, err := NewRuntime(logFile)
 	checkErr(err)
 
-	registerShmakeType(L, r)
+	RegisterLuaTypes(L, ShmakeType{Runtime: r})
 
 	r.modules["shmake.files"] = getFileModule(r)
 	r.modules["shmake.shell"] = getShellModule()

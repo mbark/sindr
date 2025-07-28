@@ -10,50 +10,49 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
+// Shmake global to create the cli instance.
 type Shmake struct {
 	Commands []*cli.Command
 	Runtime  *Runtime
 }
 
-const luaShmakeTypeName = "shmake"
+var _ LuaType = ShmakeType{}
 
-func registerShmakeType(L *lua.LState, runtime *Runtime) {
-	mt := L.NewTypeMetatable(luaShmakeTypeName)
-	L.SetGlobal("shmake", mt)
-	L.SetField(mt, "new", L.NewFunction(newShmake(runtime)))
-	// methods
-	L.SetField(mt, "__index", L.SetFuncs(L.NewTable(), map[string]lua.LGFunction{
-		"command": shmakeAddCommand,
-		"run":     shmakeRunCommand,
-	}))
+type ShmakeType struct {
+	Runtime *Runtime
 }
 
-func newShmake(runtime *Runtime) func(L *lua.LState) int {
-	return func(L *lua.LState) int {
-		shmake := &Shmake{Runtime: runtime}
-		ud := L.NewUserData()
-		ud.Value = shmake
-		L.SetMetatable(ud, L.GetTypeMetatable(luaShmakeTypeName))
-		L.Push(ud)
-		return 1
-	}
+func (s ShmakeType) TypeName() string {
+	return "shmake"
 }
 
-func isShmake(L *lua.LState) *Shmake {
-	ud := L.CheckUserData(1)
-	if v, ok := ud.Value.(*Shmake); ok {
-		return v
+func (s ShmakeType) GlobalName() string {
+	return "shmake"
+}
+
+func (s ShmakeType) New(L *lua.LState) int {
+	shmake := &Shmake{Runtime: s.Runtime}
+	ud := L.NewUserData()
+	ud.Value = shmake
+	L.SetMetatable(ud, L.GetTypeMetatable(s.TypeName()))
+	L.Push(ud)
+	return 1
+}
+
+func (s ShmakeType) Funcs() map[string]lua.LGFunction {
+	return map[string]lua.LGFunction{
+		"command": s.Command,
+		"run":     s.Run,
 	}
-	L.ArgError(1, "shmake expected")
-	return nil
 }
 
 type commandOptions struct {
 	Usage string
+	Flags []Flag
 }
 
-func shmakeAddCommand(L *lua.LState) int {
-	p := isShmake(L)
+func (s ShmakeType) Command(L *lua.LState) int {
+	shmake := IsUserData[*Shmake](L)
 	name := L.CheckString(2)
 	action := L.CheckFunction(3)
 
@@ -63,7 +62,7 @@ func shmakeAddCommand(L *lua.LState) int {
 		L.RaiseError("invalid options: %v", err)
 	}
 
-	p.Commands = append(p.Commands, &cli.Command{
+	shmake.Commands = append(shmake.Commands, &cli.Command{
 		Name:  name,
 		Usage: options.Usage,
 		Action: func(ctx *cli.Context) error {
@@ -75,8 +74,8 @@ func shmakeAddCommand(L *lua.LState) int {
 	return 0
 }
 
-func shmakeRunCommand(L *lua.LState) int {
-	p := isShmake(L)
+func (s ShmakeType) Run(L *lua.LState) int {
+	shmake := IsUserData[*Shmake](L)
 
 	var verbose, noCache bool
 	cliFlags := []cli.Flag{
@@ -97,18 +96,18 @@ func shmakeRunCommand(L *lua.LState) int {
 		Usage:    "make shmake",
 		Version:  version,
 		Flags:    cliFlags,
-		Commands: p.Commands,
+		Commands: shmake.Commands,
 		Before: func(ctx *cli.Context) error {
 			if verbose {
 				slog.SetLogLoggerLevel(slog.LevelDebug)
 				opts := &slog.HandlerOptions{Level: slog.LevelDebug}
-				p.Runtime.logger = slog.New(slogmulti.Fanout(
-					slog.NewJSONHandler(p.Runtime.logFile, opts),
+				shmake.Runtime.logger = slog.New(slogmulti.Fanout(
+					slog.NewJSONHandler(shmake.Runtime.logFile, opts),
 					devslog.NewHandler(os.Stdout, &devslog.Options{HandlerOptions: opts}),
 				))
 			}
 			if noCache {
-				p.Runtime.cache.ForceOutOfDate = noCache
+				shmake.Runtime.cache.ForceOutOfDate = noCache
 			}
 			return nil
 		},
@@ -120,3 +119,8 @@ func shmakeRunCommand(L *lua.LState) int {
 
 	return 0
 }
+
+// Flag struct to use when adding flags to a command.
+type Flag struct{}
+
+// TODO: implement

@@ -5,10 +5,26 @@ local git = require("shmake.git")
 local yarn = require("shmake.yarn")
 local run = require("shmake.run")
 
+function dump(o)
+   if type(o) == 'table' then
+      local s = '{ '
+      for k,v in pairs(o) do
+         if type(k) ~= 'number' then k = '"'..k..'"' end
+         s = s .. '['..k..'] = ' .. dump(v) .. ','
+      end
+      return s .. '} '
+   else
+      return tostring(o)
+   end
+end
+
 local cli = shmake.new()
 
 cli:command("start", { usage = "start pinging" })
-    :action(function()
+    :flag("some-value", { usage = "pass some flag"})
+    :action(function(flags)
+        print(flags)
+        print(dump(flags))
         shell.start({
             foo = { cmd = [[ ping google.com ]], watch = "./file" },
             bar = { cmd = [[ ping telness.se ]], watch = "./file2" }

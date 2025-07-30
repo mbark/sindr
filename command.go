@@ -59,7 +59,12 @@ func (s ShmakeType) Command(L *lua.LState) int {
 		}
 	}
 
-	return NewUserData(L, &Command{Name: name, Options: options, Shmake: shmake}, CommandType{})
+	return NewUserData(L, &Command{
+		FlagValues: map[string]string{},
+		Name:       name,
+		Options:    options,
+		Shmake:     shmake,
+	}, CommandType{})
 }
 
 func (s ShmakeType) Run(L *lua.LState) int {
@@ -123,19 +128,53 @@ func (c CommandType) New(L *lua.LState) int {
 func (c CommandType) Funcs() map[string]lua.LGFunction {
 	return map[string]lua.LGFunction{
 		"action": c.Action,
+		"flag":   c.StringFlag,
 	}
 }
 
+type stringFlag struct {
+	Default string
+	Usage   string
+}
+
+func (c CommandType) StringFlag(L *lua.LState) int {
+	cmd := IsUserData[*Command](L)
+	name := L.CheckString(2)
+
+	var flag stringFlag
+	err := MapTable(3, L.Get(3), &flag)
+	if err != nil {
+		L.RaiseError("invalid options: %v", err)
+	}
+
+	cmd.Flags = append(cmd.Flags, &cli.StringFlag{
+		Name:        name,
+		DefaultText: flag.Default,
+		Usage:       flag.Usage,
+		Action: func(ctx *cli.Context, s string) error {
+			cmd.FlagValues[name] = s
+			return nil
+		},
+	})
+	return NewUserData(L, cmd, CommandType{})
+}
+
 func (c CommandType) Action(L *lua.LState) int {
-	cmd := IsUserData[*Command](L) // keep for now
+	cmd := IsUserData[*Command](L)
 	action := L.CheckFunction(2)
 
 	cmd.Shmake.Commands = append(cmd.Shmake.Commands, &cli.Command{
 		Name:  cmd.Name,
 		Usage: cmd.Options.Usage,
+		Flags: cmd.Flags,
 		Action: func(ctx *cli.Context) error {
 			L.SetContext(ctx.Context)
-			return L.CallByParam(lua.P{Fn: action, NRet: 1, Protect: true})
+
+			tbl := L.NewTable()
+			for name, value := range cmd.FlagValues {
+				L.SetField(tbl, name, lua.LString(value))
+			}
+			return L.CallByParam(lua.P{Fn: action, NRet: 1, Protect: true}, tbl)
 		},
 	})
 
@@ -147,8 +186,12 @@ type commandOptions struct {
 }
 
 type Command struct {
-	Name    string
-	Action  lua.LGFunction
+	Flags      []cli.Flag
+	FlagValues map[string]string
+	Name       string
+	Action     lua.LGFunction
+
 	Options commandOptions
-	Shmake  *Shmake
+
+	Shmake *Shmake
 }

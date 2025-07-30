@@ -16,9 +16,15 @@ type Shmake struct {
 	Runtime  *Runtime
 }
 
-var _ LuaType = ShmakeType{}
+var (
+	_ LuaType = ShmakeType{}
+	_ LuaType = CommandType{}
+)
 
 type ShmakeType struct {
+	Runtime *Runtime
+}
+type CommandType struct {
 	Runtime *Runtime
 }
 
@@ -31,12 +37,7 @@ func (s ShmakeType) GlobalName() string {
 }
 
 func (s ShmakeType) New(L *lua.LState) int {
-	shmake := &Shmake{Runtime: s.Runtime}
-	ud := L.NewUserData()
-	ud.Value = shmake
-	L.SetMetatable(ud, L.GetTypeMetatable(s.TypeName()))
-	L.Push(ud)
-	return 1
+	return NewUserData(L, &Shmake{Runtime: s.Runtime}, ShmakeType{})
 }
 
 func (s ShmakeType) Funcs() map[string]lua.LGFunction {
@@ -46,32 +47,19 @@ func (s ShmakeType) Funcs() map[string]lua.LGFunction {
 	}
 }
 
-type commandOptions struct {
-	Usage string
-	Flags []Flag
-}
-
 func (s ShmakeType) Command(L *lua.LState) int {
-	shmake := IsUserData[*Shmake](L)
+	shmake := IsUserData[*Shmake](L) // keep for now
 	name := L.CheckString(2)
-	action := L.CheckFunction(3)
 
 	var options commandOptions
-	err := MapTable(4, L.Get(4), &options)
-	if err != nil {
-		L.RaiseError("invalid options: %v", err)
+	if L.GetTop() > 2 {
+		err := MapTable(3, L.Get(3), &options)
+		if err != nil {
+			L.RaiseError("invalid options: %v", err)
+		}
 	}
 
-	shmake.Commands = append(shmake.Commands, &cli.Command{
-		Name:  name,
-		Usage: options.Usage,
-		Action: func(ctx *cli.Context) error {
-			L.SetContext(ctx.Context)
-			return L.CallByParam(lua.P{Fn: action, NRet: 1, Protect: true})
-		},
-	})
-
-	return 0
+	return NewUserData(L, &Command{Name: name, Options: options, Shmake: shmake}, CommandType{})
 }
 
 func (s ShmakeType) Run(L *lua.LState) int {
@@ -120,7 +108,47 @@ func (s ShmakeType) Run(L *lua.LState) int {
 	return 0
 }
 
-// Flag struct to use when adding flags to a command.
-type Flag struct{}
+func (c CommandType) TypeName() string {
+	return "command"
+}
 
-// TODO: implement
+func (c CommandType) GlobalName() string {
+	return "command"
+}
+
+func (c CommandType) New(L *lua.LState) int {
+	return NewUserData(L, &Command{}, CommandType{})
+}
+
+func (c CommandType) Funcs() map[string]lua.LGFunction {
+	return map[string]lua.LGFunction{
+		"action": c.Action,
+	}
+}
+
+func (c CommandType) Action(L *lua.LState) int {
+	cmd := IsUserData[*Command](L) // keep for now
+	action := L.CheckFunction(2)
+
+	cmd.Shmake.Commands = append(cmd.Shmake.Commands, &cli.Command{
+		Name:  cmd.Name,
+		Usage: cmd.Options.Usage,
+		Action: func(ctx *cli.Context) error {
+			L.SetContext(ctx.Context)
+			return L.CallByParam(lua.P{Fn: action, NRet: 1, Protect: true})
+		},
+	})
+
+	return 0
+}
+
+type commandOptions struct {
+	Usage string
+}
+
+type Command struct {
+	Name    string
+	Action  lua.LGFunction
+	Options commandOptions
+	Shmake  *Shmake
+}

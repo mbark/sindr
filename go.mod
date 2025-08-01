@@ -36,6 +36,7 @@ require (
 	github.com/samber/slog-common v0.19.0 // indirect
 	github.com/sergi/go-diff v1.4.0 // indirect
 	github.com/skeema/knownhosts v1.3.1 // indirect
+	github.com/urfave/cli/v3 v3.3.8 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/xrash/smetrics v0.0.0-20250705151800-55b8f293f342 // indirect
 	golang.org/x/crypto v0.40.0 // indirect

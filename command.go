@@ -1,12 +1,13 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 	"os"
 
 	"github.com/mbark/devslog"
 	slogmulti "github.com/samber/slog-multi"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -60,10 +61,9 @@ func (s ShmakeType) Command(L *lua.LState) int {
 	}
 
 	return NewUserData(L, &Command{
-		FlagValues: map[string]lua.LValue{},
-		Name:       name,
-		Options:    options,
-		Shmake:     shmake,
+		Name:    name,
+		Options: options,
+		Shmake:  shmake,
 	}, CommandType{})
 }
 
@@ -84,13 +84,13 @@ func (s ShmakeType) Run(L *lua.LState) int {
 		},
 	}
 
-	app := &cli.App{
+	app := &cli.Command{
 		Name:     "shmake",
 		Usage:    "make shmake",
 		Version:  version,
 		Flags:    cliFlags,
 		Commands: shmake.Commands,
-		Before: func(ctx *cli.Context) error {
+		Before: func(ctx context.Context, cmd *cli.Command) (context.Context, error) {
 			if verbose {
 				slog.SetLogLoggerLevel(slog.LevelDebug)
 				opts := &slog.HandlerOptions{Level: slog.LevelDebug}
@@ -102,10 +102,10 @@ func (s ShmakeType) Run(L *lua.LState) int {
 			if noCache {
 				shmake.Runtime.cache.ForceOutOfDate = noCache
 			}
-			return nil
+			return ctx, nil
 		},
 	}
-	err := app.Run(os.Args)
+	err := app.Run(L.Context(), os.Args)
 	if err != nil {
 		L.RaiseError("failed to run shmake: %v", err)
 	}
@@ -165,10 +165,6 @@ func (c CommandType) StringFlag(L *lua.LState) int {
 		Usage:    flag.Usage,
 		Value:    flag.Default,
 		Required: flag.Required,
-		Action: func(ctx *cli.Context, s string) error {
-			cmd.FlagValues[name] = lua.LString(s)
-			return nil
-		},
 	})
 	return NewUserData(L, cmd, CommandType{})
 }
@@ -183,10 +179,6 @@ func (c CommandType) IntFlag(L *lua.LState) int {
 		Usage:    flag.Usage,
 		Value:    flag.Default,
 		Required: flag.Required,
-		Action: func(ctx *cli.Context, i int) error {
-			cmd.FlagValues[name] = lua.LNumber(i)
-			return nil
-		},
 	})
 	return NewUserData(L, cmd, CommandType{})
 }
@@ -201,10 +193,6 @@ func (c CommandType) BoolFlag(L *lua.LState) int {
 		Usage:    flag.Usage,
 		Value:    flag.Default,
 		Required: flag.Required,
-		Action: func(ctx *cli.Context, s bool) error {
-			cmd.FlagValues[name] = lua.LBool(s)
-			return nil
-		},
 	})
 	return NewUserData(L, cmd, CommandType{})
 }
@@ -217,12 +205,23 @@ func (c CommandType) Action(L *lua.LState) int {
 		Name:  cmd.Name,
 		Usage: cmd.Options.Usage,
 		Flags: cmd.Flags,
-		Action: func(ctx *cli.Context) error {
-			L.SetContext(ctx.Context)
+		Action: func(ctx context.Context, command *cli.Command) error {
+			L.SetContext(ctx)
 
 			tbl := L.NewTable()
-			for name, value := range cmd.FlagValues {
-				L.SetField(tbl, name, value)
+			for _, flag := range command.Flags {
+				var lval lua.LValue
+				switch val := flag.Get().(type) {
+				case string:
+					lval = lua.LString(val)
+				case int:
+					lval = lua.LNumber(val)
+				case bool:
+					lval = lua.LBool(val)
+				default:
+					L.RaiseError("unknown flag value type: %v", flag)
+				}
+				L.SetField(tbl, flag.Names()[0], lval)
 			}
 			return L.CallByParam(lua.P{Fn: action, NRet: 1, Protect: true}, tbl)
 		},
@@ -236,10 +235,9 @@ type commandOptions struct {
 }
 
 type Command struct {
-	Flags      []cli.Flag
-	FlagValues map[string]lua.LValue
-	Name       string
-	Action     lua.LGFunction
+	Flags  []cli.Flag
+	Name   string
+	Action lua.LGFunction
 
 	Options commandOptions
 

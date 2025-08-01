@@ -26,12 +26,7 @@ cli:command("start", { usage = "start pinging" })
     :int_flag("some-int", { default = 5 })
     :bool_flag("is-bool", { default = false })
     :action(function(flags)
-        print(flags)
         print(dump(flags))
-        shell.start({
-            foo = { cmd = [[ ping google.com ]], watch = "./file" },
-            bar = { cmd = [[ ping telness.se ]], watch = "./file2" }
-        })
     end)
 
 -- cli:command("mod", { usage = "go mod tidy on git change" })

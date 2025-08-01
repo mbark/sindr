@@ -60,7 +60,7 @@ func (s ShmakeType) Command(L *lua.LState) int {
 	}
 
 	return NewUserData(L, &Command{
-		FlagValues: map[string]string{},
+		FlagValues: map[string]lua.LValue{},
 		Name:       name,
 		Options:    options,
 		Shmake:     shmake,
@@ -127,32 +127,63 @@ func (c CommandType) New(L *lua.LState) int {
 
 func (c CommandType) Funcs() map[string]lua.LGFunction {
 	return map[string]lua.LGFunction{
-		"action": c.Action,
-		"flag":   c.StringFlag,
+		"action":      c.Action,
+		"flag":        c.StringFlag,
+		"string_flag": c.StringFlag,
+		"int_flag":    c.IntFlag,
 	}
 }
 
-type stringFlag struct {
-	Default string
-	Usage   string
+type flagOptions[T any] struct {
+	Default  T
+	Usage    string
+	Required bool
+}
+
+func mapFlagOptions[T any](L *lua.LState) flagOptions[T] {
+	var flag flagOptions[T]
+	if L.GetTop() < 3 {
+		return flag
+	}
+
+	err := MapTable(3, L.Get(3), &flag)
+	if err != nil {
+		L.RaiseError("invalid options: %v", err)
+	}
+
+	return flag
 }
 
 func (c CommandType) StringFlag(L *lua.LState) int {
 	cmd := IsUserData[*Command](L)
 	name := L.CheckString(2)
 
-	var flag stringFlag
-	err := MapTable(3, L.Get(3), &flag)
-	if err != nil {
-		L.RaiseError("invalid options: %v", err)
-	}
-
+	flag := mapFlagOptions[string](L)
 	cmd.Flags = append(cmd.Flags, &cli.StringFlag{
-		Name:        name,
-		DefaultText: flag.Default,
-		Usage:       flag.Usage,
+		Name:     name,
+		Usage:    flag.Usage,
+		Value:    flag.Default,
+		Required: flag.Required,
 		Action: func(ctx *cli.Context, s string) error {
-			cmd.FlagValues[name] = s
+			cmd.FlagValues[name] = lua.LString(s)
+			return nil
+		},
+	})
+	return NewUserData(L, cmd, CommandType{})
+}
+
+func (c CommandType) IntFlag(L *lua.LState) int {
+	cmd := IsUserData[*Command](L)
+	name := L.CheckString(2)
+
+	flag := mapFlagOptions[int](L)
+	cmd.Flags = append(cmd.Flags, &cli.IntFlag{
+		Name:     name,
+		Usage:    flag.Usage,
+		Value:    flag.Default,
+		Required: flag.Required,
+		Action: func(ctx *cli.Context, i int) error {
+			cmd.FlagValues[name] = lua.LNumber(i)
 			return nil
 		},
 	})
@@ -172,7 +203,7 @@ func (c CommandType) Action(L *lua.LState) int {
 
 			tbl := L.NewTable()
 			for name, value := range cmd.FlagValues {
-				L.SetField(tbl, name, lua.LString(value))
+				L.SetField(tbl, name, value)
 			}
 			return L.CallByParam(lua.P{Fn: action, NRet: 1, Protect: true}, tbl)
 		},
@@ -187,7 +218,7 @@ type commandOptions struct {
 
 type Command struct {
 	Flags      []cli.Flag
-	FlagValues map[string]string
+	FlagValues map[string]lua.LValue
 	Name       string
 	Action     lua.LGFunction
 

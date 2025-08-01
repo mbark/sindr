@@ -21,7 +21,8 @@ end
 local cli = shmake.new()
 
 cli:command("start", { usage = "start pinging" })
-    :flag("some-value", { usage = "pass some flag"})
+    :flag("some-value", { usage = "pass some flag", required = true })
+    :int_flag("some-int", { default = 5 })
     :action(function(flags)
         print(flags)
         print(dump(flags))

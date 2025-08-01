@@ -131,6 +131,7 @@ func (c CommandType) Funcs() map[string]lua.LGFunction {
 		"flag":        c.StringFlag,
 		"string_flag": c.StringFlag,
 		"int_flag":    c.IntFlag,
+		"bool_flag":   c.BoolFlag,
 	}
 }
 
@@ -184,6 +185,24 @@ func (c CommandType) IntFlag(L *lua.LState) int {
 		Required: flag.Required,
 		Action: func(ctx *cli.Context, i int) error {
 			cmd.FlagValues[name] = lua.LNumber(i)
+			return nil
+		},
+	})
+	return NewUserData(L, cmd, CommandType{})
+}
+
+func (c CommandType) BoolFlag(L *lua.LState) int {
+	cmd := IsUserData[*Command](L)
+	name := L.CheckString(2)
+
+	flag := mapFlagOptions[bool](L)
+	cmd.Flags = append(cmd.Flags, &cli.BoolFlag{
+		Name:     name,
+		Usage:    flag.Usage,
+		Value:    flag.Default,
+		Required: flag.Required,
+		Action: func(ctx *cli.Context, s bool) error {
+			cmd.FlagValues[name] = lua.LBool(s)
 			return nil
 		},
 	})

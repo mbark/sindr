@@ -13,8 +13,8 @@ import (
 
 // Shmake global to create the cli instance.
 type Shmake struct {
-	Commands []*cli.Command
-	Runtime  *Runtime
+	Command *cli.Command
+	Runtime *Runtime
 }
 
 var (
@@ -38,7 +38,22 @@ func (s ShmakeType) GlobalName() string {
 }
 
 func (s ShmakeType) New(L *lua.LState) int {
-	return NewUserData(L, &Shmake{Runtime: s.Runtime}, ShmakeType{})
+	shmake := &Shmake{Runtime: s.Runtime}
+	name := L.CheckString(1)
+
+	var options commandOptions
+	if L.GetTop() >= 2 {
+		err := MapTable(2, L.Get(2), &options)
+		if err != nil {
+			L.RaiseError("invalid options: %v", err)
+		}
+	}
+
+	shmake.Command = &cli.Command{
+		Name:  name,
+		Usage: options.Usage,
+	}
+	return NewUserData(L, shmake, ShmakeType{})
 }
 
 func (s ShmakeType) Funcs() map[string]lua.LGFunction {
@@ -49,7 +64,7 @@ func (s ShmakeType) Funcs() map[string]lua.LGFunction {
 }
 
 func (s ShmakeType) Command(L *lua.LState) int {
-	shmake := IsUserData[*Shmake](L) // keep for now
+	parent := IsUserData[*Shmake](L)
 	name := L.CheckString(2)
 
 	var options commandOptions
@@ -60,11 +75,12 @@ func (s ShmakeType) Command(L *lua.LState) int {
 		}
 	}
 
-	return NewUserData(L, &Command{
-		Name:    name,
-		Options: options,
-		Shmake:  shmake,
-	}, CommandType{})
+	cmd := &cli.Command{
+		Name:  name,
+		Usage: options.Usage,
+	}
+	parent.Command.Commands = append(parent.Command.Commands, cmd)
+	return NewUserData(L, cmd, CommandType{})
 }
 
 func (s ShmakeType) Run(L *lua.LState) int {
@@ -84,32 +100,28 @@ func (s ShmakeType) Run(L *lua.LState) int {
 		},
 	}
 
-	app := &cli.Command{
-		Name:     "shmake",
-		Usage:    "make shmake",
-		Version:  version,
-		Flags:    cliFlags,
-		Commands: shmake.Commands,
-		Before: func(ctx context.Context, cmd *cli.Command) (context.Context, error) {
-			if verbose {
-				slog.SetLogLoggerLevel(slog.LevelDebug)
-				opts := &slog.HandlerOptions{Level: slog.LevelDebug}
-				shmake.Runtime.logger = slog.New(slogmulti.Fanout(
-					slog.NewJSONHandler(shmake.Runtime.logFile, opts),
-					devslog.NewHandler(os.Stdout, &devslog.Options{HandlerOptions: opts}),
-				))
-			}
-			if noCache {
-				shmake.Runtime.cache.ForceOutOfDate = noCache
-			}
-			return ctx, nil
-		},
+	cmd := shmake.Command
+	cmd.Version = version
+	cmd.Flags = append(cmd.Flags, cliFlags...)
+	cmd.Before = func(ctx context.Context, cmd *cli.Command) (context.Context, error) {
+		if verbose {
+			slog.SetLogLoggerLevel(slog.LevelDebug)
+			opts := &slog.HandlerOptions{Level: slog.LevelDebug}
+			shmake.Runtime.logger = slog.New(slogmulti.Fanout(
+				slog.NewJSONHandler(shmake.Runtime.logFile, opts),
+				devslog.NewHandler(os.Stdout, &devslog.Options{HandlerOptions: opts}),
+			))
+		}
+		if noCache {
+			shmake.Runtime.cache.ForceOutOfDate = noCache
+		}
+		return ctx, nil
 	}
-	err := app.Run(L.Context(), os.Args)
+
+	err := cmd.Run(L.Context(), os.Args)
 	if err != nil {
 		L.RaiseError("failed to run shmake: %v", err)
 	}
-
 	return 0
 }
 
@@ -122,11 +134,12 @@ func (c CommandType) GlobalName() string {
 }
 
 func (c CommandType) New(L *lua.LState) int {
-	return NewUserData(L, &Command{}, CommandType{})
+	return NewUserData(L, &cli.Command{}, CommandType{})
 }
 
 func (c CommandType) Funcs() map[string]lua.LGFunction {
 	return map[string]lua.LGFunction{
+		"command":     c.Command,
 		"action":      c.Action,
 		"flag":        c.StringFlag,
 		"string_flag": c.StringFlag,
@@ -156,7 +169,7 @@ func mapFlagOptions[T any](L *lua.LState) flagOptions[T] {
 }
 
 func (c CommandType) StringFlag(L *lua.LState) int {
-	cmd := IsUserData[*Command](L)
+	cmd := IsUserData[*cli.Command](L)
 	name := L.CheckString(2)
 
 	flag := mapFlagOptions[string](L)
@@ -170,7 +183,7 @@ func (c CommandType) StringFlag(L *lua.LState) int {
 }
 
 func (c CommandType) IntFlag(L *lua.LState) int {
-	cmd := IsUserData[*Command](L)
+	cmd := IsUserData[*cli.Command](L)
 	name := L.CheckString(2)
 
 	flag := mapFlagOptions[int](L)
@@ -184,7 +197,7 @@ func (c CommandType) IntFlag(L *lua.LState) int {
 }
 
 func (c CommandType) BoolFlag(L *lua.LState) int {
-	cmd := IsUserData[*Command](L)
+	cmd := IsUserData[*cli.Command](L)
 	name := L.CheckString(2)
 
 	flag := mapFlagOptions[bool](L)
@@ -198,48 +211,49 @@ func (c CommandType) BoolFlag(L *lua.LState) int {
 }
 
 func (c CommandType) Action(L *lua.LState) int {
-	cmd := IsUserData[*Command](L)
+	cmd := IsUserData[*cli.Command](L)
 	action := L.CheckFunction(2)
 
-	cmd.Shmake.Commands = append(cmd.Shmake.Commands, &cli.Command{
-		Name:  cmd.Name,
-		Usage: cmd.Options.Usage,
-		Flags: cmd.Flags,
-		Action: func(ctx context.Context, command *cli.Command) error {
-			L.SetContext(ctx)
+	cmd.Action = func(ctx context.Context, command *cli.Command) error {
+		L.SetContext(ctx)
 
-			tbl := L.NewTable()
-			for _, flag := range command.Flags {
-				var lval lua.LValue
-				switch val := flag.Get().(type) {
-				case string:
-					lval = lua.LString(val)
-				case int:
-					lval = lua.LNumber(val)
-				case bool:
-					lval = lua.LBool(val)
-				default:
-					L.RaiseError("unknown flag value type: %v", flag)
-				}
-				L.SetField(tbl, flag.Names()[0], lval)
+		tbl := L.NewTable()
+		for _, flag := range command.Flags {
+			var lval lua.LValue
+			switch val := flag.Get().(type) {
+			case string:
+				lval = lua.LString(val)
+			case int:
+				lval = lua.LNumber(val)
+			case bool:
+				lval = lua.LBool(val)
+			default:
+				L.RaiseError("unknown flag value type: %v", flag)
 			}
-			return L.CallByParam(lua.P{Fn: action, NRet: 1, Protect: true}, tbl)
-		},
-	})
+			L.SetField(tbl, flag.Names()[0], lval)
+		}
+		return L.CallByParam(lua.P{Fn: action, NRet: 1, Protect: true}, tbl)
+	}
+	return NewUserData(L, cmd, CommandType{})
+}
 
-	return 0
+func (c CommandType) Command(L *lua.LState) int {
+	cmd := IsUserData[*cli.Command](L)
+	name := L.CheckString(2)
+
+	var options commandOptions
+	if L.GetTop() > 2 {
+		err := MapTable(3, L.Get(3), &options)
+		if err != nil {
+			L.RaiseError("invalid options: %v", err)
+		}
+	}
+
+	cmd.Name = name
+	cmd.Usage = options.Usage
+	return NewUserData(L, cmd, CommandType{})
 }
 
 type commandOptions struct {
 	Usage string
-}
-
-type Command struct {
-	Flags  []cli.Flag
-	Name   string
-	Action lua.LGFunction
-
-	Options commandOptions
-
-	Shmake *Shmake
 }

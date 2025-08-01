@@ -18,7 +18,7 @@ function dump(o)
    end
 end
 
-local cli = shmake.new()
+local cli = shmake.new('shmake', { usage = "make shmake"})
 
 cli:command("start", { usage = "start pinging" })
     :flag("some-value", { usage = "pass some flag", required = true })
@@ -27,6 +27,11 @@ cli:command("start", { usage = "start pinging" })
     :bool_flag("is-bool", { default = false })
     :action(function(flags)
         print(dump(flags))
+    end)
+
+cli:command("start something", { usage = "start pinging" })
+    :action(function(flags)
+        print("something running")
     end)
 
 -- cli:command("mod", { usage = "go mod tidy on git change" })

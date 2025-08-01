@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log/slog"
 
 	lua "github.com/yuin/gopher-lua"
@@ -13,7 +14,7 @@ func IsUserData[T any](L *lua.LState) T {
 	if v, ok := ud.Value.(T); ok {
 		return v
 	}
-	L.ArgError(1, "shmake expected")
+	L.ArgError(1, fmt.Sprintf("expected %T, got %T", t, ud.Value))
 	return t
 }
 

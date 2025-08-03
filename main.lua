@@ -20,7 +20,7 @@ end
 
 local cli = shmake.new('shmake', { usage = "make shmake"})
 
-cli:command("start", { usage = "start pinging" })
+local startcmd = cli:command("start", { usage = "start pinging" })
     :flag("some-value", { usage = "pass some flag" })
     :string_flag("other-value", { default = "foobar" })
     :int_flag("some-int", { default = 5 })
@@ -29,6 +29,13 @@ cli:command("start", { usage = "start pinging" })
         print(dump(flags))
     end)
 
+-- define sub commands either by using command on the variable
+startcmd:command("subber")
+    :action(function(flags)
+        print(dump(flags))
+    end)
+
+-- or with the global function sub_command giving the path to use
 cli:sub_command({"start", "subcommand"})
     :flag("other-flag")
     :action(function(flags)
@@ -40,12 +47,5 @@ cli:sub_command({"start", "subcommand", "subsub"})
     :action(function(flags)
         print(dump(flags))
     end)
-
--- cli:command("mod", { usage = "go mod tidy on git change" })
---     :action( function()
---         cache.with_version({ name = "go.mod", int_version = files.newest_ts("go.mod")}, function()
---             shell.run([[ go mod tidy ]])
---         end)
---     end)
 
 cli:run()

@@ -21,7 +21,7 @@ end
 local cli = shmake.new('shmake', { usage = "make shmake"})
 
 cli:command("start", { usage = "start pinging" })
-    :flag("some-value", { usage = "pass some flag", required = true })
+    :flag("some-value", { usage = "pass some flag" })
     :string_flag("other-value", { default = "foobar" })
     :int_flag("some-int", { default = 5 })
     :bool_flag("is-bool", { default = false })
@@ -29,9 +29,16 @@ cli:command("start", { usage = "start pinging" })
         print(dump(flags))
     end)
 
-cli:command("start something", { usage = "start pinging" })
+cli:sub_command({"start", "subcommand"})
+    :flag("other-flag")
     :action(function(flags)
-        print("something running")
+        print(dump(flags))
+    end)
+
+cli:sub_command({"start", "subcommand", "subsub"})
+    :flag("third-flag")
+    :action(function(flags)
+        print(dump(flags))
     end)
 
 -- cli:command("mod", { usage = "go mod tidy on git change" })

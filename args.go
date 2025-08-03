@@ -47,12 +47,21 @@ func MapArray[T any](idx int, lv lua.LValue) ([]T, error) {
 	}
 
 	val := gluamapper.ToGoValue(lv, gluamapper.Option{})
-	v, ok := val.([]T)
+	anyv, ok := val.([]any)
 	if !ok {
-		return nil, ErrBadArg{Index: idx, Message: fmt.Errorf("invalid array, expected %T, got %T", v, val).Error()}
+		return nil, ErrBadArg{Index: idx, Message: fmt.Errorf("invalid array, expected array, got %T", val).Error()}
 	}
 
-	return v, nil
+	var arr []T
+	for i, v := range anyv {
+		if t, ok := v.(T); ok {
+			arr = append(arr, t)
+		} else {
+			return nil, ErrBadArg{Index: idx, Message: fmt.Errorf("invalid array, expected %T, got %T at index %d", arr, v, i).Error()}
+		}
+	}
+
+	return arr, nil
 }
 
 func MapString(idx int, lv lua.LValue) (string, error) {

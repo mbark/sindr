@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 
 	"github.com/mbark/devslog"
 	slogmulti "github.com/samber/slog-multi"
@@ -13,13 +15,20 @@ import (
 
 // Shmake global to create the cli instance.
 type Shmake struct {
-	Command *cli.Command
+	Command *Command
 	Runtime *Runtime
 }
 
+// Command is the struct we use when building a command; it's essentially just a cli.Command wrapper but we use it for
+// now in case we want to add more data in the future.
+type Command struct {
+	Command *cli.Command
+}
+
 var (
-	_ LuaType = ShmakeType{}
-	_ LuaType = CommandType{}
+	_ LuaType      = ShmakeType{}
+	_ LuaTypeNewer = ShmakeType{}
+	_ LuaType      = CommandType{}
 )
 
 type ShmakeType struct {
@@ -49,17 +58,20 @@ func (s ShmakeType) New(L *lua.LState) int {
 		}
 	}
 
-	shmake.Command = &cli.Command{
-		Name:  name,
-		Usage: options.Usage,
+	shmake.Command = &Command{
+		Command: &cli.Command{
+			Name:  name,
+			Usage: options.Usage,
+		},
 	}
 	return NewUserData(L, shmake, ShmakeType{})
 }
 
 func (s ShmakeType) Funcs() map[string]lua.LGFunction {
 	return map[string]lua.LGFunction{
-		"command": s.Command,
-		"run":     s.Run,
+		"command":     s.Command,
+		"sub_command": s.SubCommand,
+		"run":         s.Run,
 	}
 }
 
@@ -75,12 +87,62 @@ func (s ShmakeType) Command(L *lua.LState) int {
 		}
 	}
 
-	cmd := &cli.Command{
-		Name:  name,
-		Usage: options.Usage,
+	cmd := &Command{
+		Command: &cli.Command{
+			Name:  name,
+			Usage: options.Usage,
+		},
 	}
-	parent.Command.Commands = append(parent.Command.Commands, cmd)
+	parent.Command.Command.Commands = append(parent.Command.Command.Commands, cmd.Command)
 	return NewUserData(L, cmd, CommandType{})
+}
+
+func (s ShmakeType) SubCommand(L *lua.LState) int {
+	root := IsUserData[*Shmake](L)
+	name, err := MapArray[string](2, L.Get(2))
+	if err != nil {
+		L.RaiseError("invalid sub command path: %v", err)
+	}
+
+	var options commandOptions
+	if L.GetTop() > 2 {
+		err := MapTable(3, L.Get(3), &options)
+		if err != nil {
+			L.RaiseError("invalid options: %v", err)
+		}
+	}
+
+	parent, err := findSubCommand(root.Command.Command, name)
+	if err != nil {
+		L.RaiseError("unable to find sub command for path [%s]: %v", strings.Join(name, ","), err)
+	}
+
+	cmd := &Command{
+		Command: &cli.Command{
+			Name:  name[len(name)-1],
+			Usage: options.Usage,
+		},
+	}
+	parent.Commands = append(parent.Commands, cmd.Command)
+	return NewUserData(L, cmd, CommandType{})
+}
+
+func findSubCommand(cmd *cli.Command, path []string) (*cli.Command, error) {
+	if len(path) == 0 {
+		return nil, fmt.Errorf("empty path")
+	}
+	// the last one is the name of the new command
+	if len(path) == 1 {
+		return cmd, nil
+	}
+
+	for _, c := range cmd.Commands {
+		if c.Name == path[0] {
+			return findSubCommand(c, path[1:])
+		}
+	}
+
+	return nil, fmt.Errorf("no command with name %s found", path[0])
 }
 
 func (s ShmakeType) Run(L *lua.LState) int {
@@ -101,9 +163,9 @@ func (s ShmakeType) Run(L *lua.LState) int {
 	}
 
 	cmd := shmake.Command
-	cmd.Version = version
-	cmd.Flags = append(cmd.Flags, cliFlags...)
-	cmd.Before = func(ctx context.Context, cmd *cli.Command) (context.Context, error) {
+	cmd.Command.Version = version
+	cmd.Command.Flags = append(cmd.Command.Flags, cliFlags...)
+	cmd.Command.Before = func(ctx context.Context, cmd *cli.Command) (context.Context, error) {
 		if verbose {
 			slog.SetLogLoggerLevel(slog.LevelDebug)
 			opts := &slog.HandlerOptions{Level: slog.LevelDebug}
@@ -118,7 +180,7 @@ func (s ShmakeType) Run(L *lua.LState) int {
 		return ctx, nil
 	}
 
-	err := cmd.Run(L.Context(), os.Args)
+	err := cmd.Command.Run(L.Context(), os.Args)
 	if err != nil {
 		L.RaiseError("failed to run shmake: %v", err)
 	}
@@ -131,10 +193,6 @@ func (c CommandType) TypeName() string {
 
 func (c CommandType) GlobalName() string {
 	return "command"
-}
-
-func (c CommandType) New(L *lua.LState) int {
-	return NewUserData(L, &cli.Command{}, CommandType{})
 }
 
 func (c CommandType) Funcs() map[string]lua.LGFunction {
@@ -169,11 +227,11 @@ func mapFlagOptions[T any](L *lua.LState) flagOptions[T] {
 }
 
 func (c CommandType) StringFlag(L *lua.LState) int {
-	cmd := IsUserData[*cli.Command](L)
+	cmd := IsUserData[*Command](L)
 	name := L.CheckString(2)
 
 	flag := mapFlagOptions[string](L)
-	cmd.Flags = append(cmd.Flags, &cli.StringFlag{
+	cmd.Command.Flags = append(cmd.Command.Flags, &cli.StringFlag{
 		Name:     name,
 		Usage:    flag.Usage,
 		Value:    flag.Default,
@@ -183,11 +241,11 @@ func (c CommandType) StringFlag(L *lua.LState) int {
 }
 
 func (c CommandType) IntFlag(L *lua.LState) int {
-	cmd := IsUserData[*cli.Command](L)
+	cmd := IsUserData[*Command](L)
 	name := L.CheckString(2)
 
 	flag := mapFlagOptions[int](L)
-	cmd.Flags = append(cmd.Flags, &cli.IntFlag{
+	cmd.Command.Flags = append(cmd.Command.Flags, &cli.IntFlag{
 		Name:     name,
 		Usage:    flag.Usage,
 		Value:    flag.Default,
@@ -197,11 +255,11 @@ func (c CommandType) IntFlag(L *lua.LState) int {
 }
 
 func (c CommandType) BoolFlag(L *lua.LState) int {
-	cmd := IsUserData[*cli.Command](L)
+	cmd := IsUserData[*Command](L)
 	name := L.CheckString(2)
 
 	flag := mapFlagOptions[bool](L)
-	cmd.Flags = append(cmd.Flags, &cli.BoolFlag{
+	cmd.Command.Flags = append(cmd.Command.Flags, &cli.BoolFlag{
 		Name:     name,
 		Usage:    flag.Usage,
 		Value:    flag.Default,
@@ -211,10 +269,10 @@ func (c CommandType) BoolFlag(L *lua.LState) int {
 }
 
 func (c CommandType) Action(L *lua.LState) int {
-	cmd := IsUserData[*cli.Command](L)
+	cmd := IsUserData[*Command](L)
 	action := L.CheckFunction(2)
 
-	cmd.Action = func(ctx context.Context, command *cli.Command) error {
+	cmd.Command.Action = func(ctx context.Context, command *cli.Command) error {
 		L.SetContext(ctx)
 
 		tbl := L.NewTable()
@@ -234,11 +292,12 @@ func (c CommandType) Action(L *lua.LState) int {
 		}
 		return L.CallByParam(lua.P{Fn: action, NRet: 1, Protect: true}, tbl)
 	}
+
 	return NewUserData(L, cmd, CommandType{})
 }
 
 func (c CommandType) Command(L *lua.LState) int {
-	cmd := IsUserData[*cli.Command](L)
+	parent := IsUserData[*Command](L)
 	name := L.CheckString(2)
 
 	var options commandOptions
@@ -249,8 +308,13 @@ func (c CommandType) Command(L *lua.LState) int {
 		}
 	}
 
-	cmd.Name = name
-	cmd.Usage = options.Usage
+	cmd := &Command{
+		Command: &cli.Command{
+			Name:  name,
+			Usage: options.Usage,
+		},
+	}
+	parent.Command.Commands = append(parent.Command.Commands, cmd.Command)
 	return NewUserData(L, cmd, CommandType{})
 }
 

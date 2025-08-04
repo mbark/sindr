@@ -25,8 +25,11 @@ local startcmd = cli:command("start", { usage = "start pinging" })
     :string_flag("other-value", { default = "foobar" })
     :int_flag("some-int", { default = 5 })
     :bool_flag("is-bool", { default = false })
-    :action(function(flags)
+    :arg("some arg")
+    :int_arg("int arg")
+    :action(function(flags, args)
         print(dump(flags))
+        print(dump(args))
     end)
 
 -- define sub commands either by using command on the variable

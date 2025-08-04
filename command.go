@@ -203,6 +203,9 @@ func (c CommandType) Funcs() map[string]lua.LGFunction {
 		"string_flag": c.StringFlag,
 		"int_flag":    c.IntFlag,
 		"bool_flag":   c.BoolFlag,
+		"arg":         c.StringArg,
+		"string_arg":  c.StringArg,
+		"int_arg":     c.IntArg,
 	}
 }
 
@@ -268,6 +271,50 @@ func (c CommandType) BoolFlag(L *lua.LState) int {
 	return NewUserData(L, cmd, CommandType{})
 }
 
+type argOptions[T any] struct {
+	Default T
+	Usage   string
+}
+
+func mapArgOptions[T any](L *lua.LState) argOptions[T] {
+	var arg argOptions[T]
+	if L.GetTop() < 3 {
+		return arg
+	}
+
+	err := MapTable(3, L.Get(3), &arg)
+	if err != nil {
+		L.RaiseError("invalid options: %v", err)
+	}
+
+	return arg
+}
+
+func (c CommandType) StringArg(L *lua.LState) int {
+	cmd := IsUserData[*Command](L)
+	name := L.CheckString(2)
+
+	flag := mapArgOptions[string](L)
+	cmd.Command.Arguments = append(cmd.Command.Arguments, &cli.StringArg{
+		Name:      name,
+		Value:     flag.Default,
+		UsageText: flag.Usage,
+	})
+	return NewUserData(L, cmd, CommandType{})
+}
+func (c CommandType) IntArg(L *lua.LState) int {
+	cmd := IsUserData[*Command](L)
+	name := L.CheckString(2)
+
+	flag := mapArgOptions[int](L)
+	cmd.Command.Arguments = append(cmd.Command.Arguments, &cli.IntArg{
+		Name:      name,
+		Value:     flag.Default,
+		UsageText: flag.Usage,
+	})
+	return NewUserData(L, cmd, CommandType{})
+}
+
 func (c CommandType) Action(L *lua.LState) int {
 	cmd := IsUserData[*Command](L)
 	action := L.CheckFunction(2)
@@ -288,9 +335,26 @@ func (c CommandType) Action(L *lua.LState) int {
 			default:
 				L.RaiseError("unknown flag value type: %v", flag)
 			}
-			L.SetField(tbl, flag.Names()[0], lval)
+			L.RawSet(tbl, lua.LString(flag.Names()[0]), lval)
 		}
-		return L.CallByParam(lua.P{Fn: action, NRet: 1, Protect: true}, tbl)
+
+		args := L.NewTable()
+		for i, arg := range command.Arguments {
+			var lval lua.LValue
+			switch val := arg.Get().(type) {
+			case string:
+				lval = lua.LString(val)
+			case int:
+				lval = lua.LNumber(val)
+			case bool:
+				lval = lua.LBool(val)
+			default:
+				L.RaiseError("unknown flag value type: %v", arg)
+			}
+			L.RawSetInt(args, i+1, lval)
+		}
+
+		return L.CallByParam(lua.P{Fn: action, NRet: 1, Protect: true}, tbl, args)
 	}
 
 	return NewUserData(L, cmd, CommandType{})

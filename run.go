@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log/slog"
 
 	lua "github.com/yuin/gopher-lua"
@@ -29,6 +30,7 @@ func async(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 
 		err := Lt.CallByParam(lua.P{Fn: fn, NRet: 1, Protect: true})
 		if err != nil {
+			fmt.Printf("%+v\n", err)
 			L.RaiseError(err.Error())
 		}
 	}()
@@ -66,19 +68,42 @@ func watch(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 			return
 		}
 
-		Lt, cancel := L.NewThread()
-		defer cancel()
 		for {
-			log.Info("waiting for changes")
-			_ = <-onChange
+			done := runWatchFnOnce(runtime, L, fn, onChange)
+			if done {
+				break
+			}
 
 			log.Info("changes detected, running function")
-			err := Lt.CallByParam(lua.P{Fn: fn, NRet: 1, Protect: true})
-			if err != nil {
-				L.RaiseError(err.Error())
-			}
 		}
 	}()
 
 	return NoReturnVal, nil
+}
+
+func runWatchFnOnce(runtime *Runtime, L *lua.LState, fn *lua.LFunction, onChange chan bool) bool {
+	Lt, cancel := L.NewThread()
+	defer cancel()
+
+	done := make(chan bool)
+	go func() {
+		err := Lt.CallByParam(lua.P{Fn: fn, NRet: 1, Protect: true})
+		if err != nil {
+			L.RaiseError(err.Error())
+		}
+		<-done
+	}()
+
+	select {
+	case <-Lt.Context().Done():
+		return true
+
+	case <-done:
+		return false
+
+	case <-onChange:
+		runtime.logger.Info("waiting for changes")
+		_ = <-onChange
+		return false
+	}
 }

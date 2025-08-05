@@ -4,9 +4,8 @@ import (
 	"bufio"
 	"fmt"
 	"log/slog"
-	"os"
 	"os/exec"
-	"sync"
+	"strings"
 
 	"github.com/logrusorgru/aurora/v3"
 	lua "github.com/yuin/gopher-lua"
@@ -15,148 +14,69 @@ import (
 func getShellModule() Module {
 	return Module{
 		exports: map[string]ModuleFunction{
-			"run":    run,
-			"output": output,
-			"start":  start,
+			"run": run,
 		},
 	}
 }
 
+type runOptions struct {
+	Prefix string
+}
+
 func run(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
-	lv := L.Get(-1)
+	lv := L.Get(1)
 	c, err := MapString(1, lv)
 	if err != nil {
 		return nil, err
+	}
+
+	var options runOptions
+	if L.GetTop() > 1 {
+		err := MapTable(2, L.Get(2), &options)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	runtime.logger.With(slog.String("command", c)).Debug("running shell command")
 
 	cmd := exec.CommandContext(L.Context(), "bash", "-c", c)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	err = cmd.Run()
+	out, err := startShellCmd(cmd, options.Prefix)
 	if err != nil {
-		return nil, fmt.Errorf("running shell cmd failed: %w", err)
+		return nil, fmt.Errorf("start shell cmd failed: %w", err)
 	}
 
-	return NoReturnVal, nil
+	out = strings.TrimSpace(out)
+	return []lua.LValue{lua.LString(out)}, nil
 }
 
-func output(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
-	lv := L.Get(-1)
-
-	c, err := MapString(1, lv)
-	if err != nil {
-		return nil, err
-	}
-
-	runtime.logger.With(slog.String("command", c)).Debug("running shell command and returning output")
-
-	cmd := exec.CommandContext(L.Context(), "bash", "-c", c)
-	output, err := cmd.Output()
-	if err != nil {
-		return nil, fmt.Errorf("running shell cmd failed: %w", err)
-	}
-
-	return []lua.LValue{lua.LString(string(output))}, nil
-}
-
-type startOptions = map[string]struct {
-	Cmd   string
-	Watch string
-}
-
-func start(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
-	lv := L.Get(-1)
-
-	var startCommands startOptions
-	err := MapTable(1, lv, &startCommands)
-	if err != nil {
-		return nil, err
-	}
-
-	for k, c := range startCommands {
-		startCommands[k] = c
-	}
-
-	var colorIdx uint8 = 0
-
-	wg := sync.WaitGroup{}
-	for k, c := range startCommands {
-		log := runtime.logger.
-			With(slog.String("name", k)).
-			With(slog.String("command", c.Cmd)).
-			With(slog.String("watch", c.Watch))
-
-		wg.Add(1)
-		colorIdx += 1
-		go func(name, command, watch string, colorIndex uint8) {
-			defer wg.Done()
-
-			if watch == "" {
-				cmd := exec.CommandContext(L.Context(), "bash", "-c", fmt.Sprintf("%s", command))
-				err := startShellCmd(cmd, name, colorIndex)
-				if err != nil {
-					runtime.logger.With(slog.Any("err", err)).Error("start command")
-				}
-
-				log.Debug("shell command started")
-
-				if err := cmd.Wait(); err != nil {
-					log.With(slog.Any("err", err)).Error("shell command failed")
-				}
-			} else {
-				onChange := make(chan bool)
-				close, err := startWatching(runtime, watch, onChange)
-				defer close()
-				if err != nil {
-					log.With(slog.Any("err", err)).Error("failed to start watcher")
-				}
-
-				for {
-					Lt, cancel := L.NewThread()
-					cmd := exec.CommandContext(Lt.Context(), "bash", "-c", fmt.Sprintf("%s", command))
-					err := startShellCmd(cmd, name, colorIndex)
-					if err != nil {
-						log.With(slog.Any("err", err)).Error("start shell command failed")
-					}
-					log.Debug("shell command started")
-
-					_ = <-onChange
-
-					log.Debug("shell command restarting")
-					cancel()
-				}
-			}
-		}(k, c.Cmd, c.Watch, colorIdx)
-	}
-	wg.Wait()
-
-	return NoReturnVal, nil
-}
-
-func startShellCmd(cmd *exec.Cmd, name string, colorIndex uint8) error {
+func startShellCmd(cmd *exec.Cmd, name string) (string, error) {
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return fmt.Errorf("stdout pipe: %w", err)
+		return "", fmt.Errorf("stdout pipe: %w", err)
 	}
 
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		return fmt.Errorf("stderr pipe: %w", err)
+		return "", fmt.Errorf("stderr pipe: %w", err)
 	}
 
 	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("cmd start: %w", err)
+		return "", fmt.Errorf("cmd start: %w", err)
 	}
 
+	var out strings.Builder
 	go func() {
 		scanner := bufio.NewScanner(stdout)
 		scanner.Split(bufio.ScanLines)
 		for scanner.Scan() {
 			m := scanner.Text()
-			fmt.Printf("%s | %s\n", aurora.Index(colorIndex, name).Faint(), m)
+			out.WriteString(m)
+			if name != "" {
+				fmt.Printf("%s | %s\n", aurora.Blue(name).Faint(), m)
+			} else {
+				fmt.Println(m)
+			}
 		}
 	}()
 
@@ -165,9 +85,14 @@ func startShellCmd(cmd *exec.Cmd, name string, colorIndex uint8) error {
 		scanner.Split(bufio.ScanLines)
 		for scanner.Scan() {
 			m := scanner.Text()
-			fmt.Printf("%s | %s\n", aurora.Index(colorIndex, name).Faint(), m)
+			if name != "" {
+				fmt.Printf("%s | %s\n", aurora.Blue(name).Faint(), m)
+			} else {
+				fmt.Println(m)
+			}
 		}
 	}()
 
-	return nil
+	err = cmd.Wait()
+	return out.String(), err
 }

@@ -125,8 +125,8 @@ func main() {
 	r.modules["shmake.shell"] = getShellModule()
 	r.modules["shmake.cache"] = getCacheModule(r)
 	r.modules["shmake.git"] = getGitModule(r)
-	r.modules["shmake.yarn"] = getYarnModule(r)
 	r.modules["shmake.run"] = getRunModule()
+	r.modules["shmake.string"] = getStringModule()
 
 	// always be verbose atm
 
@@ -140,6 +140,7 @@ func main() {
 	err = os.Chdir(dir)
 	checkErr(err)
 
+	L.SetGlobal("current_dir", lua.LString(dir))
 	err = L.DoFile("main.lua")
 	checkErr(err)
 }

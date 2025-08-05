@@ -3,7 +3,6 @@ local shell = require("shmake.shell")
 local files = require("shmake.files")
 local cache = require("shmake.cache")
 local git = require("shmake.git")
-local yarn = require("shmake.yarn")
 local run = require("shmake.run")
 
 local cli = shmake.new{}
@@ -33,13 +32,6 @@ end)
 --         file = { fn = files.delete, args = 'file2', watch = './file3' }
 --     })
 -- end)
-
-shmake.cmd('install', function()
-    files.chdir('./examples/yarn')
-    yarn.install()
-    yarn.run('prettier -w package.json')
-    files.popdir()
-end)
 
 shmake.cmd('async', function()
     run.async(shell.run, 'sleep 2; echo "{{.Project}}"; echo "first"')

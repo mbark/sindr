@@ -22,25 +22,12 @@ func getShellModule() Module {
 	}
 }
 
-//func withVariables(runtime *Runtime, input string) string {
-//	t := template.Must(template.New("run").Parse(input))
-//	var buf bytes.Buffer
-//	err := t.Execute(&buf, runtime.variables)
-//	if err != nil {
-//		runtime.logger.With(slog.Any("err", err)).Error("execute template")
-//	}
-//
-//	return buf.String()
-//}
-
 func run(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 	lv := L.Get(-1)
 	c, err := MapString(1, lv)
 	if err != nil {
 		return nil, err
 	}
-
-	//command := withVariables(runtime, c)
 
 	runtime.logger.With(slog.String("command", c)).Debug("running shell command")
 
@@ -63,8 +50,6 @@ func output(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	//command := withVariables(runtime, c)
 
 	runtime.logger.With(slog.String("command", c)).Debug("running shell command and returning output")
 
@@ -92,7 +77,6 @@ func start(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 	}
 
 	for k, c := range startCommands {
-		//c.Cmd = withVariables(runtime, c.Cmd)
 		startCommands[k] = c
 	}
 

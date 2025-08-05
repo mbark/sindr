@@ -2,8 +2,8 @@ local shell = require("shmake.shell")
 local files = require("shmake.files")
 local cache = require("shmake.cache")
 local git = require("shmake.git")
-local yarn = require("shmake.yarn")
 local run = require("shmake.run")
+local string = require("shmake.string")
 
 function dump(o)
    if type(o) == 'table' then
@@ -49,6 +49,17 @@ cli:sub_command({"start", "subcommand", "subsub"})
     :flag("third-flag")
     :action(function(flags)
         print(dump(flags))
+    end)
+
+-- define a variable as global and it will automatically be accessible for template expansion
+someDir = current_dir.."/foobar"
+cli:command("templates")
+    :action(function()
+        print(string.template([[
+        current dir is {{.current_dir}}
+        some dir is {{.someDir}}
+        other var is {{.other_var}}
+        ]], { other_var = "something" }))
     end)
 
 cli:run()

@@ -27,7 +27,7 @@ func startWatching(runtime *Runtime, watchGlob string, onChange chan bool) (func
 			return err
 		}
 
-		// If it doesn't match try it with the relative path appended
+		// If it doesn't match, try it with the relative path appended
 		if g.Match(relPath) || g.Match("./"+relPath) {
 			return nil
 		} else {

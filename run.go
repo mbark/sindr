@@ -1,8 +1,10 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	lua "github.com/yuin/gopher-lua"
 )
@@ -71,7 +73,7 @@ func watch(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 		for {
 			done := runWatchFnOnce(runtime, L, fn, onChange)
 			if done {
-				break
+				return
 			}
 
 			log.Info("changes detected, running function")
@@ -88,22 +90,22 @@ func runWatchFnOnce(runtime *Runtime, L *lua.LState, fn *lua.LFunction, onChange
 	done := make(chan bool)
 	go func() {
 		err := Lt.CallByParam(lua.P{Fn: fn, NRet: 1, Protect: true})
-		if err != nil {
-			L.RaiseError(err.Error())
+		var lerr *lua.ApiError
+		if errors.As(err, &lerr) && strings.HasSuffix(lerr.Object.String(), "signal: killed") {
+			runtime.logger.With(slog.Any("err", err)).Info("function killed")
+		} else if err != nil {
+			runtime.logger.With(slog.Any("err", err)).Error("function error")
 		}
 		<-done
 	}()
 
+	runtime.logger.Info("waiting for changes")
 	select {
 	case <-Lt.Context().Done():
 		return true
-
 	case <-done:
 		return false
-
 	case <-onChange:
-		runtime.logger.Info("waiting for changes")
-		_ = <-onChange
 		return false
 	}
 }

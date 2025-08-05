@@ -86,19 +86,10 @@ end)
 
 cli:command("start"):action(function()
     run.watch('./file', function()
-        local pool = run.pool()
-        print('starting ping function')
-        pool.start(function() shell.run('ping google.com') end)
-        pool.start(function()shell.run('ping telness.se') end)
-        pool.await()
-        print('done with ping function')
+        print('start pinging')
+        shell.run('ping google.com')
     end)
     run.await()
-
---     shell.start({
---         foo = { cmd = [[ ping google.com ]], watch = "./file" },
---         bar = { cmd = [[ ping telness.se ]], watch = "./file2" }
---     })
 end)
 
 cli:run()

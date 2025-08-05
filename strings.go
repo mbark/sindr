@@ -9,14 +9,6 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
-func getStringModule() Module {
-	return Module{
-		exports: map[string]ModuleFunction{
-			"template": templateString,
-		},
-	}
-}
-
 func templateString(_ *Runtime, L *lua.LState) ([]lua.LValue, error) {
 	str, err := MapString(1, L.Get(1))
 	if err != nil {

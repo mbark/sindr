@@ -9,17 +9,6 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
-func getRunModule() Module {
-	return Module{
-		exports: map[string]ModuleFunction{
-			"async": async,
-			"wait":  wait,
-			"watch": watch,
-			"pool":  pool,
-		},
-	}
-}
-
 func pool(_ *Runtime, L *lua.LState) ([]lua.LValue, error) {
 	ud := L.NewUserData()
 	ud.Value = &Pool{wg: sync.WaitGroup{}}
@@ -148,7 +137,7 @@ func runWatchFnOnce(runtime *Runtime, L *lua.LState, fn *lua.LFunction, onChange
 		if errors.As(err, &lerr) && strings.HasSuffix(lerr.Object.String(), "signal: killed") {
 			runtime.logger.With(slog.Any("err", err)).Info("function killed")
 		} else if err != nil {
-			runtime.logger.With(slog.Any("err", err)).Error("function error")
+			L.RaiseError("%s", err.Error())
 		}
 		<-done
 	}()

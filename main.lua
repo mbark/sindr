@@ -1,8 +1,5 @@
-local shell = require("shmake.shell")
+local shmake = require("shmake.main")
 local files = require("shmake.files")
-local cache = require("shmake.cache")
-local run = require("shmake.run")
-local string = require("shmake.string")
 
 function dump(o)
    if type(o) == 'table' then
@@ -17,9 +14,9 @@ function dump(o)
    end
 end
 
-local cli = shmake.new('shmake', { usage = "make shmake"})
+local cli = shmake.command('shmake', { usage = "make shmake"})
 
-local startcmd = cli:command("flags", { usage = "show flags and args" })
+local flagcmd = cli:command("flags", { usage = "show flags and args" })
     :flag("some-value", { usage = "pass some flag" })
     :string_flag("other-value", { default = "foobar" })
     :int_flag("some-int", { default = 5 })
@@ -32,7 +29,7 @@ local startcmd = cli:command("flags", { usage = "show flags and args" })
     end)
 
 -- define sub commands either by using command on the variable
-startcmd:command("subber")
+flagcmd:command("subber")
     :action(function(flags)
         print(dump(flags))
     end)
@@ -55,7 +52,7 @@ cli:sub_command({"flags", "subcommand", "subsub"})
 someDir = current_dir.."/foobar"
 cli:command("templates")
     :action(function()
-        print(string.template([[
+        print(shmake.string([[
         current dir is {{.current_dir}}
         some dir is {{.someDir}}
         other var is {{.other_var}}
@@ -63,46 +60,51 @@ cli:command("templates")
     end)
 
 cli:command("async"):action(function()
-    run.async(function() shell.run('sleep 1; echo "first"', { prefix = 'one' }) end)
-    run.async(function() shell.run('sleep 2; echo "second"', { prefix = 'two' }) end)
-    run.wait()
-    shell.run('echo "third"')
+    shmake.async(function() shmake.shell('sleep 1; echo "first"', { prefix = 'one' }) end)
+    shmake.async(function() shmake.shell('sleep 2; echo "second"', { prefix = 'two' }) end)
+    shmake.wait()
+    shmake.shell('echo "third"')
 end)
 
 cli:command("watch"):action(function()
-    run.watch('./file3', function() files.delete('file2') end)
-    run.watch('./file4', function() files.delete('file1') end)
-    run.wait()
+    shmake.watch('./file3', function()
+        print('touched file3, deleting file2')
+        files.delete('file2')
+    end)
+    shmake.watch('./file4', function()
+        print('touched file4, deleting file1')
+        files.delete('file1')
+    end)
+    shmake.wait()
 end)
 
 cli:command("run"):action(function()
-    shell.run('echo "running"')
+    shmake.shell('echo "running"')
 end)
 
 cli:command("output"):action(function()
-    local output = shell.run('echo "running"')
+    local output = shmake.shell('echo "running"')
     print("output is "..output)
     -- or use globals to allow templates
-    out = shell.run('echo "running again"')
-    print(string.template('output is {{.out}}'))
+    out = shmake.shell('echo "running again"')
+    print(shmake.string('output is {{.out}}'))
 end)
 
 cli:command("start"):action(function()
-    run.watch('./file', function()
-        local pool = run.pool()
+    shmake.watch('./file', function()
+        local pool = shmake.pool()
         print('start pinging')
-        pool:run(function() shell.run('ping google.com', { prefix = 'google ' }) end)
-        pool:run(function() shell.run('ping telness.se', { prefix = 'telness' }) end)
+        pool:run(function() shmake.shell('ping google.com') end)
+        pool:run(function() shmake.shell('ping telness.se') end)
         pool:wait()
     end)
 end)
 
 cli:command("pool"):action(function()
-    local pool = run.pool()
-    pool:run(function() shell.run('ping google.com') end)
-    pool:run(function() shell.run('ping telness.se') end)
+    local pool = shmake.pool()
+    pool:run(function() shmake.shell('ping google.com') end)
+    pool:run(function() shmake.shell('ping telness.se') end)
     pool:wait()
 end)
-
 
 cli:run()

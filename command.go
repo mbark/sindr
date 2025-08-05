@@ -26,9 +26,8 @@ type Command struct {
 }
 
 var (
-	_ LuaType      = ShmakeType{}
-	_ LuaTypeNewer = ShmakeType{}
-	_ LuaType      = CommandType{}
+	_ LuaType = ShmakeType{}
+	_ LuaType = CommandType{}
 )
 
 type ShmakeType struct {
@@ -42,12 +41,8 @@ func (s ShmakeType) TypeName() string {
 	return "shmake"
 }
 
-func (s ShmakeType) GlobalName() string {
-	return "shmake"
-}
-
-func (s ShmakeType) New(L *lua.LState) int {
-	shmake := &Shmake{Runtime: s.Runtime}
+func newCommand(r *Runtime, L *lua.LState) ([]lua.LValue, error) {
+	shmake := &Shmake{Runtime: r}
 	name := L.CheckString(1)
 
 	var options commandOptions
@@ -64,7 +59,11 @@ func (s ShmakeType) New(L *lua.LState) int {
 			Usage: options.Usage,
 		},
 	}
-	return NewUserData(L, shmake, ShmakeType{})
+
+	ud := L.NewUserData()
+	ud.Value = shmake
+	L.SetMetatable(ud, L.GetTypeMetatable(ShmakeType{}.TypeName()))
+	return []lua.LValue{ud}, nil
 }
 
 func (s ShmakeType) Funcs() map[string]lua.LGFunction {
@@ -182,7 +181,7 @@ func (s ShmakeType) Run(L *lua.LState) int {
 
 	err := cmd.Command.Run(L.Context(), os.Args)
 	if err != nil {
-		L.RaiseError("failed to run shmake: %v", err)
+		L.RaiseError("failed to shell shmake: %v", err)
 	}
 
 	s.Runtime.wg.Wait()

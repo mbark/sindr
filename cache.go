@@ -9,16 +9,6 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
-func getCacheModule(runtime *Runtime) Module {
-	return Module{
-		exports: map[string]ModuleFunction{
-			"diff":         diff,
-			"store":        store,
-			"with_version": withVersion,
-		},
-	}
-}
-
 type Cache struct {
 	diskv *diskv.Diskv
 

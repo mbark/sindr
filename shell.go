@@ -11,19 +11,11 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
-func getShellModule() Module {
-	return Module{
-		exports: map[string]ModuleFunction{
-			"run": run,
-		},
-	}
-}
-
 type runOptions struct {
 	Prefix string
 }
 
-func run(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
+func shell(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 	lv := L.Get(1)
 	c, err := MapString(1, lv)
 	if err != nil {

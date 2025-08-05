@@ -97,6 +97,26 @@ func NewRuntime(logFile io.WriteCloser) (*Runtime, error) {
 	return r, nil
 }
 
+func getMainModule(r *Runtime) Module {
+	return Module{
+		exports: map[string]ModuleFunction{
+			"command": newCommand,
+			"string":  templateString,
+
+			"async": async,
+			"wait":  wait,
+			"watch": watch,
+			"pool":  pool,
+
+			"shell": shell,
+
+			"diff":         diff,
+			"store":        store,
+			"with_version": withVersion,
+		},
+	}
+}
+
 func main() {
 	L := lua.NewState()
 	defer L.Close()
@@ -121,11 +141,8 @@ func main() {
 
 	RegisterLuaTypes(r, L, ShmakeType{Runtime: r}, CommandType{Runtime: r}, PoolType{})
 
+	r.modules["shmake.main"] = getMainModule(r)
 	r.modules["shmake.files"] = getFileModule(r)
-	r.modules["shmake.shell"] = getShellModule()
-	r.modules["shmake.cache"] = getCacheModule(r)
-	r.modules["shmake.run"] = getRunModule()
-	r.modules["shmake.string"] = getStringModule()
 
 	for name, module := range r.modules {
 		L.PreloadModule(name, module.withLogging().loader(r))

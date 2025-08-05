@@ -127,8 +127,6 @@ func main() {
 	r.modules["shmake.run"] = getRunModule()
 	r.modules["shmake.string"] = getStringModule()
 
-	// always be verbose atm
-
 	for name, module := range r.modules {
 		L.PreloadModule(name, module.withLogging().loader(r))
 	}

@@ -13,7 +13,7 @@ func getRunModule() Module {
 	return Module{
 		exports: map[string]ModuleFunction{
 			"async": async,
-			"await": await,
+			"wait":  wait,
 			"watch": watch,
 			"pool":  pool,
 		},
@@ -94,7 +94,7 @@ func async(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 	return NoReturnVal, nil
 }
 
-func await(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
+func wait(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 	runtime.wg.Wait()
 	return NoReturnVal, nil
 }

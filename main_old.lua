@@ -2,7 +2,6 @@ local shmake = require "shmake.main"
 local shell = require("shmake.shell")
 local files = require("shmake.files")
 local cache = require("shmake.cache")
-local git = require("shmake.git")
 local run = require("shmake.run")
 
 local cli = shmake.new{}
@@ -34,8 +33,8 @@ end)
 -- end)
 
 shmake.cmd('async', function()
-    run.async(shell.run, 'sleep 2; echo "{{.Project}}"; echo "first"')
-    run.async(shell.run, 'sleep 2; echo "second"')
+    run.async(function() shell.run('sleep 2; echo "{{.Project}}"; echo "first"') end)
+    run.async(function() shell.run('sleep 2; echo "second"') end)
     run.await()
     shell.run('echo "fourth"')
 end)

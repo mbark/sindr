@@ -1,7 +1,6 @@
 local shell = require("shmake.shell")
 local files = require("shmake.files")
 local cache = require("shmake.cache")
-local git = require("shmake.git")
 local run = require("shmake.run")
 local string = require("shmake.string")
 
@@ -61,5 +60,25 @@ cli:command("templates")
         other var is {{.other_var}}
         ]], { other_var = "something" }))
     end)
+
+cli:command("async"):action(function()
+    run.async(function() shell.run('sleep 1; echo "first"') end)
+    run.async(function() shell.run('sleep 2; echo "second"') end)
+    run.await()
+    shell.run('echo "third"')
+end)
+
+cli:command("watch"):action(function()
+    run.async(function() shell.run('sleep 1; echo "first"') end)
+    run.async(function() shell.run('sleep 2; echo "second"') end)
+    run.await()
+    shell.run('echo "third"')
+end)
+
+cli:command("clean"):action(function()
+    run.watch('./file3', function() files.delete('file2') end)
+    run.watch('./file4', function() files.delete('file1') end)
+    run.await()
+end)
 
 cli:run()

@@ -124,7 +124,6 @@ func main() {
 	r.modules["shmake.files"] = getFileModule(r)
 	r.modules["shmake.shell"] = getShellModule()
 	r.modules["shmake.cache"] = getCacheModule(r)
-	r.modules["shmake.git"] = getGitModule(r)
 	r.modules["shmake.run"] = getRunModule()
 	r.modules["shmake.string"] = getStringModule()
 

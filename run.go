@@ -2,9 +2,9 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
 
 	lua "github.com/yuin/gopher-lua"
 )
@@ -15,8 +15,63 @@ func getRunModule() Module {
 			"async": async,
 			"await": await,
 			"watch": watch,
+			"pool":  pool,
 		},
 	}
+}
+
+func pool(_ *Runtime, L *lua.LState) ([]lua.LValue, error) {
+	ud := L.NewUserData()
+	ud.Value = &Pool{wg: sync.WaitGroup{}}
+	L.SetMetatable(ud, L.GetTypeMetatable(PoolType{}.TypeName()))
+	return []lua.LValue{ud}, nil
+}
+
+var _ LuaType = new(PoolType)
+
+type PoolType struct{}
+
+func (p PoolType) TypeName() string {
+	return "pool"
+}
+
+func (p PoolType) Funcs() map[string]lua.LGFunction {
+	return map[string]lua.LGFunction{
+		"run":  p.Run,
+		"wait": p.Wait,
+	}
+}
+
+func (PoolType) Run(L *lua.LState) int {
+	p := IsUserData[*Pool](L)
+	fn, err := MapFunction(2, L.Get(2))
+	if err != nil {
+		L.RaiseError(err.Error())
+	}
+
+	p.wg.Add(1)
+	go func() {
+		Lt, cancel := L.NewThread()
+		defer cancel()
+		defer p.wg.Done()
+
+		err = Lt.CallByParam(lua.P{Fn: fn, NRet: 1, Protect: true})
+		if err != nil {
+			L.RaiseError(err.Error())
+		}
+	}()
+
+	return 0
+}
+
+func (PoolType) Wait(L *lua.LState) int {
+	p := IsUserData[*Pool](L)
+	p.wg.Wait()
+	return 0
+}
+
+type Pool struct {
+	wg sync.WaitGroup
 }
 
 func async(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
@@ -32,7 +87,6 @@ func async(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 
 		err := Lt.CallByParam(lua.P{Fn: fn, NRet: 1, Protect: true})
 		if err != nil {
-			fmt.Printf("%+v\n", err)
 			L.RaiseError(err.Error())
 		}
 	}()

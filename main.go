@@ -119,7 +119,7 @@ func main() {
 	r, err := NewRuntime(logFile)
 	checkErr(err)
 
-	RegisterLuaTypes(r, L, ShmakeType{Runtime: r}, CommandType{Runtime: r})
+	RegisterLuaTypes(r, L, ShmakeType{Runtime: r}, CommandType{Runtime: r}, PoolType{})
 
 	r.modules["shmake.files"] = getFileModule(r)
 	r.modules["shmake.shell"] = getShellModule()

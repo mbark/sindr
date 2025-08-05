@@ -184,14 +184,12 @@ func (s ShmakeType) Run(L *lua.LState) int {
 	if err != nil {
 		L.RaiseError("failed to run shmake: %v", err)
 	}
+
+	s.Runtime.wg.Wait()
 	return 0
 }
 
 func (c CommandType) TypeName() string {
-	return "command"
-}
-
-func (c CommandType) GlobalName() string {
 	return "command"
 }
 

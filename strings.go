@@ -36,7 +36,6 @@ func templateString(_ *Runtime, L *lua.LState) ([]lua.LValue, error) {
 			return nil, ErrBadArg{Index: 2, Message: fmt.Errorf("invalid option: %w", err).Error()}
 		}
 	}
-	fmt.Println("values", values)
 
 	globals := L.Get(lua.GlobalsIndex)
 	tbl, ok := globals.(*lua.LTable)

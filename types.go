@@ -28,7 +28,6 @@ func NewUserData[T any, LT LuaType](L *lua.LState, t T, lt LT) int {
 
 type LuaType interface {
 	TypeName() string
-	GlobalName() string
 	Funcs() map[string]lua.LGFunction
 }
 
@@ -36,14 +35,25 @@ type LuaTypeNewer interface {
 	New(L *lua.LState) int
 }
 
+type LuaTypeGlobal interface {
+	GlobalName() string
+}
+
 func RegisterLuaTypes(runtime *Runtime, L *lua.LState, types ...LuaType) {
 	for _, lType := range types {
+		logger := runtime.logger.With(slog.String("type", lType.TypeName()))
 		mt := L.NewTypeMetatable(lType.TypeName())
-		L.SetGlobal(lType.GlobalName(), mt)
+		L.SetField(mt, "__index", L.SetFuncs(L.NewTable(), lType.Funcs()))
+
+		if lType, ok := lType.(LuaTypeGlobal); ok {
+			L.SetGlobal(lType.GlobalName(), mt)
+			logger.With(slog.String("global", lType.GlobalName())).Debug("registered type with global name")
+		}
 		if nw, ok := lType.(LuaTypeNewer); ok {
 			L.SetField(mt, "new", L.NewFunction(nw.New))
+			logger.With(slog.String("new", "new")).Debug("registered type with new function")
 		}
-		L.SetField(mt, "__index", L.SetFuncs(L.NewTable(), lType.Funcs()))
-		runtime.logger.Info("registered new type", slog.String("type", lType.TypeName()))
+
+		logger.Info("registered new type")
 	}
 }

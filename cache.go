@@ -95,13 +95,12 @@ func store(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 }
 
 func withVersion(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
-	lv := L.Get(-1)
-	fn, err := MapFunction(1, lv)
+	options, err := mapCacheDiffOptions(L, 1, 1)
 	if err != nil {
 		return nil, err
 	}
 
-	options, err := mapCacheDiffOptions(L, 1, -2)
+	fn, err := MapFunction(2, L.Get(2))
 	if err != nil {
 		return nil, err
 	}

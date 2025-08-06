@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/logrusorgru/aurora/v3"
+	"github.com/charmbracelet/lipgloss"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -57,6 +57,7 @@ func startShellCmd(cmd *exec.Cmd, name string) (string, error) {
 		return "", fmt.Errorf("cmd start: %w", err)
 	}
 
+	style := lipgloss.NewStyle().Foreground(lipgloss.ANSIColor(12)).Faint(true)
 	var out strings.Builder
 	go func() {
 		scanner := bufio.NewScanner(stdout)
@@ -65,7 +66,7 @@ func startShellCmd(cmd *exec.Cmd, name string) (string, error) {
 			m := scanner.Text()
 			out.WriteString(m)
 			if name != "" {
-				fmt.Printf("%s | %s\n", aurora.Blue(name).Faint(), m)
+				fmt.Printf("%s | %s\n", style.Render(name), m)
 			} else {
 				fmt.Println(m)
 			}
@@ -78,7 +79,7 @@ func startShellCmd(cmd *exec.Cmd, name string) (string, error) {
 		for scanner.Scan() {
 			m := scanner.Text()
 			if name != "" {
-				fmt.Printf("%s | %s\n", aurora.Blue(name).Faint(), m)
+				fmt.Printf("%s | %s\n", style.Render(name), m)
 			} else {
 				fmt.Println(m)
 			}

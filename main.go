@@ -10,8 +10,8 @@ import (
 	"os"
 	"sync"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
-	"github.com/logrusorgru/aurora/v3"
 	slogmulti "github.com/samber/slog-multi"
 	lua "github.com/yuin/gopher-lua"
 )
@@ -133,10 +133,21 @@ func main() {
 	L.SetContext(ctx)
 
 	checkErr := func(err error) {
-		if err != nil {
-			_, _ = fmt.Fprintf(os.Stderr, "%s\n", aurora.Red(err))
-			os.Exit(1)
+		if err == nil {
+			return
 		}
+
+		errorStyle := lipgloss.NewStyle().Foreground(lipgloss.ANSIColor(1))
+
+		var lerr *lua.ApiError
+		if errors.As(err, &lerr) {
+			_, _ = fmt.Fprintf(os.Stderr, "%s\n", errorStyle.Bold(true).Render(lerr.Object.String()))
+			_, _ = fmt.Fprintf(os.Stderr, "%s\n", errorStyle.Faint(true).Render(lerr.StackTrace))
+		} else if err != nil {
+			_, _ = fmt.Fprintf(os.Stderr, "%s\n", errorStyle.Bold(true).Render(err.Error()))
+		}
+
+		os.Exit(1)
 	}
 
 	logFile, err := getLogFile()

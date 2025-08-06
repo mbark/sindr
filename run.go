@@ -103,7 +103,7 @@ func watch(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 	go func() {
 		defer runtime.wg.Done()
 
-		log := runtime.logger.With(slog.String("glob", glob))
+		log := slog.With(slog.String("glob", glob))
 
 		onChange := make(chan bool)
 		close, err := startWatching(runtime, glob, onChange)
@@ -135,14 +135,14 @@ func runWatchFnOnce(runtime *Runtime, L *lua.LState, fn *lua.LFunction, onChange
 		err := Lt.CallByParam(lua.P{Fn: fn, NRet: 1, Protect: true})
 		var lerr *lua.ApiError
 		if errors.As(err, &lerr) && strings.HasSuffix(lerr.Object.String(), "signal: killed") {
-			runtime.logger.With(slog.Any("err", err)).Debug("function killed")
+			slog.With(slog.Any("err", err)).Debug("function killed")
 		} else if err != nil {
 			L.RaiseError("%s", err.Error())
 		}
 		<-done
 	}()
 
-	runtime.logger.Debug("waiting for changes")
+	slog.Debug("waiting for changes")
 	select {
 	case <-Lt.Context().Done():
 		return true

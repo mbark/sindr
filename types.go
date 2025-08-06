@@ -41,7 +41,7 @@ type LuaTypeGlobal interface {
 
 func RegisterLuaTypes(runtime *Runtime, L *lua.LState, types ...LuaType) {
 	for _, lType := range types {
-		logger := runtime.logger.With(slog.String("type", lType.TypeName()))
+		logger := slog.With(slog.String("type", lType.TypeName()))
 		mt := L.NewTypeMetatable(lType.TypeName())
 		L.SetField(mt, "__index", L.SetFuncs(L.NewTable(), lType.Funcs()))
 

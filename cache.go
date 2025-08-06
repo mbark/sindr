@@ -10,8 +10,7 @@ import (
 )
 
 type Cache struct {
-	diskv *diskv.Diskv
-
+	diskv          *diskv.Diskv
 	ForceOutOfDate bool // ForceOutOfDate makes all gets return nil
 }
 
@@ -85,7 +84,7 @@ func store(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 		return nil, err
 	}
 
-	runtime.logger.
+	slog.
 		With(slog.String("version", options.Version)).
 		With(slog.String("name", options.Name)).
 		Debug("storing cache version")
@@ -133,7 +132,7 @@ func checkIfDiff(runtime *Runtime, options cacheDiffOptions) (bool, error) {
 	}
 
 	isDiff := currentVersion == nil || *currentVersion != options.Version
-	runtime.logger.With(
+	slog.With(
 		slog.String("version", options.Version),
 		slog.Any("current_version", currentVersion),
 		slog.String("name", options.Name),

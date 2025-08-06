@@ -30,7 +30,7 @@ type Module struct {
 func (m Module) withLogging() Module {
 	for k, fn := range m.exports {
 		m.exports[k] = func(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
-			logger := runtime.logger.With(slog.String("fn", k))
+			logger := slog.With(slog.String("fn", k))
 			logger.Debug("running")
 			res, err := fn(runtime, L)
 			logger.With(slog.Any("err", err), slog.Any("res", res)).Debug("done")
@@ -84,7 +84,6 @@ type Runtime struct {
 	prevDir string
 
 	cache   Cache
-	logger  *slog.Logger
 	logFile io.WriteCloser
 }
 
@@ -95,10 +94,11 @@ func NewRuntime(logFile io.WriteCloser) (*Runtime, error) {
 		slog.NewJSONHandler(logFile, &slog.HandlerOptions{Level: slog.LevelDebug}),
 		log.New(os.Stderr),
 	))
+	slog.SetDefault(logger)
+
 	r := &Runtime{
 		modules: make(map[string]Module),
 		cache:   NewCache(cacheDir),
-		logger:  logger,
 		logFile: logFile,
 	}
 	return r, nil

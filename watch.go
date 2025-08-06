@@ -35,7 +35,7 @@ func startWatching(runtime *Runtime, watchGlob string, onChange chan bool) (func
 		}
 	})
 
-	log := runtime.logger.With(slog.String("glob", watchGlob))
+	log := slog.With(slog.String("glob", watchGlob))
 
 	go func() {
 		for {

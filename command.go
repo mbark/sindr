@@ -167,10 +167,10 @@ func (s ShmakeType) Run(L *lua.LState) int {
 	cmd.Command.Before = func(ctx context.Context, cmd *cli.Command) (context.Context, error) {
 		if verbose {
 			slog.SetLogLoggerLevel(slog.LevelDebug)
-			shmake.Runtime.logger = slog.New(slogmulti.Fanout(
+			slog.SetDefault(slog.New(slogmulti.Fanout(
 				slog.NewJSONHandler(shmake.Runtime.logFile, &slog.HandlerOptions{Level: slog.LevelDebug}),
 				log.NewWithOptions(os.Stderr, log.Options{Level: log.DebugLevel}),
-			))
+			)))
 		}
 		if noCache {
 			shmake.Runtime.cache.ForceOutOfDate = noCache

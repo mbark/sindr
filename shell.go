@@ -30,7 +30,7 @@ func shell(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 		}
 	}
 
-	runtime.logger.With(slog.String("command", c)).Debug("running shell command")
+	slog.With(slog.String("command", c)).Debug("running shell command")
 
 	cmd := exec.CommandContext(L.Context(), "bash", "-c", c)
 	out, err := startShellCmd(cmd, options.Prefix)

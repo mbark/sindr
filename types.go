@@ -54,6 +54,6 @@ func RegisterLuaTypes(runtime *Runtime, L *lua.LState, types ...LuaType) {
 			logger.With(slog.String("new", "new")).Debug("registered type with new function")
 		}
 
-		logger.Info("registered new type")
+		logger.Debug("registered new type")
 	}
 }

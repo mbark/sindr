@@ -88,7 +88,7 @@ func store(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 	runtime.logger.
 		With(slog.String("version", options.Version)).
 		With(slog.String("name", options.Name)).
-		Info("storing cache version")
+		Debug("storing cache version")
 
 	err = runtime.cache.StoreVersion(options.Name, options.Version)
 	return NoReturnVal, nil

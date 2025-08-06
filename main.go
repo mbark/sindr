@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -9,7 +10,9 @@ import (
 	"os"
 	"sync"
 
+	"github.com/charmbracelet/log"
 	"github.com/logrusorgru/aurora/v3"
+	slogmulti "github.com/samber/slog-multi"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -87,13 +90,17 @@ type Runtime struct {
 
 func NewRuntime(logFile io.WriteCloser) (*Runtime, error) {
 	cacheDir := cacheHome()
+
+	logger := slog.New(slogmulti.Fanout(
+		slog.NewJSONHandler(logFile, &slog.HandlerOptions{Level: slog.LevelDebug}),
+		log.New(os.Stderr),
+	))
 	r := &Runtime{
 		modules: make(map[string]Module),
 		cache:   NewCache(cacheDir),
-		logger:  slog.New(slog.NewJSONHandler(logFile, nil)),
+		logger:  logger,
 		logFile: logFile,
 	}
-
 	return r, nil
 }
 
@@ -153,6 +160,21 @@ func main() {
 
 	err = os.Chdir(dir)
 	checkErr(err)
+
+	L.SetGlobal("print", L.NewFunction(func(L *lua.LState) int {
+		var buf bytes.Buffer
+		top := L.GetTop()
+		for i := 1; i <= top; i++ {
+			buf.WriteString(L.Get(i).String())
+			if i != top {
+				buf.WriteString("\t")
+			}
+		}
+		buf.WriteString("\n")
+
+		_, _ = os.Stdout.Write(buf.Bytes())
+		return 0
+	}))
 
 	L.SetGlobal("current_dir", lua.LString(dir))
 	err = L.DoFile("main.lua")

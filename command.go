@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/mbark/devslog"
+	"github.com/charmbracelet/log"
 	slogmulti "github.com/samber/slog-multi"
 	"github.com/urfave/cli/v3"
 	lua "github.com/yuin/gopher-lua"
@@ -167,10 +167,9 @@ func (s ShmakeType) Run(L *lua.LState) int {
 	cmd.Command.Before = func(ctx context.Context, cmd *cli.Command) (context.Context, error) {
 		if verbose {
 			slog.SetLogLoggerLevel(slog.LevelDebug)
-			opts := &slog.HandlerOptions{Level: slog.LevelDebug}
 			shmake.Runtime.logger = slog.New(slogmulti.Fanout(
-				slog.NewJSONHandler(shmake.Runtime.logFile, opts),
-				devslog.NewHandler(os.Stdout, &devslog.Options{HandlerOptions: opts}),
+				slog.NewJSONHandler(shmake.Runtime.logFile, &slog.HandlerOptions{Level: slog.LevelDebug}),
+				log.NewWithOptions(os.Stderr, log.Options{Level: log.DebugLevel}),
 			))
 		}
 		if noCache {
@@ -181,7 +180,7 @@ func (s ShmakeType) Run(L *lua.LState) int {
 
 	err := cmd.Command.Run(L.Context(), os.Args)
 	if err != nil {
-		L.RaiseError("failed to run shmake: %v", err)
+		L.RaiseError("%s", err.Error())
 	}
 
 	s.Runtime.wg.Wait()

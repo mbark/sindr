@@ -135,14 +135,14 @@ func runWatchFnOnce(runtime *Runtime, L *lua.LState, fn *lua.LFunction, onChange
 		err := Lt.CallByParam(lua.P{Fn: fn, NRet: 1, Protect: true})
 		var lerr *lua.ApiError
 		if errors.As(err, &lerr) && strings.HasSuffix(lerr.Object.String(), "signal: killed") {
-			runtime.logger.With(slog.Any("err", err)).Info("function killed")
+			runtime.logger.With(slog.Any("err", err)).Debug("function killed")
 		} else if err != nil {
 			L.RaiseError("%s", err.Error())
 		}
 		<-done
 	}()
 
-	runtime.logger.Info("waiting for changes")
+	runtime.logger.Debug("waiting for changes")
 	select {
 	case <-Lt.Context().Done():
 		return true

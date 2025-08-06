@@ -13,6 +13,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
 	slogmulti "github.com/samber/slog-multi"
+	"github.com/urfave/cli/v3"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -125,6 +126,8 @@ func getMainModule(r *Runtime) Module {
 }
 
 func main() {
+	cli.RootCommandHelpTemplate = helpTemplate
+
 	L := lua.NewState()
 	defer L.Close()
 

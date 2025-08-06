@@ -10,14 +10,10 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
-type deleteConfig struct {
-	Files           string
-	OnlyDirectories bool
-}
-
-func getFileModule(runtime *Runtime) Module {
+func getFileModule(_ *Runtime) Module {
 	return Module{
 		exports: map[string]ModuleFunction{
+			"write":     write,
 			"delete":    delete,
 			"copy":      copy,
 			"mkdir":     mkdir,
@@ -50,6 +46,29 @@ func findGlobMatches(config deleteConfig) ([]string, error) {
 	}
 
 	return files, nil
+}
+
+func write(_ *Runtime, L *lua.LState) ([]lua.LValue, error) {
+	fileName, err := MapString(1, L.Get(1))
+	if err != nil {
+		return nil, err
+	}
+	content, err := MapString(2, L.Get(2))
+	if err != nil {
+		return nil, err
+	}
+
+	err = os.WriteFile(fileName, []byte(content), 0600)
+	if err != nil {
+		return nil, err
+	}
+
+	return NoReturnVal, nil
+}
+
+type deleteConfig struct {
+	Files           string
+	OnlyDirectories bool
 }
 
 func delete(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
@@ -131,26 +150,25 @@ type mkdirOptions struct {
 }
 
 func mkdir(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
-	lv := L.Get(-1)
-
-	var opts mkdirOptions
-	if str, ok := lv.(lua.LString); ok {
-		opts.Dir = string(str)
-		opts.All = false
-	} else if _, ok := lv.(*lua.LTable); ok {
-		err := MapTable(1, lv, &opts)
+	dir, err := MapString(1, L.Get(-1))
+	if err != nil {
+		return nil, err
+	}
+	var options mkdirOptions
+	if L.GetTop() >= 2 {
+		err := MapTable(2, L.Get(2), &options)
 		if err != nil {
 			return nil, err
 		}
-	} else {
-		return nil, ErrBadArg{Index: 1, Message: "string or table expected"}
 	}
 
-	var err error
-	if opts.All {
-		err = os.MkdirAll(opts.Dir, 0700)
+	if options.All {
+		err = os.MkdirAll(dir, 0700)
 	} else {
-		err = os.Mkdir(opts.Dir, 0700)
+		err = os.Mkdir(dir, 0700)
+	}
+	if errors.Is(err, os.ErrExist) {
+		return NoReturnVal, nil
 	}
 	if err != nil {
 		return nil, err

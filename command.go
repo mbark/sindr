@@ -181,7 +181,7 @@ func (s ShmakeType) Run(L *lua.LState) int {
 
 	err := cmd.Command.Run(L.Context(), os.Args)
 	if err != nil {
-		L.RaiseError("failed to shell shmake: %v", err)
+		L.RaiseError("failed to run shmake: %v", err)
 	}
 
 	s.Runtime.wg.Wait()

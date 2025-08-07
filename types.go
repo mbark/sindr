@@ -47,7 +47,8 @@ func RegisterLuaTypes(runtime *Runtime, l *lua.LState, types ...LuaType) {
 
 		if lType, ok := lType.(LuaTypeGlobal); ok {
 			l.SetGlobal(lType.GlobalName(), mt)
-			logger.With(slog.String("global", lType.GlobalName())).Debug("registered type with global name")
+			logger.With(slog.String("global", lType.GlobalName())).
+				Debug("registered type with global name")
 		}
 		if nw, ok := lType.(LuaTypeNewer); ok {
 			l.SetField(mt, "new", l.NewFunction(nw.New))

@@ -122,3 +122,7 @@ The linter configuration ensures code quality and security best practices are fo
 ## Linting Guidelines
 
 - You're not allowed to modify the golangci-lint to remove linters unless specifically requested to do so.
+
+## Linting Best Practices
+
+- Before running golangci-lint run, always run golangci-lint fmt to ensure the files are formatted.

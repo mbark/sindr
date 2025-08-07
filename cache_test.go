@@ -6,9 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/mbark/shmake"
+	"github.com/stretchr/testify/require"
 )
 
 func withMainLua(t *testing.T, dir string, contents string) {

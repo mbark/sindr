@@ -59,7 +59,7 @@ func write(_ *Runtime, l *lua.LState) ([]lua.LValue, error) {
 		return nil, err
 	}
 
-	err = os.WriteFile(fileName, []byte(content), 0600)
+	err = os.WriteFile(fileName, []byte(content), 0o600)
 	if err != nil {
 		return nil, err
 	}
@@ -167,9 +167,9 @@ func mkdir(_ *Runtime, l *lua.LState) ([]lua.LValue, error) {
 	}
 
 	if options.All {
-		err = os.MkdirAll(dir, 0700)
+		err = os.MkdirAll(dir, 0o700)
 	} else {
-		err = os.Mkdir(dir, 0700)
+		err = os.Mkdir(dir, 0o700)
 	}
 	if errors.Is(err, os.ErrExist) {
 		return NoReturnVal, nil

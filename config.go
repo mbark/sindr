@@ -23,7 +23,7 @@ func getLogFile() (io.WriteCloser, error) {
 	cacheDir := cacheHome()
 	logFile := logPath(cacheDir)
 
-	err := os.MkdirAll(cacheDir, 0700)
+	err := os.MkdirAll(cacheDir, 0o700)
 	if err != nil {
 		return nil, fmt.Errorf("creating cache directory: %w", err)
 	}
@@ -36,7 +36,11 @@ func getLogFile() (io.WriteCloser, error) {
 	case err != nil:
 		return nil, fmt.Errorf("creating cache directory: %w", err)
 	default:
-		buf, err = os.OpenFile(filepath.Clean(logFile), os.O_APPEND|os.O_WRONLY, 0600) // #nosec G304
+		buf, err = os.OpenFile(
+			filepath.Clean(logFile),
+			os.O_APPEND|os.O_WRONLY,
+			0o600,
+		) // #nosec G304
 	}
 	return buf, err
 }

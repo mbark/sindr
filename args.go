@@ -70,7 +70,10 @@ func MapArray[T any](l *lua.LState, idx int) ([]T, error) {
 	val := gluamapper.ToGoValue(lv, gluamapper.Option{})
 	anyv, ok := val.([]any)
 	if !ok {
-		return nil, ErrBadArg{Index: idx, Message: fmt.Errorf("invalid array, expected array, got %T", val).Error()}
+		return nil, ErrBadArg{
+			Index:   idx,
+			Message: fmt.Errorf("invalid array, expected array, got %T", val).Error(),
+		}
 	}
 
 	var arr []T

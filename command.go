@@ -159,7 +159,10 @@ func (s ShmakeType) Run(l *lua.LState) int {
 		if verbose {
 			slog.SetLogLoggerLevel(slog.LevelDebug)
 			slog.SetDefault(slog.New(slogmulti.Fanout(
-				slog.NewJSONHandler(shmake.Runtime.logFile, &slog.HandlerOptions{Level: slog.LevelDebug}),
+				slog.NewJSONHandler(
+					shmake.Runtime.logFile,
+					&slog.HandlerOptions{Level: slog.LevelDebug},
+				),
 				log.NewWithOptions(os.Stderr, log.Options{Level: log.DebugLevel}),
 			)))
 		}
@@ -279,6 +282,7 @@ func (c CommandType) StringArg(l *lua.LState) int {
 	})
 	return NewUserData(l, cmd, CommandType{})
 }
+
 func (c CommandType) IntArg(l *lua.LState) int {
 	cmd := IsUserData[*Command](l)
 	name := l.CheckString(2)

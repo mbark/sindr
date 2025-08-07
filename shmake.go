@@ -185,7 +185,8 @@ func checkErr(err error) {
 
 	var lerr *lua.ApiError
 	if errors.As(err, &lerr) {
-		slog.With(slog.String("stack_trace", strings.ReplaceAll(lerr.StackTrace, "\t", "  "))).Error(lerr.Object.String())
+		slog.With(slog.String("stack_trace", strings.ReplaceAll(lerr.StackTrace, "\t", "  "))).
+			Error(lerr.Object.String())
 	} else if err != nil {
 		slog.Error(lerr.Object.String())
 	}

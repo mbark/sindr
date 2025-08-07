@@ -4,13 +4,12 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"log/slog"
 	"os"
+	"strings"
 	"sync"
 
-	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
 	slogmulti "github.com/samber/slog-multi"
 	"github.com/urfave/cli/v3"
@@ -93,7 +92,7 @@ func NewRuntime(logFile io.WriteCloser) (*Runtime, error) {
 
 	logger := slog.New(slogmulti.Fanout(
 		slog.NewJSONHandler(logFile, &slog.HandlerOptions{Level: slog.LevelDebug}),
-		log.New(os.Stderr),
+		log.NewWithOptions(os.Stderr, log.Options{}),
 	))
 	slog.SetDefault(logger)
 
@@ -140,14 +139,11 @@ func main() {
 			return
 		}
 
-		errorStyle := lipgloss.NewStyle().Foreground(lipgloss.ANSIColor(1))
-
 		var lerr *lua.ApiError
 		if errors.As(err, &lerr) {
-			_, _ = fmt.Fprintf(os.Stderr, "%s\n", errorStyle.Bold(true).Render(lerr.Object.String()))
-			_, _ = fmt.Fprintf(os.Stderr, "%s\n", errorStyle.Faint(true).Render(lerr.StackTrace))
+			slog.With(slog.String("stack_trace", strings.ReplaceAll(lerr.StackTrace, "\t", "  "))).Error(lerr.Object.String())
 		} else if err != nil {
-			_, _ = fmt.Fprintf(os.Stderr, "%s\n", errorStyle.Bold(true).Render(err.Error()))
+			slog.Error(lerr.Object.String())
 		}
 
 		os.Exit(1)

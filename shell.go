@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/termenv"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -57,7 +57,9 @@ func startShellCmd(cmd *exec.Cmd, name string) (string, error) {
 		return "", fmt.Errorf("cmd start: %w", err)
 	}
 
-	style := lipgloss.NewStyle().Foreground(lipgloss.ANSIColor(12)).Faint(true)
+	prefix := func(s string) string {
+		return termenv.String(s).Foreground(termenv.ANSIBrightBlue).Faint().String()
+	}
 	var out strings.Builder
 	go func() {
 		scanner := bufio.NewScanner(stdout)
@@ -66,7 +68,7 @@ func startShellCmd(cmd *exec.Cmd, name string) (string, error) {
 			m := scanner.Text()
 			out.WriteString(m)
 			if name != "" {
-				fmt.Printf("%s | %s\n", style.Render(name), m)
+				fmt.Printf("%s | %s\n", prefix(name), m)
 			} else {
 				fmt.Println(m)
 			}
@@ -79,7 +81,7 @@ func startShellCmd(cmd *exec.Cmd, name string) (string, error) {
 		for scanner.Scan() {
 			m := scanner.Text()
 			if name != "" {
-				fmt.Printf("%s | %s\n", style.Render(name), m)
+				fmt.Printf("%s | %s\n", prefix(name), m)
 			} else {
 				fmt.Println(m)
 			}

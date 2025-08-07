@@ -1,4 +1,4 @@
-package main
+package shmake
 
 import (
 	"bytes"
@@ -104,7 +104,7 @@ func NewRuntime(logFile io.WriteCloser) (*Runtime, error) {
 	return r, nil
 }
 
-func getMainModule(r *Runtime) Module {
+func getMainModule() Module {
 	return Module{
 		exports: map[string]ModuleFunction{
 			"command": newCommand,
@@ -124,7 +124,7 @@ func getMainModule(r *Runtime) Module {
 	}
 }
 
-func main() {
+func Run() {
 	cli.RootCommandHelpTemplate = helpTemplate
 
 	L := lua.NewState()
@@ -158,7 +158,7 @@ func main() {
 
 	RegisterLuaTypes(r, L, ShmakeType{Runtime: r}, CommandType{Runtime: r}, PoolType{})
 
-	r.modules["shmake.main"] = getMainModule(r)
+	r.modules["shmake.main"] = getMainModule()
 	r.modules["shmake.files"] = getFileModule(r)
 
 	for name, module := range r.modules {

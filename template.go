@@ -1,4 +1,4 @@
-package main
+package shmake
 
 // This file contains the updated template for the command help
 var helpTemplate = `NAME:

@@ -118,3 +118,7 @@ The linter configuration ensures code quality and security best practices are fo
 - Logging goes to both stderr and a log file using structured JSON logging
 - GoReleaser configuration exists for multi-platform builds
 - Uses disk-based caching in user cache directory for `with_version` operations
+
+## Linting Guidelines
+
+- You're not allowed to modify the golangci-lint to remove linters unless specifically requested to do so.

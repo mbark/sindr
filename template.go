@@ -1,6 +1,6 @@
 package shmake
 
-// This file contains the updated template for the command help
+// This file contains updated templates for the cli.
 var helpTemplate = `NAME:
    {{template "helpNameTemplate" .}}
 

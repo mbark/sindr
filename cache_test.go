@@ -2,6 +2,7 @@ package shmake_test
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -11,10 +12,10 @@ import (
 )
 
 func withMainLua(t *testing.T, dir string, contents string) {
-	err := os.RemoveAll(dir + "/main.lua")
+	err := os.RemoveAll(filepath.Join(dir, "main.lua"))
 	require.NoError(t, err)
 
-	f, err := os.Create(dir + "/main.lua")
+	f, err := os.Create(filepath.Join(dir, "main.lua"))
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
@@ -35,8 +36,8 @@ func withMainLua(t *testing.T, dir string, contents string) {
 func TestDiff(t *testing.T) {
 	dir := t.TempDir()
 
-	cacheDir := dir + "/cache"
-	logFile, err := os.Create(dir + "/logs")
+	cacheDir := filepath.Join(dir, "cache")
+	logFile, err := os.Create(filepath.Join(dir, "logs"))
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		err := logFile.Close()
@@ -94,8 +95,8 @@ cli:run()
 func TestStore(t *testing.T) {
 	dir := t.TempDir()
 
-	cacheDir := dir + "/cache"
-	logFile, err := os.Create(dir + "/logs")
+	cacheDir := filepath.Join(dir, "cache")
+	logFile, err := os.Create(filepath.Join(dir, "logs"))
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		err := logFile.Close()
@@ -159,8 +160,8 @@ cli:run()
 func TestWithVersion(t *testing.T) {
 	dir := t.TempDir()
 
-	cacheDir := dir + "/cache"
-	logFile, err := os.Create(dir + "/logs")
+	cacheDir := filepath.Join(dir, "cache")
+	logFile, err := os.Create(filepath.Join(dir, "logs"))
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		err := logFile.Close()

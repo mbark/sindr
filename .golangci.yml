@@ -24,40 +24,22 @@ linters-settings:
       - style
 
 linters:
-  enable:
-    - bodyclose
-    - dogsled
-    - dupl
-    - errcheck
-    - gochecknoinits
-    - gocognit
-    - goconst
-    - gocritic
-    - gocyclo
-    - gosec
-    - govet
-    - ineffassign
-    - lll
-    - misspell
-    - nakedret
-    - staticcheck
-    - unconvert
-    - unparam
-    - unused
-    - whitespace
-
-issues:
-  exclude-use-default: false
-  exclude-rules:
-    # Exclude some linters from running on tests files
-    - path: _test\.go
-      linters:
-        - gocyclo
-        - errcheck
-        - dupl
-        - gosec
-    # Exclude shadow checking for common variable names
-    - text: "shadow: declaration of"
-      linters:
-        - govet
-      source: "(err|ctx|ok)"
+  default: fast
+  disable:
+    - wsl
+    - nlreturn
+    - predeclared
+    - prealloc
+    - mnd
+    - funlen
+    - cyclop
+    - depguard
+  settings:
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - gocyclo
+          - errcheck
+          - dupl
+          - gosec

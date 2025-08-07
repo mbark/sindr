@@ -18,7 +18,7 @@ import (
 
 const version = "0.0.1"
 
-// NoReturnVal is shorthand for an empty array of LValues
+// NoReturnVal is shorthand for an empty array of LValues.
 var NoReturnVal = []lua.LValue{}
 
 type ModuleFunction = func(runtime *Runtime, l *lua.LState) ([]lua.LValue, error)

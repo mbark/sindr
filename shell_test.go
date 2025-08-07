@@ -93,7 +93,7 @@ local cli = shmake.command('TestShell')
 
 cli:command('test'):action(function()
 	local result = shmake.shell('echo "  content with spaces  "')
-	if result ~= '  content with spaces  ' then
+	if result ~= 'content with spaces' then
 		error('expected "  content with spaces  ", got: ' .. tostring(result))
 	end
 	

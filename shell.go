@@ -62,7 +62,7 @@ func startShellCmd(cmd *exec.Cmd, name string) (string, error) {
 		scanner.Split(bufio.ScanLines)
 		for scanner.Scan() {
 			m := scanner.Text()
-			out.WriteString(m)
+			out.WriteString(m + "\n")
 			if name != "" {
 				fmt.Printf("%s | %s\n", prefix(name), m)
 			} else {

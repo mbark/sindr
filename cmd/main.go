@@ -1,7 +1,11 @@
 package main
 
-import "github.com/mbark/shmake"
+import (
+	"os"
+
+	"github.com/mbark/shmake"
+)
 
 func main() {
-	shmake.Run()
+	shmake.Run(os.Args)
 }

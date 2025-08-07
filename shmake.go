@@ -119,7 +119,7 @@ func getMainModule() Module {
 	}
 }
 
-func Run() {
+func Run(args []string) {
 	cli.RootCommandHelpTemplate = helpTemplate
 
 	// Ensure we have a context before the app starts
@@ -132,6 +132,7 @@ func Run() {
 	cacheDir := cacheHome()
 	r, err := NewRuntime(cacheDir, logFile)
 	checkErr(err)
+	r.Args = args
 
 	RunWithRuntime(ctx, r)
 }

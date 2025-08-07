@@ -5,7 +5,11 @@ var helpTemplate = `NAME:
    {{template "helpNameTemplate" .}}
 
 USAGE:
-   {{if .UsageText}}{{wrap .UsageText 3}}{{else}}{{.FullName}} {{if .VisibleFlags}}[global options]{{end}}{{if .VisibleCommands}} [command [command options]]{{end}}{{if .ArgsUsage}} {{.ArgsUsage}}{{else}}{{if .Arguments}} [arguments...]{{end}}{{end}}{{end}}{{if .Version}}{{if not .HideVersion}}
+   {{if .UsageText}}{{wrap .UsageText 3}}{{else}}{{.FullName}}` +
+	` {{if .VisibleFlags}}[global options]{{end}}{{if .VisibleCommands}}` +
+	` [command [command options]]{{end}}{{if .ArgsUsage}} {{.ArgsUsage}}` +
+	`{{else}}{{if .Arguments}} [arguments...]{{end}}{{end}}{{end}}` +
+	`{{if .Version}}{{if not .HideVersion}}
 
 VERSION:
    {{.Version}}{{end}}{{end}}{{if .Description}}

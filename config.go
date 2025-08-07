@@ -30,12 +30,13 @@ func getLogFile() (io.WriteCloser, error) {
 
 	_, err = os.Stat(logFile)
 	var buf io.WriteCloser
-	if errors.Is(err, os.ErrNotExist) {
-		buf, err = os.Create(logFile)
-	} else if err != nil {
+	switch {
+	case errors.Is(err, os.ErrNotExist):
+		buf, err = os.Create(filepath.Clean(logFile)) // #nosec G304
+	case err != nil:
 		return nil, fmt.Errorf("creating cache directory: %w", err)
-	} else {
-		buf, err = os.OpenFile(logFile, os.O_APPEND|os.O_WRONLY, 0600)
+	default:
+		buf, err = os.OpenFile(filepath.Clean(logFile), os.O_APPEND|os.O_WRONLY, 0600) // #nosec G304
 	}
 	return buf, err
 }

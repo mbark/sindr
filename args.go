@@ -78,7 +78,10 @@ func MapArray[T any](l *lua.LState, idx int) ([]T, error) {
 		if t, ok := v.(T); ok {
 			arr = append(arr, t)
 		} else {
-			return nil, ErrBadArg{Index: idx, Message: fmt.Errorf("invalid array, expected %T, got %T at index %d", arr, v, i).Error()}
+			return nil, ErrBadArg{
+				Index:   idx,
+				Message: fmt.Errorf("invalid array, expected %T, got %T at index %d", arr, v, i).Error(),
+			}
 		}
 	}
 

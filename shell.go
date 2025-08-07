@@ -15,7 +15,7 @@ type runOptions struct {
 	Prefix string
 }
 
-func shell(runtime *Runtime, l *lua.LState) ([]lua.LValue, error) {
+func shell(_ *Runtime, l *lua.LState) ([]lua.LValue, error) {
 	c, err := MapString(l, 1)
 	if err != nil {
 		return nil, err
@@ -28,7 +28,7 @@ func shell(runtime *Runtime, l *lua.LState) ([]lua.LValue, error) {
 
 	slog.With(slog.String("command", c)).Debug("running shell command")
 
-	cmd := exec.CommandContext(l.Context(), "bash", "-c", c)
+	cmd := exec.CommandContext(l.Context(), "bash", "-c", c) // #nosec G204
 	out, err := startShellCmd(cmd, options.Prefix)
 	if err != nil {
 		return nil, fmt.Errorf("start shell cmd failed: %w", err)

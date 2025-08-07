@@ -47,7 +47,7 @@ func newCommand(r *Runtime, l *lua.LState) ([]lua.LValue, error) {
 
 	options, err := MapOptionalTable[commandOptions](l, 2)
 	if err != nil {
-		l.RaiseError("invalid options: %v", err)
+		return nil, err
 	}
 
 	shmake.Command = &Command{

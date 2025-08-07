@@ -10,7 +10,7 @@ import (
 	"github.com/radovskyb/watcher"
 )
 
-func startWatching(runtime *Runtime, watchGlob string, onChange chan bool) (func(), error) {
+func startWatching(_ *Runtime, watchGlob string, onChange chan bool) (func(), error) {
 	w := watcher.New()
 	w.SetMaxEvents(1)
 

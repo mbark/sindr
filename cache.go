@@ -88,7 +88,9 @@ func store(runtime *Runtime, l *lua.LState) ([]lua.LValue, error) {
 		With(slog.String("name", options.Name)).
 		Debug("storing cache version")
 
-	err = runtime.cache.StoreVersion(options.Name, options.Version)
+	if err := runtime.cache.StoreVersion(options.Name, options.Version); err != nil {
+		return nil, err
+	}
 	return NoReturnVal, nil
 }
 
@@ -113,10 +115,12 @@ func withVersion(runtime *Runtime, l *lua.LState) ([]lua.LValue, error) {
 
 	err = l.CallByParam(lua.P{Fn: fn, NRet: 1, Protect: true})
 	if err != nil {
-		l.RaiseError(err.Error())
+		l.RaiseError("%s", err.Error())
 	}
 
-	err = runtime.cache.StoreVersion(options.Name, options.Version)
+	if err := runtime.cache.StoreVersion(options.Name, options.Version); err != nil {
+		return nil, err
+	}
 	return []lua.LValue{lua.LBool(isDiff)}, nil
 }
 

@@ -3,6 +3,7 @@ package shmake
 import (
 	"errors"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"time"
@@ -71,7 +72,7 @@ type deleteConfig struct {
 	OnlyDirectories bool
 }
 
-func delete(runtime *Runtime, l *lua.LState) ([]lua.LValue, error) {
+func delete(_ *Runtime, l *lua.LState) ([]lua.LValue, error) {
 	lv := l.Get(-1)
 
 	var config deleteConfig
@@ -104,17 +105,25 @@ func delete(runtime *Runtime, l *lua.LState) ([]lua.LValue, error) {
 }
 
 func CopyFile(src, dst string) error {
-	in, err := os.Open(src)
+	in, err := os.Open(filepath.Clean(src)) // #nosec G304
 	if err != nil {
 		return err
 	}
-	defer in.Close()
+	defer func() {
+		if err := in.Close(); err != nil {
+			slog.Warn("failed to close input file", slog.String("error", err.Error()))
+		}
+	}()
 
 	out, err := os.Create(dst)
 	if err != nil {
 		return err
 	}
-	defer out.Close()
+	defer func() {
+		if err := out.Close(); err != nil {
+			slog.Warn("failed to close output file", slog.String("error", err.Error()))
+		}
+	}()
 
 	_, err = io.Copy(out, in)
 	if err != nil {
@@ -128,7 +137,7 @@ type copyOptions struct {
 	To   string
 }
 
-func copy(runtime *Runtime, l *lua.LState) ([]lua.LValue, error) {
+func copy(_ *Runtime, l *lua.LState) ([]lua.LValue, error) {
 	opts, err := MapTable[copyOptions](l, 1)
 	if err != nil {
 		return nil, err
@@ -147,7 +156,7 @@ type mkdirOptions struct {
 	All bool
 }
 
-func mkdir(runtime *Runtime, l *lua.LState) ([]lua.LValue, error) {
+func mkdir(_ *Runtime, l *lua.LState) ([]lua.LValue, error) {
 	dir, err := MapString(l, 1)
 	if err != nil {
 		return nil, err
@@ -247,7 +256,7 @@ func chdir(runtime *Runtime, l *lua.LState) ([]lua.LValue, error) {
 	return NoReturnVal, nil
 }
 
-func popdir(runtime *Runtime, l *lua.LState) ([]lua.LValue, error) {
+func popdir(runtime *Runtime, _ *lua.LState) ([]lua.LValue, error) {
 	if runtime.prevDir == "" {
 		return nil, errors.New("no previous directory stored")
 	}

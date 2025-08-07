@@ -9,7 +9,7 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
-func pool(_ *Runtime, l *lua.LState) ([]lua.LValue, error) {
+func pool(_ *Runtime, l *lua.LState) ([]lua.LValue, error) { //nolint:unparam
 	ud := l.NewUserData()
 	ud.Value = &Pool{wg: sync.WaitGroup{}}
 	l.SetMetatable(ud, l.GetTypeMetatable(PoolType{}.TypeName()))
@@ -35,7 +35,7 @@ func (PoolType) Run(l *lua.LState) int {
 	p := IsUserData[*Pool](l)
 	fn, err := MapFunction(l, 2)
 	if err != nil {
-		l.RaiseError(err.Error())
+		l.RaiseError("%s", err.Error())
 	}
 
 	p.wg.Add(1)
@@ -46,7 +46,7 @@ func (PoolType) Run(l *lua.LState) int {
 
 		err = Lt.CallByParam(lua.P{Fn: fn, NRet: 1, Protect: true})
 		if err != nil {
-			l.RaiseError(err.Error())
+			l.RaiseError("%s", err.Error())
 		}
 	}()
 
@@ -76,14 +76,14 @@ func async(runtime *Runtime, l *lua.LState) ([]lua.LValue, error) {
 
 		err := Lt.CallByParam(lua.P{Fn: fn, NRet: 1, Protect: true})
 		if err != nil {
-			l.RaiseError(err.Error())
+			l.RaiseError("%s", err.Error())
 		}
 	}()
 
 	return NoReturnVal, nil
 }
 
-func wait(runtime *Runtime, l *lua.LState) ([]lua.LValue, error) {
+func wait(runtime *Runtime, _ *lua.LState) ([]lua.LValue, error) { //nolint:unparam
 	runtime.wg.Wait()
 	return NoReturnVal, nil
 }
@@ -126,7 +126,7 @@ func watch(runtime *Runtime, l *lua.LState) ([]lua.LValue, error) {
 	return NoReturnVal, nil
 }
 
-func runWatchFnOnce(runtime *Runtime, l *lua.LState, fn *lua.LFunction, onChange chan bool) bool {
+func runWatchFnOnce(_ *Runtime, l *lua.LState, fn *lua.LFunction, onChange chan bool) bool {
 	Lt, cancel := l.NewThread()
 	defer cancel()
 

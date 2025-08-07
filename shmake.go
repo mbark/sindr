@@ -57,7 +57,7 @@ func (m Module) loader(runtime *Runtime) lua.LGFunction {
 						l.ArgError(ea.Index, ea.Message)
 					}
 
-					l.RaiseError(err.Error())
+					l.RaiseError("%s", err.Error())
 				}
 
 				for _, ret := range rets {

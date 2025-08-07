@@ -126,3 +126,55 @@ The linter configuration ensures code quality and security best practices are fo
 ## Linting Best Practices
 
 - Before running golangci-lint run, always run golangci-lint fmt to ensure the files are formatted.
+
+## Testing Guidelines
+
+All tests must follow this consistent pattern:
+
+### Test Structure Pattern
+
+1. **Use helper functions from `helpers_test.go`**:
+   - `setupRuntime(t)` - Creates runtime with temp directory, cache, and log file
+   - `withMainLua(t, luaCode)` - Creates main.lua file with Lua test code
+
+2. **Test function structure**:
+   ```go
+   func TestFunctionName(t *testing.T) {
+       t.Run("test case description", func(t *testing.T) {
+           r := setupRuntime(t)
+           withMainLua(t, `
+   local shmake = require("shmake.main")
+   
+   local cli = shmake.command('TestName')
+   
+   cli:command('test'):action(function()
+       -- Test logic here
+       local result = shmake.function_name('args')
+       if result ~= 'expected' then
+           error('expected "expected", got: ' .. tostring(result))
+       end
+   end)
+   
+   cli:run()
+   `)
+           shmake.RunWithRuntime(t.Context(), r)
+       })
+   }
+   ```
+
+3. **Required elements**:
+   - Package: `package shmake_test`  
+   - Use `setupRuntime(t)` for consistent test environment
+   - Use `withMainLua(t, luaCode)` for Lua script setup
+   - Call `shmake.RunWithRuntime(t.Context(), r)` to execute
+   - Test command name should match the Go test function
+   - Use descriptive sub-test names with `t.Run()`
+
+4. **Lua test patterns**:
+   - Always use `local shmake = require("shmake.main")`
+   - Create CLI with `shmake.command('TestName')`
+   - Add test action with `cli:command('test'):action(function() ... end)`
+   - Use Lua `error()` for test failures with descriptive messages
+   - End with `cli:run()`
+
+This pattern ensures consistent test structure, proper cleanup, and reliable test execution across all test files.

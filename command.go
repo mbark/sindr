@@ -41,16 +41,13 @@ func (s ShmakeType) TypeName() string {
 	return "shmake"
 }
 
-func newCommand(r *Runtime, L *lua.LState) ([]lua.LValue, error) {
+func newCommand(r *Runtime, l *lua.LState) ([]lua.LValue, error) {
 	shmake := &Shmake{Runtime: r}
-	name := L.CheckString(1)
+	name := l.CheckString(1)
 
-	var options commandOptions
-	if L.GetTop() >= 2 {
-		err := MapTable(2, L.Get(2), &options)
-		if err != nil {
-			L.RaiseError("invalid options: %v", err)
-		}
+	options, err := MapOptionalTable[commandOptions](l, 2)
+	if err != nil {
+		l.RaiseError("invalid options: %v", err)
 	}
 
 	shmake.Command = &Command{
@@ -60,9 +57,9 @@ func newCommand(r *Runtime, L *lua.LState) ([]lua.LValue, error) {
 		},
 	}
 
-	ud := L.NewUserData()
+	ud := l.NewUserData()
 	ud.Value = shmake
-	L.SetMetatable(ud, L.GetTypeMetatable(ShmakeType{}.TypeName()))
+	l.SetMetatable(ud, l.GetTypeMetatable(ShmakeType{}.TypeName()))
 	return []lua.LValue{ud}, nil
 }
 
@@ -74,16 +71,13 @@ func (s ShmakeType) Funcs() map[string]lua.LGFunction {
 	}
 }
 
-func (s ShmakeType) Command(L *lua.LState) int {
-	parent := IsUserData[*Shmake](L)
-	name := L.CheckString(2)
+func (s ShmakeType) Command(l *lua.LState) int {
+	parent := IsUserData[*Shmake](l)
+	name := l.CheckString(2)
 
-	var options commandOptions
-	if L.GetTop() > 2 {
-		err := MapTable(3, L.Get(3), &options)
-		if err != nil {
-			L.RaiseError("invalid options: %v", err)
-		}
+	options, err := MapOptionalTable[commandOptions](l, 3)
+	if err != nil {
+		l.RaiseError("invalid options: %v", err)
 	}
 
 	cmd := &Command{
@@ -93,27 +87,24 @@ func (s ShmakeType) Command(L *lua.LState) int {
 		},
 	}
 	parent.Command.Command.Commands = append(parent.Command.Command.Commands, cmd.Command)
-	return NewUserData(L, cmd, CommandType{})
+	return NewUserData(l, cmd, CommandType{})
 }
 
-func (s ShmakeType) SubCommand(L *lua.LState) int {
-	root := IsUserData[*Shmake](L)
-	name, err := MapArray[string](2, L.Get(2))
+func (s ShmakeType) SubCommand(l *lua.LState) int {
+	root := IsUserData[*Shmake](l)
+	name, err := MapArray[string](l, 2)
 	if err != nil {
-		L.RaiseError("invalid sub command path: %v", err)
+		l.RaiseError("invalid sub command path: %v", err)
 	}
 
-	var options commandOptions
-	if L.GetTop() > 2 {
-		err := MapTable(3, L.Get(3), &options)
-		if err != nil {
-			L.RaiseError("invalid options: %v", err)
-		}
+	options, err := MapOptionalTable[commandOptions](l, 3)
+	if err != nil {
+		l.RaiseError("invalid options: %v", err)
 	}
 
 	parent, err := findSubCommand(root.Command.Command, name)
 	if err != nil {
-		L.RaiseError("unable to find sub command for path [%s]: %v", strings.Join(name, ","), err)
+		l.RaiseError("unable to find sub command for path [%s]: %v", strings.Join(name, ","), err)
 	}
 
 	cmd := &Command{
@@ -123,7 +114,7 @@ func (s ShmakeType) SubCommand(L *lua.LState) int {
 		},
 	}
 	parent.Commands = append(parent.Commands, cmd.Command)
-	return NewUserData(L, cmd, CommandType{})
+	return NewUserData(l, cmd, CommandType{})
 }
 
 func findSubCommand(cmd *cli.Command, path []string) (*cli.Command, error) {
@@ -144,8 +135,8 @@ func findSubCommand(cmd *cli.Command, path []string) (*cli.Command, error) {
 	return nil, fmt.Errorf("no command with name %s found", path[0])
 }
 
-func (s ShmakeType) Run(L *lua.LState) int {
-	shmake := IsUserData[*Shmake](L)
+func (s ShmakeType) Run(l *lua.LState) int {
+	shmake := IsUserData[*Shmake](l)
 
 	var verbose, noCache bool
 	cliFlags := []cli.Flag{
@@ -178,9 +169,9 @@ func (s ShmakeType) Run(L *lua.LState) int {
 		return ctx, nil
 	}
 
-	err := cmd.Command.Run(L.Context(), os.Args)
+	err := cmd.Command.Run(l.Context(), os.Args)
 	if err != nil {
-		L.RaiseError("%s", err.Error())
+		l.RaiseError("%s", err.Error())
 	}
 
 	s.Runtime.wg.Wait()
@@ -211,60 +202,55 @@ type flagOptions[T any] struct {
 	Required bool
 }
 
-func mapFlagOptions[T any](L *lua.LState) flagOptions[T] {
-	var flag flagOptions[T]
-	if L.GetTop() < 3 {
-		return flag
-	}
-
-	err := MapTable(3, L.Get(3), &flag)
+func mapFlagOptions[T any](l *lua.LState) flagOptions[T] {
+	flag, err := MapOptionalTable[flagOptions[T]](l, 3)
 	if err != nil {
-		L.RaiseError("invalid options: %v", err)
+		l.RaiseError("invalid options: %v", err)
 	}
 
 	return flag
 }
 
-func (c CommandType) StringFlag(L *lua.LState) int {
-	cmd := IsUserData[*Command](L)
-	name := L.CheckString(2)
+func (c CommandType) StringFlag(l *lua.LState) int {
+	cmd := IsUserData[*Command](l)
+	name := l.CheckString(2)
 
-	flag := mapFlagOptions[string](L)
+	flag := mapFlagOptions[string](l)
 	cmd.Command.Flags = append(cmd.Command.Flags, &cli.StringFlag{
 		Name:     name,
 		Usage:    flag.Usage,
 		Value:    flag.Default,
 		Required: flag.Required,
 	})
-	return NewUserData(L, cmd, CommandType{})
+	return NewUserData(l, cmd, CommandType{})
 }
 
-func (c CommandType) IntFlag(L *lua.LState) int {
-	cmd := IsUserData[*Command](L)
-	name := L.CheckString(2)
+func (c CommandType) IntFlag(l *lua.LState) int {
+	cmd := IsUserData[*Command](l)
+	name := l.CheckString(2)
 
-	flag := mapFlagOptions[int](L)
+	flag := mapFlagOptions[int](l)
 	cmd.Command.Flags = append(cmd.Command.Flags, &cli.IntFlag{
 		Name:     name,
 		Usage:    flag.Usage,
 		Value:    flag.Default,
 		Required: flag.Required,
 	})
-	return NewUserData(L, cmd, CommandType{})
+	return NewUserData(l, cmd, CommandType{})
 }
 
-func (c CommandType) BoolFlag(L *lua.LState) int {
-	cmd := IsUserData[*Command](L)
-	name := L.CheckString(2)
+func (c CommandType) BoolFlag(l *lua.LState) int {
+	cmd := IsUserData[*Command](l)
+	name := l.CheckString(2)
 
-	flag := mapFlagOptions[bool](L)
+	flag := mapFlagOptions[bool](l)
 	cmd.Command.Flags = append(cmd.Command.Flags, &cli.BoolFlag{
 		Name:     name,
 		Usage:    flag.Usage,
 		Value:    flag.Default,
 		Required: flag.Required,
 	})
-	return NewUserData(L, cmd, CommandType{})
+	return NewUserData(l, cmd, CommandType{})
 }
 
 type argOptions[T any] struct {
@@ -272,53 +258,48 @@ type argOptions[T any] struct {
 	Usage   string
 }
 
-func mapArgOptions[T any](L *lua.LState) argOptions[T] {
-	var arg argOptions[T]
-	if L.GetTop() < 3 {
-		return arg
-	}
-
-	err := MapTable(3, L.Get(3), &arg)
+func mapArgOptions[T any](l *lua.LState) argOptions[T] {
+	arg, err := MapOptionalTable[argOptions[T]](l, 3)
 	if err != nil {
-		L.RaiseError("invalid options: %v", err)
+		l.RaiseError("invalid options: %v", err)
 	}
 
 	return arg
 }
 
-func (c CommandType) StringArg(L *lua.LState) int {
-	cmd := IsUserData[*Command](L)
-	name := L.CheckString(2)
+func (c CommandType) StringArg(l *lua.LState) int {
+	cmd := IsUserData[*Command](l)
+	name := l.CheckString(2)
 
-	flag := mapArgOptions[string](L)
+	flag := mapArgOptions[string](l)
 	cmd.Command.Arguments = append(cmd.Command.Arguments, &cli.StringArg{
 		Name:      name,
 		Value:     flag.Default,
 		UsageText: flag.Usage,
 	})
-	return NewUserData(L, cmd, CommandType{})
+	return NewUserData(l, cmd, CommandType{})
 }
-func (c CommandType) IntArg(L *lua.LState) int {
-	cmd := IsUserData[*Command](L)
-	name := L.CheckString(2)
+func (c CommandType) IntArg(l *lua.LState) int {
+	cmd := IsUserData[*Command](l)
+	name := l.CheckString(2)
 
-	flag := mapArgOptions[int](L)
+	flag := mapArgOptions[int](l)
 	cmd.Command.Arguments = append(cmd.Command.Arguments, &cli.IntArg{
 		Name:      name,
 		Value:     flag.Default,
 		UsageText: flag.Usage,
 	})
-	return NewUserData(L, cmd, CommandType{})
+	return NewUserData(l, cmd, CommandType{})
 }
 
-func (c CommandType) Action(L *lua.LState) int {
-	cmd := IsUserData[*Command](L)
-	action := L.CheckFunction(2)
+func (c CommandType) Action(l *lua.LState) int {
+	cmd := IsUserData[*Command](l)
+	action := l.CheckFunction(2)
 
 	cmd.Command.Action = func(ctx context.Context, command *cli.Command) error {
-		L.SetContext(ctx)
+		l.SetContext(ctx)
 
-		tbl := L.NewTable()
+		tbl := l.NewTable()
 		for _, flag := range command.Flags {
 			var lval lua.LValue
 			switch val := flag.Get().(type) {
@@ -329,12 +310,12 @@ func (c CommandType) Action(L *lua.LState) int {
 			case bool:
 				lval = lua.LBool(val)
 			default:
-				L.RaiseError("unknown flag value type: %v", flag)
+				l.RaiseError("unknown flag value type: %v", flag)
 			}
-			L.RawSet(tbl, lua.LString(flag.Names()[0]), lval)
+			l.RawSet(tbl, lua.LString(flag.Names()[0]), lval)
 		}
 
-		args := L.NewTable()
+		args := l.NewTable()
 		for i, arg := range command.Arguments {
 			var lval lua.LValue
 			switch val := arg.Get().(type) {
@@ -345,27 +326,24 @@ func (c CommandType) Action(L *lua.LState) int {
 			case bool:
 				lval = lua.LBool(val)
 			default:
-				L.RaiseError("unknown flag value type: %v", arg)
+				l.RaiseError("unknown flag value type: %v", arg)
 			}
-			L.RawSetInt(args, i+1, lval)
+			l.RawSetInt(args, i+1, lval)
 		}
 
-		return L.CallByParam(lua.P{Fn: action, NRet: 1, Protect: true}, tbl, args)
+		return l.CallByParam(lua.P{Fn: action, NRet: 1, Protect: true}, tbl, args)
 	}
 
-	return NewUserData(L, cmd, CommandType{})
+	return NewUserData(l, cmd, CommandType{})
 }
 
-func (c CommandType) Command(L *lua.LState) int {
-	parent := IsUserData[*Command](L)
-	name := L.CheckString(2)
+func (c CommandType) Command(l *lua.LState) int {
+	parent := IsUserData[*Command](l)
+	name := l.CheckString(2)
 
-	var options commandOptions
-	if L.GetTop() > 2 {
-		err := MapTable(3, L.Get(3), &options)
-		if err != nil {
-			L.RaiseError("invalid options: %v", err)
-		}
+	options, err := MapOptionalTable[commandOptions](l, 3)
+	if err != nil {
+		l.RaiseError("invalid options: %v", err)
 	}
 
 	cmd := &Command{
@@ -375,7 +353,7 @@ func (c CommandType) Command(L *lua.LState) int {
 		},
 	}
 	parent.Command.Commands = append(parent.Command.Commands, cmd.Command)
-	return NewUserData(L, cmd, CommandType{})
+	return NewUserData(l, cmd, CommandType{})
 }
 
 type commandOptions struct {

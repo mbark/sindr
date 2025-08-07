@@ -27,20 +27,41 @@ func (e ErrBadArg) Error() string {
 	return fmt.Sprintf("bad argument at index %d: %s", e.Index, e.Message)
 }
 
-func MapTable(idx int, lv lua.LValue, i interface{}) error {
-	tbl, ok := lv.(*lua.LTable)
+func MapTable[T any](l *lua.LState, idx int) (T, error) {
+	var t T
+	tbl, ok := l.Get(idx).(*lua.LTable)
 	if !ok {
-		return ErrBadType{Index: idx, Typ: lua.LTTable}
+		return t, ErrBadType{Index: idx, Typ: lua.LTTable}
 	}
 
-	if err := gluamapper.Map(tbl, i); err != nil {
-		return ErrBadArg{Index: idx, Message: fmt.Errorf("invalid config: %w", err).Error()}
+	if err := gluamapper.Map(tbl, &t); err != nil {
+		return t, ErrBadArg{Index: idx, Message: fmt.Errorf("invalid config: %w", err).Error()}
 	}
 
-	return nil
+	return t, nil
 }
 
-func MapArray[T any](idx int, lv lua.LValue) ([]T, error) {
+func MapOptionalTable[T any](l *lua.LState, idx int) (T, error) {
+	var t T
+	if l.GetTop() < idx {
+		return t, nil
+	}
+
+	tbl, ok := l.Get(idx).(*lua.LTable)
+	if !ok {
+		return t, ErrBadType{Index: idx, Typ: lua.LTTable}
+	}
+
+	if err := gluamapper.Map(tbl, &t); err != nil {
+		return t, ErrBadArg{Index: idx, Message: fmt.Errorf("invalid config: %w", err).Error()}
+	}
+
+	return t, nil
+}
+
+func MapArray[T any](l *lua.LState, idx int) ([]T, error) {
+	lv := l.Get(idx)
+
 	_, ok := lv.(*lua.LTable)
 	if !ok {
 		return nil, ErrBadType{Index: idx, Typ: lua.LTTable}
@@ -64,8 +85,8 @@ func MapArray[T any](idx int, lv lua.LValue) ([]T, error) {
 	return arr, nil
 }
 
-func MapString(idx int, lv lua.LValue) (string, error) {
-	str, ok := lv.(lua.LString)
+func MapString(l *lua.LState, idx int) (string, error) {
+	str, ok := l.Get(idx).(lua.LString)
 	if !ok {
 		return "", ErrBadType{Index: idx, Typ: lua.LTString}
 	}
@@ -73,8 +94,8 @@ func MapString(idx int, lv lua.LValue) (string, error) {
 	return string(str), nil
 }
 
-func MapFunction(idx int, lv lua.LValue) (*lua.LFunction, error) {
-	f, ok := lv.(*lua.LFunction)
+func MapFunction(l *lua.LState, idx int) (*lua.LFunction, error) {
+	f, ok := l.Get(idx).(*lua.LFunction)
 	if !ok {
 		return nil, ErrBadType{Index: idx, Typ: lua.LTFunction}
 	}

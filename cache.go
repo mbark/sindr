@@ -52,9 +52,8 @@ type cacheDiffOptions struct {
 	IntVersion int
 }
 
-func mapCacheDiffOptions(L *lua.LState, idx int, stackIdx int) (*cacheDiffOptions, error) {
-	var options cacheDiffOptions
-	err := MapTable(idx, L.Get(stackIdx), &options)
+func mapCacheDiffOptions(l *lua.LState, idx int) (*cacheDiffOptions, error) {
+	options, err := MapTable[cacheDiffOptions](l, idx)
 	if err != nil {
 		return nil, err
 	}
@@ -65,8 +64,8 @@ func mapCacheDiffOptions(L *lua.LState, idx int, stackIdx int) (*cacheDiffOption
 	return &options, nil
 }
 
-func diff(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
-	options, err := mapCacheDiffOptions(L, 1, -1)
+func diff(runtime *Runtime, l *lua.LState) ([]lua.LValue, error) {
+	options, err := mapCacheDiffOptions(l, 1)
 	if err != nil {
 		return nil, err
 	}
@@ -78,8 +77,8 @@ func diff(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 	return []lua.LValue{lua.LBool(isDiff)}, nil
 }
 
-func store(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
-	options, err := mapCacheDiffOptions(L, 1, -1)
+func store(runtime *Runtime, l *lua.LState) ([]lua.LValue, error) {
+	options, err := mapCacheDiffOptions(l, 1)
 	if err != nil {
 		return nil, err
 	}
@@ -93,13 +92,13 @@ func store(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 	return NoReturnVal, nil
 }
 
-func withVersion(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
-	options, err := mapCacheDiffOptions(L, 1, 1)
+func withVersion(runtime *Runtime, l *lua.LState) ([]lua.LValue, error) {
+	options, err := mapCacheDiffOptions(l, 1)
 	if err != nil {
 		return nil, err
 	}
 
-	fn, err := MapFunction(2, L.Get(2))
+	fn, err := MapFunction(l, 2)
 	if err != nil {
 		return nil, err
 	}
@@ -112,9 +111,9 @@ func withVersion(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 		return NoReturnVal, nil
 	}
 
-	err = L.CallByParam(lua.P{Fn: fn, NRet: 1, Protect: true})
+	err = l.CallByParam(lua.P{Fn: fn, NRet: 1, Protect: true})
 	if err != nil {
-		L.RaiseError(err.Error())
+		l.RaiseError(err.Error())
 	}
 
 	err = runtime.cache.StoreVersion(options.Name, options.Version)

@@ -9,15 +9,15 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
-func templateString(_ *Runtime, L *lua.LState) ([]lua.LValue, error) {
-	str, err := MapString(1, L.Get(1))
+func templateString(_ *Runtime, l *lua.LState) ([]lua.LValue, error) {
+	str, err := MapString(l, 1)
 	if err != nil {
 		return nil, err
 	}
 
 	values := make(map[string]any)
-	if L.GetTop() > 1 {
-		tbl, ok := L.Get(2).(*lua.LTable)
+	if l.GetTop() > 1 {
+		tbl, ok := l.Get(2).(*lua.LTable)
 		if !ok {
 			return nil, ErrBadType{Index: 2, Typ: lua.LTTable}
 		}
@@ -29,7 +29,7 @@ func templateString(_ *Runtime, L *lua.LState) ([]lua.LValue, error) {
 		}
 	}
 
-	globals := L.Get(lua.GlobalsIndex)
+	globals := l.Get(lua.GlobalsIndex)
 	tbl, ok := globals.(*lua.LTable)
 	if !ok {
 		return nil, fmt.Errorf("globals is not a table")

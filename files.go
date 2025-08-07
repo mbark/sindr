@@ -48,12 +48,12 @@ func findGlobMatches(config deleteConfig) ([]string, error) {
 	return files, nil
 }
 
-func write(_ *Runtime, L *lua.LState) ([]lua.LValue, error) {
-	fileName, err := MapString(1, L.Get(1))
+func write(_ *Runtime, l *lua.LState) ([]lua.LValue, error) {
+	fileName, err := MapString(l, 1)
 	if err != nil {
 		return nil, err
 	}
-	content, err := MapString(2, L.Get(2))
+	content, err := MapString(l, 2)
 	if err != nil {
 		return nil, err
 	}
@@ -71,18 +71,19 @@ type deleteConfig struct {
 	OnlyDirectories bool
 }
 
-func delete(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
-	lv := L.Get(-1)
+func delete(runtime *Runtime, l *lua.LState) ([]lua.LValue, error) {
+	lv := l.Get(-1)
 
 	var config deleteConfig
 	if glob, ok := lv.(lua.LString); ok {
 		config.Files = string(glob)
 		config.OnlyDirectories = false
 	} else if _, ok := lv.(*lua.LTable); ok {
-		err := MapTable(1, lv, &config)
+		cfg, err := MapTable[deleteConfig](l, 1)
 		if err != nil {
 			return nil, err
 		}
+		config = cfg
 	} else {
 		return nil, ErrBadArg{Index: 1, Message: "string or table expected"}
 	}
@@ -127,11 +128,8 @@ type copyOptions struct {
 	To   string
 }
 
-func copy(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
-	lv := L.Get(-1)
-
-	var opts copyOptions
-	err := MapTable(1, lv, &opts)
+func copy(runtime *Runtime, l *lua.LState) ([]lua.LValue, error) {
+	opts, err := MapTable[copyOptions](l, 1)
 	if err != nil {
 		return nil, err
 	}
@@ -149,17 +147,14 @@ type mkdirOptions struct {
 	All bool
 }
 
-func mkdir(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
-	dir, err := MapString(1, L.Get(-1))
+func mkdir(runtime *Runtime, l *lua.LState) ([]lua.LValue, error) {
+	dir, err := MapString(l, 1)
 	if err != nil {
 		return nil, err
 	}
-	var options mkdirOptions
-	if L.GetTop() >= 2 {
-		err := MapTable(2, L.Get(2), &options)
-		if err != nil {
-			return nil, err
-		}
+	options, err := MapOptionalTable[mkdirOptions](l, 2)
+	if err != nil {
+		return nil, err
 	}
 
 	if options.All {
@@ -178,18 +173,19 @@ func mkdir(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 }
 
 func timestamp(useNewest bool) ModuleFunction {
-	return func(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
-		lv := L.Get(-1)
+	return func(runtime *Runtime, l *lua.LState) ([]lua.LValue, error) {
+		lv := l.Get(-1)
 
 		var config deleteConfig
 		if glob, ok := lv.(lua.LString); ok {
 			config.Files = string(glob)
 			config.OnlyDirectories = false
 		} else if _, ok := lv.(*lua.LTable); ok {
-			err := MapTable(1, lv, &config)
+			cfg, err := MapTable[deleteConfig](l, 1)
 			if err != nil {
 				return nil, err
 			}
+			config = cfg
 		} else {
 			return nil, ErrBadArg{Index: 1, Message: "string or table expected"}
 		}
@@ -231,9 +227,8 @@ func timestamp(useNewest bool) ModuleFunction {
 	}
 }
 
-func chdir(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
-	lv := L.Get(-1)
-	dir, err := MapString(1, lv)
+func chdir(runtime *Runtime, l *lua.LState) ([]lua.LValue, error) {
+	dir, err := MapString(l, 1)
 	if err != nil {
 		return nil, err
 	}
@@ -252,7 +247,7 @@ func chdir(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
 	return NoReturnVal, nil
 }
 
-func popdir(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
+func popdir(runtime *Runtime, l *lua.LState) ([]lua.LValue, error) {
 	if runtime.prevDir == "" {
 		return nil, errors.New("no previous directory stored")
 	}

@@ -15,24 +15,20 @@ type runOptions struct {
 	Prefix string
 }
 
-func shell(runtime *Runtime, L *lua.LState) ([]lua.LValue, error) {
-	lv := L.Get(1)
-	c, err := MapString(1, lv)
+func shell(runtime *Runtime, l *lua.LState) ([]lua.LValue, error) {
+	c, err := MapString(l, 1)
 	if err != nil {
 		return nil, err
 	}
 
-	var options runOptions
-	if L.GetTop() > 1 {
-		err := MapTable(2, L.Get(2), &options)
-		if err != nil {
-			return nil, err
-		}
+	options, err := MapOptionalTable[runOptions](l, 2)
+	if err != nil {
+		return nil, err
 	}
 
 	slog.With(slog.String("command", c)).Debug("running shell command")
 
-	cmd := exec.CommandContext(L.Context(), "bash", "-c", c)
+	cmd := exec.CommandContext(l.Context(), "bash", "-c", c)
 	out, err := startShellCmd(cmd, options.Prefix)
 	if err != nil {
 		return nil, fmt.Errorf("start shell cmd failed: %w", err)

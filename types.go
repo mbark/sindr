@@ -7,22 +7,22 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
-func IsUserData[T any](L *lua.LState) T {
+func IsUserData[T any](l *lua.LState) T {
 	var t T
 
-	ud := L.CheckUserData(1)
+	ud := l.CheckUserData(1)
 	if v, ok := ud.Value.(T); ok {
 		return v
 	}
-	L.ArgError(1, fmt.Sprintf("expected %T, got %T", t, ud.Value))
+	l.ArgError(1, fmt.Sprintf("expected %T, got %T", t, ud.Value))
 	return t
 }
 
-func NewUserData[T any, LT LuaType](L *lua.LState, t T, lt LT) int {
-	ud := L.NewUserData()
+func NewUserData[T any, LT LuaType](l *lua.LState, t T, lt LT) int {
+	ud := l.NewUserData()
 	ud.Value = t
-	L.SetMetatable(ud, L.GetTypeMetatable(lt.TypeName()))
-	L.Push(ud)
+	l.SetMetatable(ud, l.GetTypeMetatable(lt.TypeName()))
+	l.Push(ud)
 	return 1
 }
 
@@ -32,25 +32,25 @@ type LuaType interface {
 }
 
 type LuaTypeNewer interface {
-	New(L *lua.LState) int
+	New(l *lua.LState) int
 }
 
 type LuaTypeGlobal interface {
 	GlobalName() string
 }
 
-func RegisterLuaTypes(runtime *Runtime, L *lua.LState, types ...LuaType) {
+func RegisterLuaTypes(runtime *Runtime, l *lua.LState, types ...LuaType) {
 	for _, lType := range types {
 		logger := slog.With(slog.String("type", lType.TypeName()))
-		mt := L.NewTypeMetatable(lType.TypeName())
-		L.SetField(mt, "__index", L.SetFuncs(L.NewTable(), lType.Funcs()))
+		mt := l.NewTypeMetatable(lType.TypeName())
+		l.SetField(mt, "__index", l.SetFuncs(l.NewTable(), lType.Funcs()))
 
 		if lType, ok := lType.(LuaTypeGlobal); ok {
-			L.SetGlobal(lType.GlobalName(), mt)
+			l.SetGlobal(lType.GlobalName(), mt)
 			logger.With(slog.String("global", lType.GlobalName())).Debug("registered type with global name")
 		}
 		if nw, ok := lType.(LuaTypeNewer); ok {
-			L.SetField(mt, "new", L.NewFunction(nw.New))
+			l.SetField(mt, "new", l.NewFunction(nw.New))
 			logger.With(slog.String("new", "new")).Debug("registered type with new function")
 		}
 

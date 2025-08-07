@@ -54,7 +54,7 @@ go mod tidy
 
 ### Testing
 
-No test files exist currently. Tests would use standard Go testing:
+The project includes unit tests for core functionality. Tests should be run to ensure code quality:
 
 ```bash
 go test ./...

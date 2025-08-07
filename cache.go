@@ -77,6 +77,23 @@ func diff(runtime *Runtime, l *lua.LState) ([]lua.LValue, error) {
 	return []lua.LValue{lua.LBool(isDiff)}, nil
 }
 
+func getVersion(runtime *Runtime, l *lua.LState) ([]lua.LValue, error) {
+	name, err := MapString(l, 1)
+	if err != nil {
+		return nil, err
+	}
+
+	v, err := runtime.Cache.GetVersion(name)
+	if err != nil {
+		return nil, err
+	}
+	if v == nil {
+		return []lua.LValue{lua.LNil}, nil
+	}
+
+	return []lua.LValue{lua.LString(*v)}, nil
+}
+
 func store(runtime *Runtime, l *lua.LState) ([]lua.LValue, error) {
 	options, err := mapCacheDiffOptions(l, 1)
 	if err != nil {
@@ -88,7 +105,7 @@ func store(runtime *Runtime, l *lua.LState) ([]lua.LValue, error) {
 		With(slog.String("name", options.Name)).
 		Debug("storing cache version")
 
-	if err := runtime.cache.StoreVersion(options.Name, options.Version); err != nil {
+	if err := runtime.Cache.StoreVersion(options.Name, options.Version); err != nil {
 		return nil, err
 	}
 	return NoReturnVal, nil
@@ -118,7 +135,7 @@ func withVersion(runtime *Runtime, l *lua.LState) ([]lua.LValue, error) {
 		l.RaiseError("%s", err.Error())
 	}
 
-	if err := runtime.cache.StoreVersion(options.Name, options.Version); err != nil {
+	if err := runtime.Cache.StoreVersion(options.Name, options.Version); err != nil {
 		return nil, err
 	}
 	return []lua.LValue{lua.LBool(isDiff)}, nil
@@ -129,7 +146,7 @@ func checkIfDiff(runtime *Runtime, options cacheDiffOptions) (bool, error) {
 		options.Version = strconv.Itoa(options.IntVersion)
 	}
 
-	currentVersion, err := runtime.cache.GetVersion(options.Name)
+	currentVersion, err := runtime.Cache.GetVersion(options.Name)
 	if err != nil {
 		return false, err
 	}

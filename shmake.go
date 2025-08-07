@@ -76,20 +76,15 @@ func (m Module) loader(runtime *Runtime) lua.LGFunction {
 }
 
 type Runtime struct {
-	modules map[string]Module
+	Args    []string // Args is the os.Args of the program, parameterized for testing purposes.
+	Cache   Cache    // Cache is the Cache used for the program
+	PrevDir string   // PrevDir is used when changing dir to "pop back"
 
-	// Track all async commands being run
-	wg sync.WaitGroup
-
-	prevDir string
-
-	cache   Cache
-	logFile io.WriteCloser
+	logFile io.WriteCloser // logFile is used if we change to verbose logging and need to re-create the logger
+	wg      sync.WaitGroup // wg tracks all async commands being run
 }
 
-func NewRuntime(logFile io.WriteCloser) (*Runtime, error) {
-	cacheDir := cacheHome()
-
+func NewRuntime(cacheDir string, logFile io.WriteCloser) (*Runtime, error) {
 	logger := slog.New(slogmulti.Fanout(
 		slog.NewJSONHandler(logFile, &slog.HandlerOptions{Level: slog.LevelDebug}),
 		log.NewWithOptions(os.Stderr, log.Options{}),
@@ -97,8 +92,7 @@ func NewRuntime(logFile io.WriteCloser) (*Runtime, error) {
 	slog.SetDefault(logger)
 
 	r := &Runtime{
-		modules: make(map[string]Module),
-		cache:   NewCache(cacheDir),
+		Cache:   NewCache(cacheDir),
 		logFile: logFile,
 	}
 	return r, nil
@@ -118,6 +112,7 @@ func getMainModule() Module {
 			"shell": shell,
 
 			"diff":         diff,
+			"get_version":  getVersion,
 			"store":        store,
 			"with_version": withVersion,
 		},
@@ -127,41 +122,33 @@ func getMainModule() Module {
 func Run() {
 	cli.RootCommandHelpTemplate = helpTemplate
 
-	l := lua.NewState()
-	defer l.Close()
-
 	// Ensure we have a context before the app starts
 	ctx := context.Background()
-	l.SetContext(ctx)
-
-	checkErr := func(err error) {
-		if err == nil {
-			return
-		}
-
-		var lerr *lua.ApiError
-		if errors.As(err, &lerr) {
-			slog.With(slog.String("stack_trace", strings.ReplaceAll(lerr.StackTrace, "\t", "  "))).Error(lerr.Object.String())
-		} else if err != nil {
-			slog.Error(lerr.Object.String())
-		}
-
-		os.Exit(1)
-	}
 
 	logFile, err := getLogFile()
 	checkErr(err)
 	defer func() { _ = logFile.Close() }()
 
-	r, err := NewRuntime(logFile)
+	cacheDir := cacheHome()
+	r, err := NewRuntime(cacheDir, logFile)
 	checkErr(err)
+
+	RunWithRuntime(ctx, r)
+}
+
+func RunWithRuntime(ctx context.Context, r *Runtime) {
+	l := lua.NewState()
+	defer l.Close()
+
+	// Ensure we have a context before the app starts
+	l.SetContext(ctx)
 
 	RegisterLuaTypes(r, l, ShmakeType{Runtime: r}, CommandType{Runtime: r}, PoolType{})
 
-	r.modules["shmake.main"] = getMainModule()
-	r.modules["shmake.files"] = getFileModule(r)
-
-	for name, module := range r.modules {
+	modules := make(map[string]Module)
+	modules["shmake.main"] = getMainModule()
+	modules["shmake.files"] = getFileModule(r)
+	for name, module := range modules {
 		l.PreloadModule(name, module.withLogging().loader(r))
 	}
 
@@ -189,4 +176,19 @@ func Run() {
 	l.SetGlobal("current_dir", lua.LString(dir))
 	err = l.DoFile("main.lua")
 	checkErr(err)
+}
+
+func checkErr(err error) {
+	if err == nil {
+		return
+	}
+
+	var lerr *lua.ApiError
+	if errors.As(err, &lerr) {
+		slog.With(slog.String("stack_trace", strings.ReplaceAll(lerr.StackTrace, "\t", "  "))).Error(lerr.Object.String())
+	} else if err != nil {
+		slog.Error(lerr.Object.String())
+	}
+
+	os.Exit(1)
 }

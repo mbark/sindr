@@ -247,7 +247,7 @@ func chdir(runtime *Runtime, l *lua.LState) ([]lua.LValue, error) {
 		return nil, err
 	}
 
-	runtime.prevDir = cwd
+	runtime.PrevDir = cwd
 	err = os.Chdir(dir)
 	if err != nil {
 		return nil, err
@@ -257,15 +257,15 @@ func chdir(runtime *Runtime, l *lua.LState) ([]lua.LValue, error) {
 }
 
 func popdir(runtime *Runtime, _ *lua.LState) ([]lua.LValue, error) {
-	if runtime.prevDir == "" {
+	if runtime.PrevDir == "" {
 		return nil, errors.New("no previous directory stored")
 	}
 
-	err := os.Chdir(runtime.prevDir)
+	err := os.Chdir(runtime.PrevDir)
 	if err != nil {
 		return nil, err
 	}
-	runtime.prevDir = ""
+	runtime.PrevDir = ""
 
 	return NoReturnVal, nil
 }

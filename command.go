@@ -164,12 +164,12 @@ func (s ShmakeType) Run(l *lua.LState) int {
 			)))
 		}
 		if noCache {
-			shmake.Runtime.cache.ForceOutOfDate = noCache
+			shmake.Runtime.Cache.ForceOutOfDate = noCache
 		}
 		return ctx, nil
 	}
 
-	err := cmd.Command.Run(l.Context(), os.Args)
+	err := cmd.Command.Run(l.Context(), s.Runtime.Args)
 	if err != nil {
 		l.RaiseError("%s", err.Error())
 	}

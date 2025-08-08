@@ -24,6 +24,18 @@ shmake.command(
 )
 
 shmake.command(
+    name = "flags",
+    action = lambda ctx:
+        print("flags")
+)
+
+shmake.sub_command(
+    path = ["flags", "subber"],
+    action = lambda ctx:
+        print('running sub command')
+)
+
+shmake.command(
     name = "deploy",
     help = "Deploy to an environment",
     action = deploy,

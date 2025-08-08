@@ -33,8 +33,9 @@ func RunStar(args []string) {
 	// Ensure we have a context before the app starts
 	globals := starlark.StringDict{
 		"shmake": starlarkstruct.FromStringDict(starlark.String("shmake"), starlark.StringDict{
-			"cli":     starlark.NewBuiltin("cli", shmakeCLI),
-			"command": starlark.NewBuiltin("command", shmakeCommand),
+			"cli":         starlark.NewBuiltin("cli", shmakeCLI),
+			"command":     starlark.NewBuiltin("command", shmakeCommand),
+			"sub_command": starlark.NewBuiltin("sub_command", shmakeSubCommand),
 		}),
 		"print": starlark.NewBuiltin("print", func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, _ []starlark.Tuple) (starlark.Value, error) {
 			for i := 0; i < args.Len(); i++ {

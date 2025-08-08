@@ -38,9 +38,11 @@ func RunStar(args []string) {
 			"sub_command": starlark.NewBuiltin("sub_command", shmakeSubCommand),
 		}),
 		"print": starlark.NewBuiltin("print", func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, _ []starlark.Tuple) (starlark.Value, error) {
+			ar := make([]any, args.Len())
 			for i := 0; i < args.Len(); i++ {
-				fmt.Println(args.Index(i).String())
+				ar[i] = args.Index(i).String()
 			}
+			fmt.Println(ar...)
 			return starlark.None, nil
 		}),
 	}

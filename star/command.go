@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
+	"unicode"
 
 	"github.com/urfave/cli/v3"
 	"go.starlark.net/starlark"
-	"go.starlark.net/starlarkstruct"
 )
 
 type CLI struct {
@@ -346,9 +347,9 @@ func (c *Context) Hash() (uint32, error) { return 0, errors.New("unhashable") }
 func (c *Context) Attr(name string) (starlark.Value, error) {
 	switch name {
 	case "flags":
-		return starlarkstruct.FromStringDict(starlark.String("flags"), c.Flags), nil
+		return NewFlagMap(c.Flags), nil
 	case "args":
-		return starlarkstruct.FromStringDict(starlark.String("args"), c.Args), nil
+		return NewFlagMap(c.Args), nil
 	case "args_list":
 		return c.ArgsSlice, nil
 	}
@@ -357,4 +358,96 @@ func (c *Context) Attr(name string) (starlark.Value, error) {
 
 func (c *Context) AttrNames() []string {
 	return []string{"flags", "args"}
+}
+
+var _ starlark.Mapping = (*FlagMap)(nil)
+
+// FlagMap allows both dot-access and index-access to flags:
+//
+//	ctx.flags["some-flag"]  --> works
+//	ctx.flags.some_flag      --> also works (mapped from key "some-flag")
+type FlagMap struct {
+	data      starlark.StringDict
+	aliasKeys map[string]string // maps snake_case -> actual key (e.g. some_flag -> some-flag)
+}
+
+func (m *FlagMap) Get(value starlark.Value) (v starlark.Value, found bool, err error) {
+	key, ok := value.(starlark.String)
+	if !ok {
+		return starlark.None, false, fmt.Errorf("flag key must be string")
+	}
+
+	v, ok = m.data[string(key)]
+	return v, ok, nil
+}
+
+func NewFlagMap(d starlark.StringDict) *FlagMap {
+	alias := map[string]string{}
+	for k := range d {
+		if isValidIdentifier(k) {
+			alias[k] = k
+		} else {
+			// Convert dash-case to snake_case as fallback
+			kSnake := strings.ReplaceAll(k, "-", "_")
+			if isValidIdentifier(kSnake) {
+				alias[kSnake] = k
+			}
+		}
+	}
+	return &FlagMap{
+		data:      d,
+		aliasKeys: alias,
+	}
+}
+
+func (m *FlagMap) String() string        { return "<flags>" }
+func (m *FlagMap) Type() string          { return "FlagMap" }
+func (m *FlagMap) Freeze()               {} // assume values are immutable
+func (m *FlagMap) Truth() starlark.Bool  { return starlark.True }
+func (m *FlagMap) Hash() (uint32, error) { return 0, errors.New("unhashable") }
+
+// Attr supports ctx.flags.some_flag
+func (m *FlagMap) Attr(name string) (starlark.Value, error) {
+	if realKey, ok := m.aliasKeys[name]; ok {
+		return m.data[realKey], nil
+	}
+	return nil, nil
+}
+
+func (m *FlagMap) AttrNames() []string {
+	names := make([]string, 0, len(m.aliasKeys))
+	for k := range m.aliasKeys {
+		names = append(names, k)
+	}
+	return names
+}
+
+func (m *FlagMap) Index(i starlark.Value) (starlark.Value, error) {
+	key, ok := i.(starlark.String)
+	if !ok {
+		return nil, fmt.Errorf("flag key must be string")
+	}
+	val, ok := m.data[string(key)]
+	if !ok {
+		return starlark.None, nil
+	}
+	return val, nil
+}
+
+func isValidIdentifier(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i, r := range s {
+		if i == 0 {
+			if !unicode.IsLetter(r) && r != '_' {
+				return false
+			}
+		} else {
+			if !unicode.IsLetter(r) && !unicode.IsDigit(r) && r != '_' {
+				return false
+			}
+		}
+	}
+	return true
 }

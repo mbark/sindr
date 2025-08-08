@@ -1,5 +1,5 @@
 def build(ctx):
-    print("building", ctx.args.target)
+    print("building", ctx.args.target, 'snake_cased', ctx.flags.some_flag, 'by flag-name', ctx.flags['some-flag'])
 
 def deploy(ctx):
     print("deploying", ctx.args.env)

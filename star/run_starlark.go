@@ -36,6 +36,7 @@ func RunStar(args []string) {
 			"cli":         starlark.NewBuiltin("cli", shmakeCLI),
 			"command":     starlark.NewBuiltin("command", shmakeCommand),
 			"sub_command": starlark.NewBuiltin("sub_command", shmakeSubCommand),
+			"shell":       starlark.NewBuiltin("shell", shmakeShell),
 		}),
 		"print": starlark.NewBuiltin("print", func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, _ []starlark.Tuple) (starlark.Value, error) {
 			ar := make([]any, args.Len())

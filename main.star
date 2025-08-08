@@ -37,9 +37,15 @@ shmake.sub_command(
         print('running sub command')
 )
 
+# defining a global variable makes it available for string templating
+someDir = "foobar"
 shmake.command(
-    name = "deploy",
+    name = "string",
     help = "Deploy to an environment",
-    action = deploy,
+    action = lambda ctx:
+        print(shmake.string('''
+            global variable: {{.someDir}}
+            dict variable: {{.other_var}}
+            ''', other_var='other variable')),
     args = ["env"]
 )

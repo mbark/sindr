@@ -23,6 +23,8 @@ func checkErr(err error) {
 	os.Exit(1)
 }
 
+var globals starlark.StringDict
+
 func RunStar(args []string) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -31,31 +33,37 @@ func RunStar(args []string) {
 
 	slog.SetDefault(logger)
 	// Ensure we have a context before the app starts
-	globals := starlark.StringDict{
+	predeclared := starlark.StringDict{
 		"shmake": starlarkstruct.FromStringDict(starlark.String("shmake"), starlark.StringDict{
 			"cli":         starlark.NewBuiltin("cli", shmakeCLI),
 			"command":     starlark.NewBuiltin("command", shmakeCommand),
 			"sub_command": starlark.NewBuiltin("sub_command", shmakeSubCommand),
 			"shell":       starlark.NewBuiltin("shell", shmakeShell),
+			"string":      starlark.NewBuiltin("string", shmakeString),
 		}),
 		"print": starlark.NewBuiltin("print", func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, _ []starlark.Tuple) (starlark.Value, error) {
 			ar := make([]any, args.Len())
 			for i := 0; i < args.Len(); i++ {
-				ar[i] = args.Index(i).String()
+				if s, ok := args.Index(i).(starlark.String); ok {
+					ar[i] = string(s) // unquoted, raw string
+				} else {
+					ar[i] = args.Index(i).String() // fallback to default
+				}
 			}
 			fmt.Println(ar...)
 			return starlark.None, nil
 		}),
 	}
-	_, err := starlark.ExecFileOptions(
+	g, err := starlark.ExecFileOptions(
 		&syntax.FileOptions{},
 		&starlark.Thread{Name: "cli"},
 		"main.star",
 		nil,
-		globals,
+		predeclared,
 	)
 	checkErr(err)
 
+	globals = g
 	runCLI(ctx, args)
 }
 

@@ -12,10 +12,6 @@ import (
 	"go.starlark.net/starlark"
 )
 
-type runOptions struct {
-	Prefix string
-}
-
 func shmakeShell(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var command, prefix string
 	if err := starlark.UnpackArgs("shell", args, kwargs,

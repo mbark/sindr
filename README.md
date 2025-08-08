@@ -22,3 +22,14 @@ Using a `lua` interpreter written in `go` we can ship a single binary which hand
 
 With a set of modules provided to allow doing what you typically want to do e.g., watching files, copying and creating
 files or running a command if something has changed since last time.
+
+## TODOs and ideas
+
+- [ ] Allow "importing" package.json files and adding their scripts as commands
+- [ ] Include all `main.lua` files in directories upwards
+    - [ ] How should this work? Do we automatically fetch all `main.lua` files upwards or do something with imports?
+        - Maybe we have something specifies that this is a subset of another file? Enforcing a single `main.lua` file?
+- [ ] Add functionality for setting categories
+    - [ ] Both for the entire shmake struct (e.g., if you have a main.lua file in the backend directory) but also for
+      individual commands
+- [ ] lib:ify the `shmake` package to allow people to use and extend it through Go.

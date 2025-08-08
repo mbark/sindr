@@ -3,9 +3,9 @@ package main
 import (
 	"os"
 
-	"github.com/mbark/shmake"
+	"github.com/mbark/shmake/star"
 )
 
 func main() {
-	shmake.Run(os.Args)
+	star.RunStar(os.Args)
 }

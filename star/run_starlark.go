@@ -2,7 +2,6 @@ package star
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"os"
 
@@ -40,6 +39,10 @@ func RunStar(args []string) {
 			"sub_command": starlark.NewBuiltin("sub_command", shmakeSubCommand),
 			"shell":       starlark.NewBuiltin("shell", shmakeShell),
 			"string":      starlark.NewBuiltin("string", shmakeString),
+			"run_async":   starlark.NewBuiltin("run_async", shmakeRunAsync),
+			"wait":        starlark.NewBuiltin("wait", shmakeWait),
+			"watch":       starlark.NewBuiltin("watch", shmakeWatch),
+			"pool":        starlark.NewBuiltin("pool", shmakePool),
 		}),
 		"print": starlark.NewBuiltin("print", func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, _ []starlark.Tuple) (starlark.Value, error) {
 			ar := make([]any, args.Len())
@@ -50,7 +53,6 @@ func RunStar(args []string) {
 					ar[i] = args.Index(i).String() // fallback to default
 				}
 			}
-			fmt.Println(ar...)
 			return starlark.None, nil
 		}),
 	}

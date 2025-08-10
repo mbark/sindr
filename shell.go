@@ -2,40 +2,38 @@ package shmake
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"log/slog"
 	"os/exec"
 	"strings"
 
 	"github.com/muesli/termenv"
-	lua "github.com/yuin/gopher-lua"
+	"go.starlark.net/starlark"
 )
 
-type runOptions struct {
-	Prefix string
-}
-
-func shell(_ *Runtime, l *lua.LState) ([]lua.LValue, error) {
-	c, err := MapString(l, 1)
-	if err != nil {
+func shmakeShell(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var command, prefix string
+	if err := starlark.UnpackArgs("shell", args, kwargs,
+		"command", &command,
+		"prefix?", &prefix,
+	); err != nil {
 		return nil, err
 	}
 
-	options, err := MapOptionalTable[runOptions](l, 2)
-	if err != nil {
-		return nil, err
-	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	slog.With(slog.String("command", c)).Debug("running shell command")
+	slog.With(slog.String("command", command)).Debug("running shell command")
 
-	cmd := exec.CommandContext(l.Context(), "bash", "-c", c) // #nosec G204
-	out, err := startShellCmd(cmd, options.Prefix)
+	cmd := exec.CommandContext(ctx, "bash", "-c", command) // #nosec G204
+	out, err := startShellCmd(cmd, prefix)
 	if err != nil {
 		return nil, fmt.Errorf("start shell cmd failed: %w", err)
 	}
 
 	out = strings.TrimSpace(out)
-	return []lua.LValue{lua.LString(out)}, nil
+	return starlark.String(out), nil
 }
 
 func startShellCmd(cmd *exec.Cmd, name string) (string, error) {

@@ -5,61 +5,53 @@ import (
 	"fmt"
 	"text/template"
 
-	"github.com/yuin/gluamapper"
-	lua "github.com/yuin/gopher-lua"
+	"go.starlark.net/starlark"
 )
 
-func templateString(_ *Runtime, l *lua.LState) ([]lua.LValue, error) {
-	str, err := MapString(l, 1)
-	if err != nil {
-		return nil, err
+func shmakeString(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	if args.Len() < 1 {
+		return nil, fmt.Errorf("string() requires at least 1 positional argument (the template string)")
+	}
+
+	tmplVal, ok := args.Index(0).(starlark.String)
+	if !ok {
+		return nil, fmt.Errorf("first argument must be a string")
 	}
 
 	values := make(map[string]any)
-	if l.GetTop() > 1 {
-		tbl, ok := l.Get(2).(*lua.LTable)
+	for k, v := range globals {
+		val, ok := v.(starlark.String)
 		if !ok {
-			return nil, ErrBadType{Index: 2, Typ: lua.LTTable}
+			continue
 		}
 
-		if err := gluamapper.NewMapper(gluamapper.Option{
-			NameFunc: func(field string) string { return field },
-		}).Map(tbl, &values); err != nil {
-			return nil, ErrBadArg{Index: 2, Message: fmt.Errorf("invalid option: %w", err).Error()}
+		values[k] = string(val)
+	}
+	for _, kv := range kwargs {
+		key, ok := kv[0].(starlark.String)
+		if !ok {
+			continue
+		}
+
+		switch val := kv[1].(type) {
+		case starlark.String:
+			values[string(key)] = string(val)
+		case starlark.Bool:
+			values[string(key)] = bool(val)
+		case starlark.Int:
+			i, ok := val.Int64()
+			if ok {
+				values[string(key)] = i
+			}
 		}
 	}
 
-	globals := l.Get(lua.GlobalsIndex)
-	tbl, ok := globals.(*lua.LTable)
-	if !ok {
-		return nil, fmt.Errorf("globals is not a table")
-	}
-
-	tbl.ForEach(func(key lua.LValue, value lua.LValue) {
-		skey, ok := key.(lua.LString)
-		if !ok {
-			return
-		}
-		var val any
-		switch v := value.(type) {
-		case lua.LString:
-			val = string(v)
-		case lua.LNumber:
-			val = float64(v)
-		case lua.LBool:
-			val = bool(v)
-		default:
-			return
-		}
-		values[string(skey)] = val
-	})
-
-	t := template.Must(template.New("").Parse(str))
+	t := template.Must(template.New("").Parse(string(tmplVal)))
 	var buf bytes.Buffer
-	err = t.Execute(&buf, values)
+	err := t.Execute(&buf, values)
 	if err != nil {
 		return nil, fmt.Errorf("execute template: %w", err)
 	}
 
-	return []lua.LValue{lua.LString(buf.String())}, nil
+	return starlark.String(buf.String()), nil
 }

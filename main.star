@@ -63,15 +63,33 @@ shmake.command(
     action=lambda ctx: shmake.watch('./file', pooled_start),
 )
 
+print(current_dir)
 # defining a global variable makes it available for string templating
-someDir = "foobar"
+some_dir = "foobar"
 shmake.command(
     name = "string",
     help = "Deploy to an environment",
     action = lambda ctx:
         print(shmake.string('''
-            global variable: {{.someDir}}
+            global variable: {{.some_dir}}
             dict variable: {{.other_var}}
             ''', other_var='other variable')),
     args = ["env"]
 )
+
+def with_version(ctx):
+	# Test that the function is called by checking return value
+	shmake.store(name='test-version', version='')
+	
+	def test_func():
+		print('Function executed correctly!')
+		return True
+		
+	ran = shmake.with_version(test_func, name='test-version', version='v2.0.0')
+
+	if not ran:
+		fail('expected with_version to return true when function runs')
+	
+	print('Test passed: with_version function was called and executed successfully')
+
+shmake.command(name="with_version", action=with_version)

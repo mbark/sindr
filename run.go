@@ -3,110 +3,70 @@ package shmake
 import (
 	"errors"
 	"log/slog"
-	"strings"
+	"os"
+	"path/filepath"
 	"sync"
+	"time"
 
-	lua "github.com/yuin/gopher-lua"
+	"github.com/gobwas/glob"
+	"github.com/radovskyb/watcher"
+	"go.starlark.net/starlark"
+	"go.starlark.net/starlarkstruct"
 )
 
-func pool(_ *Runtime, l *lua.LState) ([]lua.LValue, error) { //nolint:unparam
-	ud := l.NewUserData()
-	ud.Value = &Pool{wg: sync.WaitGroup{}}
-	l.SetMetatable(ud, l.GetTypeMetatable(PoolType{}.TypeName()))
-	return []lua.LValue{ud}, nil
-}
-
-var _ LuaType = new(PoolType)
-
-type PoolType struct{}
-
-func (p PoolType) TypeName() string {
-	return "pool"
-}
-
-func (p PoolType) Funcs() map[string]lua.LGFunction {
-	return map[string]lua.LGFunction{
-		"run":  p.Run,
-		"wait": p.Wait,
-	}
-}
-
-func (PoolType) Run(l *lua.LState) int {
-	p := IsUserData[*Pool](l)
-	fn, err := MapFunction(l, 2)
-	if err != nil {
-		l.RaiseError("%s", err.Error())
+func shmakeRunAsync(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	if args.Len() != 1 {
+		return nil, errors.New("run_async() requires exactly 1 argument (a function)")
 	}
 
-	p.wg.Add(1)
+	callable, ok := args.Index(0).(*starlark.Function)
+	if !ok {
+		return nil, errors.New("run_async() argument must be a callable function")
+	}
+
+	wg.Add(1)
 	go func() {
-		Lt, cancel := l.NewThread()
-		defer cancel()
-		defer p.wg.Done()
+		defer wg.Done()
 
-		err = Lt.CallByParam(lua.P{Fn: fn, NRet: 1, Protect: true})
+		newThread := &starlark.Thread{Name: "async"}
+		_, err := starlark.Call(newThread, callable, starlark.Tuple{}, nil)
 		if err != nil {
-			l.RaiseError("%s", err.Error())
+			slog.Error("async function failed", "error", err)
 		}
 	}()
 
-	return 0
+	return starlark.None, nil
 }
 
-func (PoolType) Wait(l *lua.LState) int {
-	p := IsUserData[*Pool](l)
-	p.wg.Wait()
-	return 0
+func shmakeWait(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	wg.Wait()
+	return starlark.None, nil
 }
 
-type Pool struct {
-	wg sync.WaitGroup
-}
-
-func async(runtime *Runtime, l *lua.LState) ([]lua.LValue, error) {
-	fn, err := MapFunction(l, 1)
-	if err != nil {
-		return nil, err
+func shmakeWatch(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	if args.Len() != 2 {
+		return nil, errors.New("watch() requires exactly 2 arguments (glob pattern and function)")
 	}
 
-	runtime.wg.Add(1)
-	Lt, _ := l.NewThread()
+	globVal, ok := args.Index(0).(starlark.String)
+	if !ok {
+		return nil, errors.New("watch() first argument must be a string (glob pattern)")
+	}
+	glob := string(globVal)
+
+	callable, ok := args.Index(1).(*starlark.Function)
+	if !ok {
+		return nil, errors.New("watch() second argument must be a callable function")
+	}
+
+	wg.Add(1)
 	go func() {
-		defer runtime.wg.Done()
-
-		err := Lt.CallByParam(lua.P{Fn: fn, NRet: 1, Protect: true})
-		if err != nil {
-			l.RaiseError("%s", err.Error())
-		}
-	}()
-
-	return NoReturnVal, nil
-}
-
-func wait(runtime *Runtime, _ *lua.LState) ([]lua.LValue, error) { //nolint:unparam
-	runtime.wg.Wait()
-	return NoReturnVal, nil
-}
-
-func watch(runtime *Runtime, l *lua.LState) ([]lua.LValue, error) {
-	glob, err := MapString(l, 1)
-	if err != nil {
-		return nil, err
-	}
-
-	fn, err := MapFunction(l, 2)
-	if err != nil {
-		return nil, err
-	}
-
-	runtime.wg.Add(1)
-	go func() {
-		defer runtime.wg.Done()
+		defer wg.Done()
 
 		log := slog.With(slog.String("glob", glob))
 
 		onChange := make(chan bool)
-		close, err := startWatching(runtime, glob, onChange)
+		close, err := startWatching(glob, onChange)
 		defer close()
 		if err != nil {
 			log.With(slog.Any("err", err)).Error("starting watcher failed")
@@ -114,41 +74,135 @@ func watch(runtime *Runtime, l *lua.LState) ([]lua.LValue, error) {
 		}
 
 		for {
-			done := runWatchFnOnce(runtime, l, fn, onChange)
-			if done {
-				return
-			}
+			newThread := &starlark.Thread{Name: "watch"}
+			go func() {
+				_, err := starlark.Call(newThread, callable, starlark.Tuple{}, nil)
+				var serr *starlark.EvalError
+				if errors.As(err, &serr) {
+					slog.Debug("watch function canceled")
+				} else if err != nil {
+					slog.Error("watch function failed", "error", err)
+				}
+			}()
 
-			log.Info("changes detected, running function")
+			slog.Debug("waiting for changes")
+			<-onChange
+			newThread.Cancel("watched file changed")
+			log.Info("changes detected, rerunning function")
 		}
 	}()
 
-	return NoReturnVal, nil
+	return starlark.None, nil
 }
 
-func runWatchFnOnce(_ *Runtime, l *lua.LState, fn *lua.LFunction, onChange chan bool) bool {
-	Lt, cancel := l.NewThread()
-	defer cancel()
+func shmakePool(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	pool := &Pool{wg: sync.WaitGroup{}}
 
-	done := make(chan bool)
-	go func() {
-		err := Lt.CallByParam(lua.P{Fn: fn, NRet: 1, Protect: true})
-		var lerr *lua.ApiError
-		if errors.As(err, &lerr) && strings.HasSuffix(lerr.Object.String(), "signal: killed") {
-			slog.With(slog.Any("err", err)).Debug("function killed")
-		} else if err != nil {
-			l.RaiseError("%s", err.Error())
+	poolMethods := starlark.StringDict{
+		"run":  starlark.NewBuiltin("pool.run", makePoolRun(pool)),
+		"wait": starlark.NewBuiltin("pool.wait", makePoolWait(pool)),
+	}
+
+	return starlarkstruct.FromStringDict(starlark.String("pool"), poolMethods), nil
+}
+
+func makePoolRun(pool *Pool) func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	return func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		if args.Len() != 1 {
+			return nil, errors.New("pool.run() requires exactly 1 argument (a function)")
 		}
-		<-done
+
+		callable, ok := args.Index(0).(*starlark.Function)
+		if !ok {
+			return nil, errors.New("pool.run() argument must be a callable function")
+		}
+
+		pool.wg.Add(1)
+		go func() {
+			defer pool.wg.Done()
+
+			newThread := &starlark.Thread{Name: "pool"}
+			_, err := starlark.Call(newThread, callable, starlark.Tuple{}, nil)
+			if err != nil {
+				slog.Error("pool function failed", "error", err)
+			}
+		}()
+
+		return starlark.None, nil
+	}
+}
+
+func makePoolWait(pool *Pool) func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	return func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		pool.wg.Wait()
+		return starlark.None, nil
+	}
+}
+
+type Pool struct {
+	wg sync.WaitGroup
+}
+
+func runWatchFnOnce(callable *starlark.Function, onChange chan bool) {
+
+}
+
+func startWatching(watchGlob string, onChange chan bool) (func(), error) {
+	w := watcher.New()
+	w.SetMaxEvents(1)
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		return w.Close, err
+	}
+
+	g := glob.MustCompile(watchGlob)
+
+	w.AddFilterHook(func(info os.FileInfo, fullPath string) error {
+		relPath, err := filepath.Rel(cwd, fullPath)
+		if err != nil {
+			return err
+		}
+
+		// If it doesn't match, try it with the relative path appended
+		if g.Match(relPath) || g.Match("./"+relPath) {
+			return nil
+		} else {
+			return watcher.ErrSkip
+		}
+	})
+
+	log := slog.With(slog.String("glob", watchGlob))
+
+	go func() {
+		for {
+			select {
+			case event := <-w.Event:
+				log.With(slog.String("event", event.String())).Debug("watcher event")
+				onChange <- true
+			case err := <-w.Error:
+				log.With(slog.Any("err", err)).Error("watcher failed")
+			case <-w.Closed:
+				return
+			}
+		}
+	}()
+	if err := w.AddRecursive("."); err != nil {
+		return w.Close, err
+	}
+
+	var paths []string
+	for path := range w.WatchedFiles() {
+		paths = append(paths, path)
+	}
+
+	log.With(slog.Any("files", paths)).Debug("watching files")
+
+	go func() {
+		if err := w.Start(time.Millisecond * 100); err != nil {
+			log.With(slog.Any("err", err)).Error("starting watcher failed")
+		}
 	}()
 
-	slog.Debug("waiting for changes")
-	select {
-	case <-Lt.Context().Done():
-		return true
-	case <-done:
-		return false
-	case <-onChange:
-		return false
-	}
+	return w.Close, nil
 }

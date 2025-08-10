@@ -2,119 +2,317 @@ package shmake
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"log/slog"
-	"os"
 	"strings"
+	"sync"
+	"unicode"
 
-	"github.com/charmbracelet/log"
-	slogmulti "github.com/samber/slog-multi"
 	"github.com/urfave/cli/v3"
-	lua "github.com/yuin/gopher-lua"
+	"go.starlark.net/starlark"
 )
 
-// Shmake global to create the cli instance.
-type Shmake struct {
+type CLI struct {
 	Command *Command
-	Runtime *Runtime
 }
 
-// Command is the struct we use when building a command; it's essentially just a cli.Command wrapper but we use it for
-// now in case we want to add more data in the future.
 type Command struct {
 	Command *cli.Command
+	Args    []string
+	ArgType map[string]func(string) (starlark.Value, error)
 }
 
 var (
-	_ LuaType = ShmakeType{}
-	_ LuaType = CommandType{}
+	gCLI           CLI
+	forceOutOfDate bool
+	wg             sync.WaitGroup
 )
 
-type ShmakeType struct {
-	Runtime *Runtime
-}
-type CommandType struct {
-	Runtime *Runtime
+func shmakeCLI(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var name, usage string
+	if err := starlark.UnpackArgs("cli", args, kwargs,
+		"name", &name,
+		"usage?", &usage,
+	); err != nil {
+		return nil, err
+	}
+	gCLI = CLI{
+		Command: &Command{
+			Command: &cli.Command{
+				Name:  name,
+				Usage: usage,
+			},
+		},
+	}
+	return starlark.None, nil
 }
 
-func (s ShmakeType) TypeName() string {
-	return "shmake"
+func shmakeCommand(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var name, help string
+	var action starlark.Callable
+	var argsList *starlark.List
+	var flagsDict *starlark.Dict
+	if err := starlark.UnpackArgs("command", args, kwargs,
+		"name", &name,
+		"help?", &help,
+		"action", &action,
+		"args?", &argsList,
+		"flags?", &flagsDict,
+	); err != nil {
+		return nil, err
+	}
+	cmd := &Command{
+		Command: &cli.Command{
+			Name:  name,
+			Usage: help,
+			Action: func(ctx context.Context, command *cli.Command) error {
+				flags := make(starlark.StringDict)
+				for _, flag := range command.Flags {
+					var sval starlark.Value
+					switch val := flag.Get().(type) {
+					case string:
+						sval = starlark.String(val)
+					case int:
+						sval = starlark.MakeInt(val)
+					case bool:
+						sval = starlark.Bool(val)
+					default:
+						return fmt.Errorf("unknown flag value type: %v", flag)
+					}
+					for _, f := range flag.Names() {
+						flags[f] = sval
+					}
+				}
+
+				argsDict := make(starlark.StringDict)
+				for _, arg := range command.Arguments {
+					switch a := arg.(type) {
+					case *cli.StringArg:
+						argsDict[a.Name] = starlark.String(command.StringArg(a.Name))
+					case *cli.IntArg:
+						argsDict[a.Name] = starlark.MakeInt(command.IntArg(a.Name))
+					}
+				}
+
+				slice := command.Args().Slice()
+				list := make([]starlark.Value, len(slice))
+				for i, a := range slice {
+					list[i] = starlark.String(a)
+				}
+
+				_, err := starlark.Call(thread, action, starlark.Tuple{&Context{
+					Flags:     flags,
+					Args:      argsDict,
+					ArgsSlice: starlark.NewList(list),
+				}}, nil)
+				return err
+			},
+		},
+	}
+
+	if argsList != nil {
+		for i := 0; i < argsList.Len(); i++ {
+			str, ok := argsList.Index(i).(starlark.String)
+			if !ok {
+				return nil, fmt.Errorf("args must be list of strings")
+			}
+			cmd.Command.Arguments = append(cmd.Command.Arguments, &cli.StringArg{Name: string(str)})
+			cmd.Args = append(cmd.Args, string(str))
+		}
+	}
+
+	if flagsDict != nil {
+		for _, item := range flagsDict.Items() {
+			key, ok := item[0].(starlark.String)
+			if !ok {
+				return nil, fmt.Errorf("flag name must be string")
+			}
+			flagDef, ok := item[1].(*starlark.Dict)
+			if !ok {
+				return nil, fmt.Errorf("flag value must be dict")
+			}
+
+			var defaultVal starlark.Value
+			var flagHelp string
+			var builder func() cli.Flag
+			for _, kv := range flagDef.Items() {
+				k := string(kv[0].(starlark.String))
+				switch k {
+				case "type":
+					typeName := string(kv[1].(starlark.String))
+					switch typeName {
+					case "bool":
+						builder = func() cli.Flag {
+							return &cli.BoolFlag{Name: string(key), Usage: flagHelp, Value: bool(defaultVal.(starlark.Bool))}
+						}
+					case "string":
+						builder = func() cli.Flag {
+							return &cli.StringFlag{Name: string(key), Usage: flagHelp, Value: string(defaultVal.(starlark.String))}
+						}
+					case "int":
+						i, _ := defaultVal.(starlark.Int).Int64()
+						builder = func() cli.Flag { return &cli.IntFlag{Name: string(key), Usage: flagHelp, Value: int(i)} }
+
+					default:
+						return nil, fmt.Errorf("unknown flag type: %s", typeName)
+					}
+
+				case "default":
+					defaultVal = kv[1]
+
+				case "help":
+					flagHelp = string(kv[1].(starlark.String))
+				}
+			}
+
+			cmd.Command.Flags = append(cmd.Command.Flags, builder())
+		}
+	}
+
+	gCLI.Command.Command.Commands = append(gCLI.Command.Command.Commands, cmd.Command)
+	return starlark.None, nil
 }
 
-func newCommand(r *Runtime, l *lua.LState) ([]lua.LValue, error) {
-	shmake := &Shmake{Runtime: r}
-	name := l.CheckString(1)
+func shmakeSubCommand(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var pathList *starlark.List
+	var help string
+	var action starlark.Callable
+	var argsList *starlark.List
+	var flagsDict *starlark.Dict
+	if err := starlark.UnpackArgs("sub_command", args, kwargs,
+		"path", &pathList,
+		"help?", &help,
+		"action", &action,
+		"args?", &argsList,
+		"flags?", &flagsDict,
+	); err != nil {
+		return nil, err
+	}
 
-	options, err := MapOptionalTable[commandOptions](l, 2)
+	var path []string
+	for i := 0; i < pathList.Len(); i++ {
+		str, ok := pathList.Index(i).(starlark.String)
+		if !ok {
+			return nil, fmt.Errorf("args must be list of strings")
+		}
+		path = append(path, string(str))
+	}
+
+	parentCmd, err := findSubCommand(gCLI.Command.Command, path)
 	if err != nil {
 		return nil, err
 	}
 
-	shmake.Command = &Command{
-		Command: &cli.Command{
-			Name:  name,
-			Usage: options.Usage,
-		},
-	}
-
-	ud := l.NewUserData()
-	ud.Value = shmake
-	l.SetMetatable(ud, l.GetTypeMetatable(ShmakeType{}.TypeName()))
-	return []lua.LValue{ud}, nil
-}
-
-func (s ShmakeType) Funcs() map[string]lua.LGFunction {
-	return map[string]lua.LGFunction{
-		"command":     s.Command,
-		"sub_command": s.SubCommand,
-		"run":         s.Run,
-	}
-}
-
-func (s ShmakeType) Command(l *lua.LState) int {
-	parent := IsUserData[*Shmake](l)
-	name := l.CheckString(2)
-
-	options, err := MapOptionalTable[commandOptions](l, 3)
-	if err != nil {
-		l.RaiseError("invalid options: %v", err)
-	}
-
 	cmd := &Command{
 		Command: &cli.Command{
-			Name:  name,
-			Usage: options.Usage,
+			Name:  path[len(path)-1],
+			Usage: help,
+			Action: func(ctx context.Context, command *cli.Command) error {
+				flags := make(starlark.StringDict)
+				for _, flag := range command.Flags {
+					var sval starlark.Value
+					switch val := flag.Get().(type) {
+					case string:
+						sval = starlark.String(val)
+					case int:
+						sval = starlark.MakeInt(val)
+					case bool:
+						sval = starlark.Bool(val)
+					default:
+						return fmt.Errorf("unknown flag value type: %v", flag)
+					}
+					for _, f := range flag.Names() {
+						flags[f] = sval
+					}
+				}
+
+				argsDict := make(starlark.StringDict)
+				for _, arg := range command.Arguments {
+					switch a := arg.(type) {
+					case *cli.StringArg:
+						argsDict[a.Name] = starlark.String(command.StringArg(a.Name))
+					case *cli.IntArg:
+						argsDict[a.Name] = starlark.MakeInt(command.IntArg(a.Name))
+					}
+				}
+
+				slice := command.Args().Slice()
+				list := make([]starlark.Value, len(slice))
+				for i, a := range slice {
+					list[i] = starlark.String(a)
+				}
+
+				_, err := starlark.Call(thread, action, starlark.Tuple{&Context{
+					Flags:     flags,
+					Args:      argsDict,
+					ArgsSlice: starlark.NewList(list),
+				}}, nil)
+				return err
+			},
 		},
 	}
-	parent.Command.Command.Commands = append(parent.Command.Command.Commands, cmd.Command)
-	return NewUserData(l, cmd, CommandType{})
-}
 
-func (s ShmakeType) SubCommand(l *lua.LState) int {
-	root := IsUserData[*Shmake](l)
-	name, err := MapArray[string](l, 2)
-	if err != nil {
-		l.RaiseError("invalid sub command path: %v", err)
+	if argsList != nil {
+		for i := 0; i < argsList.Len(); i++ {
+			str, ok := argsList.Index(i).(starlark.String)
+			if !ok {
+				return nil, fmt.Errorf("args must be list of strings")
+			}
+			cmd.Command.Arguments = append(cmd.Command.Arguments, &cli.StringArg{Name: string(str)})
+			cmd.Args = append(cmd.Args, string(str))
+		}
 	}
 
-	options, err := MapOptionalTable[commandOptions](l, 3)
-	if err != nil {
-		l.RaiseError("invalid options: %v", err)
+	if flagsDict != nil {
+		for _, item := range flagsDict.Items() {
+			key, ok := item[0].(starlark.String)
+			if !ok {
+				return nil, fmt.Errorf("flag name must be string")
+			}
+			flagDef, ok := item[1].(*starlark.Dict)
+			if !ok {
+				return nil, fmt.Errorf("flag value must be dict")
+			}
+
+			var defaultVal starlark.Value
+			var flagHelp string
+			var builder func() cli.Flag
+			for _, kv := range flagDef.Items() {
+				k := string(kv[0].(starlark.String))
+				switch k {
+				case "type":
+					typeName := string(kv[1].(starlark.String))
+					switch typeName {
+					case "bool":
+						builder = func() cli.Flag {
+							return &cli.BoolFlag{Name: string(key), Usage: flagHelp, Value: bool(defaultVal.(starlark.Bool))}
+						}
+					case "string":
+						builder = func() cli.Flag {
+							return &cli.StringFlag{Name: string(key), Usage: flagHelp, Value: string(defaultVal.(starlark.String))}
+						}
+					case "int":
+						i, _ := defaultVal.(starlark.Int).Int64()
+						builder = func() cli.Flag { return &cli.IntFlag{Name: string(key), Usage: flagHelp, Value: int(i)} }
+
+					default:
+						return nil, fmt.Errorf("unknown flag type: %s", typeName)
+					}
+
+				case "default":
+					defaultVal = kv[1]
+
+				case "help":
+					flagHelp = string(kv[1].(starlark.String))
+				}
+			}
+
+			cmd.Command.Flags = append(cmd.Command.Flags, builder())
+		}
 	}
 
-	parent, err := findSubCommand(root.Command.Command, name)
-	if err != nil {
-		l.RaiseError("unable to find sub command for path [%s]: %v", strings.Join(name, ","), err)
-	}
-
-	cmd := &Command{
-		Command: &cli.Command{
-			Name:  name[len(name)-1],
-			Usage: options.Usage,
-		},
-	}
-	parent.Commands = append(parent.Commands, cmd.Command)
-	return NewUserData(l, cmd, CommandType{})
+	parentCmd.Commands = append(parentCmd.Commands, cmd.Command)
+	return starlark.None, nil
 }
 
 func findSubCommand(cmd *cli.Command, path []string) (*cli.Command, error) {
@@ -135,231 +333,121 @@ func findSubCommand(cmd *cli.Command, path []string) (*cli.Command, error) {
 	return nil, fmt.Errorf("no command with name %s found", path[0])
 }
 
-func (s ShmakeType) Run(l *lua.LState) int {
-	shmake := IsUserData[*Shmake](l)
+type Context struct {
+	Flags     starlark.StringDict
+	Args      starlark.StringDict
+	ArgsSlice *starlark.List
+}
 
-	var verbose, noCache bool
-	cliFlags := []cli.Flag{
-		&cli.BoolFlag{
-			Name:        "verbose",
-			Usage:       "print logs to stdout",
-			Destination: &verbose,
-		},
-		&cli.BoolFlag{
-			Name:        "no-cache",
-			Usage:       "ignore stored values in the cache",
-			Destination: &noCache,
-		},
+func (c *Context) String() string        { return "<ctx>" }
+func (c *Context) Type() string          { return "Context" }
+func (c *Context) Freeze()               {}
+func (c *Context) Truth() starlark.Bool  { return starlark.True }
+func (c *Context) Hash() (uint32, error) { return 0, errors.New("unhashable") }
+func (c *Context) Attr(name string) (starlark.Value, error) {
+	switch name {
+	case "flags":
+		return NewFlagMap(c.Flags), nil
+	case "args":
+		return NewFlagMap(c.Args), nil
+	case "args_list":
+		return c.ArgsSlice, nil
+	}
+	return nil, nil
+}
+
+func (c *Context) AttrNames() []string {
+	return []string{"flags", "args"}
+}
+
+var _ starlark.Mapping = (*FlagMap)(nil)
+
+// FlagMap allows both dot-access and index-access to flags:
+//
+//	ctx.flags["some-flag"]  --> works
+//	ctx.flags.some_flag      --> also works (mapped from key "some-flag")
+type FlagMap struct {
+	data      starlark.StringDict
+	aliasKeys map[string]string // maps snake_case -> actual key (e.g. some_flag -> some-flag)
+}
+
+func (m *FlagMap) Get(value starlark.Value) (v starlark.Value, found bool, err error) {
+	key, ok := value.(starlark.String)
+	if !ok {
+		return starlark.None, false, fmt.Errorf("flag key must be string")
 	}
 
-	cmd := shmake.Command
-	cmd.Command.Version = version
-	cmd.Command.Flags = append(cmd.Command.Flags, cliFlags...)
-	cmd.Command.Before = func(ctx context.Context, cmd *cli.Command) (context.Context, error) {
-		if verbose {
-			slog.SetLogLoggerLevel(slog.LevelDebug)
-			slog.SetDefault(slog.New(slogmulti.Fanout(
-				slog.NewJSONHandler(
-					shmake.Runtime.logFile,
-					&slog.HandlerOptions{Level: slog.LevelDebug},
-				),
-				log.NewWithOptions(os.Stderr, log.Options{Level: log.DebugLevel}),
-			)))
-		}
-		if noCache {
-			shmake.Runtime.Cache.ForceOutOfDate = noCache
-		}
-		return ctx, nil
-	}
-
-	err := cmd.Command.Run(l.Context(), s.Runtime.Args)
-	if err != nil {
-		l.RaiseError("%s", err.Error())
-	}
-
-	s.Runtime.wg.Wait()
-	return 0
+	v, ok = m.data[string(key)]
+	return v, ok, nil
 }
 
-func (c CommandType) TypeName() string {
-	return "command"
-}
-
-func (c CommandType) Funcs() map[string]lua.LGFunction {
-	return map[string]lua.LGFunction{
-		"command":     c.Command,
-		"action":      c.Action,
-		"flag":        c.StringFlag,
-		"string_flag": c.StringFlag,
-		"int_flag":    c.IntFlag,
-		"bool_flag":   c.BoolFlag,
-		"arg":         c.StringArg,
-		"string_arg":  c.StringArg,
-		"int_arg":     c.IntArg,
-	}
-}
-
-type flagOptions[T any] struct {
-	Default  T
-	Usage    string
-	Required bool
-}
-
-func mapFlagOptions[T any](l *lua.LState) flagOptions[T] {
-	flag, err := MapOptionalTable[flagOptions[T]](l, 3)
-	if err != nil {
-		l.RaiseError("invalid options: %v", err)
-	}
-
-	return flag
-}
-
-func (c CommandType) StringFlag(l *lua.LState) int {
-	cmd := IsUserData[*Command](l)
-	name := l.CheckString(2)
-
-	flag := mapFlagOptions[string](l)
-	cmd.Command.Flags = append(cmd.Command.Flags, &cli.StringFlag{
-		Name:     name,
-		Usage:    flag.Usage,
-		Value:    flag.Default,
-		Required: flag.Required,
-	})
-	return NewUserData(l, cmd, CommandType{})
-}
-
-func (c CommandType) IntFlag(l *lua.LState) int {
-	cmd := IsUserData[*Command](l)
-	name := l.CheckString(2)
-
-	flag := mapFlagOptions[int](l)
-	cmd.Command.Flags = append(cmd.Command.Flags, &cli.IntFlag{
-		Name:     name,
-		Usage:    flag.Usage,
-		Value:    flag.Default,
-		Required: flag.Required,
-	})
-	return NewUserData(l, cmd, CommandType{})
-}
-
-func (c CommandType) BoolFlag(l *lua.LState) int {
-	cmd := IsUserData[*Command](l)
-	name := l.CheckString(2)
-
-	flag := mapFlagOptions[bool](l)
-	cmd.Command.Flags = append(cmd.Command.Flags, &cli.BoolFlag{
-		Name:     name,
-		Usage:    flag.Usage,
-		Value:    flag.Default,
-		Required: flag.Required,
-	})
-	return NewUserData(l, cmd, CommandType{})
-}
-
-type argOptions[T any] struct {
-	Default T
-	Usage   string
-}
-
-func mapArgOptions[T any](l *lua.LState) argOptions[T] {
-	arg, err := MapOptionalTable[argOptions[T]](l, 3)
-	if err != nil {
-		l.RaiseError("invalid options: %v", err)
-	}
-
-	return arg
-}
-
-func (c CommandType) StringArg(l *lua.LState) int {
-	cmd := IsUserData[*Command](l)
-	name := l.CheckString(2)
-
-	flag := mapArgOptions[string](l)
-	cmd.Command.Arguments = append(cmd.Command.Arguments, &cli.StringArg{
-		Name:      name,
-		Value:     flag.Default,
-		UsageText: flag.Usage,
-	})
-	return NewUserData(l, cmd, CommandType{})
-}
-
-func (c CommandType) IntArg(l *lua.LState) int {
-	cmd := IsUserData[*Command](l)
-	name := l.CheckString(2)
-
-	flag := mapArgOptions[int](l)
-	cmd.Command.Arguments = append(cmd.Command.Arguments, &cli.IntArg{
-		Name:      name,
-		Value:     flag.Default,
-		UsageText: flag.Usage,
-	})
-	return NewUserData(l, cmd, CommandType{})
-}
-
-func (c CommandType) Action(l *lua.LState) int {
-	cmd := IsUserData[*Command](l)
-	action := l.CheckFunction(2)
-
-	cmd.Command.Action = func(ctx context.Context, command *cli.Command) error {
-		l.SetContext(ctx)
-
-		tbl := l.NewTable()
-		for _, flag := range command.Flags {
-			var lval lua.LValue
-			switch val := flag.Get().(type) {
-			case string:
-				lval = lua.LString(val)
-			case int:
-				lval = lua.LNumber(val)
-			case bool:
-				lval = lua.LBool(val)
-			default:
-				l.RaiseError("unknown flag value type: %v", flag)
+func NewFlagMap(d starlark.StringDict) *FlagMap {
+	alias := map[string]string{}
+	for k := range d {
+		if isValidIdentifier(k) {
+			alias[k] = k
+		} else {
+			// Convert dash-case to snake_case as fallback
+			kSnake := strings.ReplaceAll(k, "-", "_")
+			if isValidIdentifier(kSnake) {
+				alias[kSnake] = k
 			}
-			l.RawSet(tbl, lua.LString(flag.Names()[0]), lval)
 		}
+	}
+	return &FlagMap{
+		data:      d,
+		aliasKeys: alias,
+	}
+}
 
-		args := l.NewTable()
-		for i, arg := range command.Arguments {
-			var lval lua.LValue
-			switch val := arg.Get().(type) {
-			case string:
-				lval = lua.LString(val)
-			case int:
-				lval = lua.LNumber(val)
-			case bool:
-				lval = lua.LBool(val)
-			default:
-				l.RaiseError("unknown flag value type: %v", arg)
+func (m *FlagMap) String() string        { return "<flags>" }
+func (m *FlagMap) Type() string          { return "FlagMap" }
+func (m *FlagMap) Freeze()               {} // assume values are immutable
+func (m *FlagMap) Truth() starlark.Bool  { return starlark.True }
+func (m *FlagMap) Hash() (uint32, error) { return 0, errors.New("unhashable") }
+
+// Attr supports ctx.flags.some_flag
+func (m *FlagMap) Attr(name string) (starlark.Value, error) {
+	if realKey, ok := m.aliasKeys[name]; ok {
+		return m.data[realKey], nil
+	}
+	return nil, nil
+}
+
+func (m *FlagMap) AttrNames() []string {
+	names := make([]string, 0, len(m.aliasKeys))
+	for k := range m.aliasKeys {
+		names = append(names, k)
+	}
+	return names
+}
+
+func (m *FlagMap) Index(i starlark.Value) (starlark.Value, error) {
+	key, ok := i.(starlark.String)
+	if !ok {
+		return nil, fmt.Errorf("flag key must be string")
+	}
+	val, ok := m.data[string(key)]
+	if !ok {
+		return starlark.None, nil
+	}
+	return val, nil
+}
+
+func isValidIdentifier(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i, r := range s {
+		if i == 0 {
+			if !unicode.IsLetter(r) && r != '_' {
+				return false
 			}
-			l.RawSetInt(args, i+1, lval)
+		} else {
+			if !unicode.IsLetter(r) && !unicode.IsDigit(r) && r != '_' {
+				return false
+			}
 		}
-
-		return l.CallByParam(lua.P{Fn: action, NRet: 1, Protect: true}, tbl, args)
 	}
-
-	return NewUserData(l, cmd, CommandType{})
-}
-
-func (c CommandType) Command(l *lua.LState) int {
-	parent := IsUserData[*Command](l)
-	name := l.CheckString(2)
-
-	options, err := MapOptionalTable[commandOptions](l, 3)
-	if err != nil {
-		l.RaiseError("invalid options: %v", err)
-	}
-
-	cmd := &Command{
-		Command: &cli.Command{
-			Name:  name,
-			Usage: options.Usage,
-		},
-	}
-	parent.Command.Commands = append(parent.Command.Commands, cmd.Command)
-	return NewUserData(l, cmd, CommandType{})
-}
-
-type commandOptions struct {
-	Usage string
+	return true
 }

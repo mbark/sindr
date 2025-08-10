@@ -6,7 +6,7 @@ import (
 	"strconv"
 
 	"github.com/peterbourgon/diskv/v3"
-	lua "github.com/yuin/gopher-lua"
+	"go.starlark.net/starlark"
 )
 
 type Cache struct {
@@ -52,50 +52,76 @@ type cacheDiffOptions struct {
 	IntVersion int
 }
 
-func mapCacheDiffOptions(l *lua.LState, idx int) (*cacheDiffOptions, error) {
-	options, err := MapTable[cacheDiffOptions](l, idx)
-	if err != nil {
-		return nil, err
+func mapCacheDiffOptions(kwargs []starlark.Tuple) (*cacheDiffOptions, error) {
+	options := &cacheDiffOptions{}
+
+	for _, kv := range kwargs {
+		key, ok := kv[0].(starlark.String)
+		if !ok {
+			continue
+		}
+
+		switch string(key) {
+		case "name":
+			if val, ok := kv[1].(starlark.String); ok {
+				options.Name = string(val)
+			}
+		case "version":
+			if val, ok := kv[1].(starlark.String); ok {
+				options.Version = string(val)
+			}
+		case "int_version":
+			if val, ok := kv[1].(starlark.Int); ok {
+				if i, ok := val.Int64(); ok {
+					options.IntVersion = int(i)
+				}
+			}
+		}
 	}
-	if options.Version == "" {
+
+	if options.Version == "" && options.IntVersion != 0 {
 		options.Version = strconv.Itoa(options.IntVersion)
 	}
 
-	return &options, nil
+	return options, nil
 }
 
-func diff(runtime *Runtime, l *lua.LState) ([]lua.LValue, error) {
-	options, err := mapCacheDiffOptions(l, 1)
+func shmakeDiff(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	options, err := mapCacheDiffOptions(kwargs)
 	if err != nil {
 		return nil, err
 	}
 
-	isDiff, err := checkIfDiff(runtime, *options)
+	isDiff, err := checkIfDiff(cache, *options)
 	if err != nil {
 		return nil, err
 	}
-	return []lua.LValue{lua.LBool(isDiff)}, nil
+	return starlark.Bool(isDiff), nil
 }
 
-func getVersion(runtime *Runtime, l *lua.LState) ([]lua.LValue, error) {
-	name, err := MapString(l, 1)
-	if err != nil {
-		return nil, err
+func shmakeGetVersion(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	if args.Len() != 1 {
+		return nil, fmt.Errorf("get_version() requires exactly 1 argument")
 	}
 
-	v, err := runtime.Cache.GetVersion(name)
+	name, ok := args.Index(0).(starlark.String)
+	if !ok {
+		return nil, fmt.Errorf("name must be a string")
+	}
+
+	v, err := cache.GetVersion(string(name))
 	if err != nil {
 		return nil, err
 	}
 	if v == nil {
-		return []lua.LValue{lua.LNil}, nil
+		return starlark.None, nil
 	}
 
-	return []lua.LValue{lua.LString(*v)}, nil
+	return starlark.String(*v), nil
 }
 
-func store(runtime *Runtime, l *lua.LState) ([]lua.LValue, error) {
-	options, err := mapCacheDiffOptions(l, 1)
+func shmakeStore(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	options, err := mapCacheDiffOptions(kwargs)
 	if err != nil {
 		return nil, err
 	}
@@ -105,48 +131,56 @@ func store(runtime *Runtime, l *lua.LState) ([]lua.LValue, error) {
 		With(slog.String("name", options.Name)).
 		Debug("storing cache version")
 
-	if err := runtime.Cache.StoreVersion(options.Name, options.Version); err != nil {
+	if err := cache.StoreVersion(options.Name, options.Version); err != nil {
 		return nil, err
 	}
-	return NoReturnVal, nil
+	return starlark.None, nil
 }
 
-func withVersion(runtime *Runtime, l *lua.LState) ([]lua.LValue, error) {
-	options, err := mapCacheDiffOptions(l, 1)
+func shmakeWithVersion(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	if args.Len() != 1 {
+		return nil, fmt.Errorf("with_version() requires exactly 1 positional argument (the function)")
+	}
+
+	fnVal, ok := args.Index(0).(starlark.Callable)
+	if !ok {
+		return nil, fmt.Errorf("first argument must be callable")
+	}
+
+	options, err := mapCacheDiffOptions(kwargs)
 	if err != nil {
 		return nil, err
 	}
 
-	fn, err := MapFunction(l, 2)
-	if err != nil {
-		return nil, err
-	}
-
-	isDiff, err := checkIfDiff(runtime, *options)
+	isDiff, err := checkIfDiff(cache, *options)
 	if err != nil {
 		return nil, err
 	}
 	if !isDiff {
-		return NoReturnVal, nil
+		return starlark.Bool(false), nil
 	}
 
-	err = l.CallByParam(lua.P{Fn: fn, NRet: 1, Protect: true})
+	res, err := starlark.Call(thread, fnVal, nil, nil)
 	if err != nil {
-		l.RaiseError("%s", err.Error())
-	}
-
-	if err := runtime.Cache.StoreVersion(options.Name, options.Version); err != nil {
 		return nil, err
 	}
-	return []lua.LValue{lua.LBool(isDiff)}, nil
+	slog.With(
+		slog.String("name", options.Name),
+		slog.Any("response", res),
+	).Debug("with_version function returned")
+
+	if err := cache.StoreVersion(options.Name, options.Version); err != nil {
+		return nil, err
+	}
+	return starlark.Bool(true), nil
 }
 
-func checkIfDiff(runtime *Runtime, options cacheDiffOptions) (bool, error) {
+func checkIfDiff(cache Cache, options cacheDiffOptions) (bool, error) {
 	if options.Version == "" {
 		options.Version = strconv.Itoa(options.IntVersion)
 	}
 
-	currentVersion, err := runtime.Cache.GetVersion(options.Name)
+	currentVersion, err := cache.GetVersion(options.Name)
 	if err != nil {
 		return false, err
 	}

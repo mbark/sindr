@@ -1,3 +1,5 @@
+load('cmd/cmd.star', 'cmd')
+
 def build(ctx):
     out = shmake.shell('echo "foobar"', prefix='hej')
     print('output', out)
@@ -20,6 +22,12 @@ shmake.command(
             "default": False,
         }
     }
+)
+
+shmake.command(
+    name = "cmd",
+    help = "imported from cmd.star",
+    action = cmd,
 )
 
 shmake.command(

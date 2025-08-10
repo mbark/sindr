@@ -2,6 +2,7 @@ package shmake
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 
@@ -11,6 +12,8 @@ import (
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 	"go.starlark.net/syntax"
+
+	"github.com/mbark/shmake/loader"
 )
 
 func checkErr(err error) {
@@ -90,9 +93,17 @@ func RunStar(args []string) {
 	checkErr(err)
 
 	predeclared := createPredeclaredDict(dir)
+	loader.Predeclared = predeclared
+	thread := &starlark.Thread{
+		Name: "cli",
+		Load: loader.Load,
+		Print: func(thread *starlark.Thread, msg string) {
+			fmt.Println(msg)
+		},
+	}
 	g, err := starlark.ExecFileOptions(
 		&syntax.FileOptions{},
-		&starlark.Thread{Name: "cli"},
+		thread,
 		"main.star",
 		nil,
 		predeclared,
@@ -119,10 +130,18 @@ func RunStarWithCache(args []string, cacheDir string) {
 	err = os.Chdir(dir)
 	checkErr(err)
 
+	thread := &starlark.Thread{
+		Name: "cli",
+		Load: loader.Load,
+		Print: func(thread *starlark.Thread, msg string) {
+			fmt.Println(msg)
+		},
+	}
+
 	predeclared := createPredeclaredDict(dir)
 	g, err := starlark.ExecFileOptions(
 		&syntax.FileOptions{},
-		&starlark.Thread{Name: "cli"},
+		thread,
 		"main.star",
 		nil,
 		predeclared,

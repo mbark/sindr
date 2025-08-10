@@ -101,6 +101,12 @@ func RunStar(args []string) {
 			fmt.Println(msg)
 		},
 	}
+	gCLI = CLI{
+		Command: &Command{
+			Command: &cli.Command{},
+		},
+	}
+
 	g, err := starlark.ExecFileOptions(
 		&syntax.FileOptions{},
 		thread,

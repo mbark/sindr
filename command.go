@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"sync"
 	"unicode"
@@ -23,9 +24,8 @@ type Command struct {
 }
 
 var (
-	gCLI           CLI
-	forceOutOfDate bool
-	wg             sync.WaitGroup
+	gCLI CLI
+	wg   sync.WaitGroup
 )
 
 func shmakeCLI(
@@ -41,14 +41,8 @@ func shmakeCLI(
 	); err != nil {
 		return nil, err
 	}
-	gCLI = CLI{
-		Command: &Command{
-			Command: &cli.Command{
-				Name:  name,
-				Usage: usage,
-			},
-		},
-	}
+	gCLI.Command.Command.Name = name
+	gCLI.Command.Command.Usage = usage
 	return starlark.None, nil
 }
 
@@ -120,10 +114,13 @@ func processFlags(flagsDict *starlark.Dict, cmd *Command) error {
 
 // createCommandAction creates the action function for a command.
 func createCommandAction(
+	name string,
 	thread *starlark.Thread,
 	action starlark.Callable,
 ) func(context.Context, *cli.Command) error {
 	return func(ctx context.Context, command *cli.Command) error {
+		slog.With(slog.String("name", name)).Debug("running command")
+
 		flags := make(starlark.StringDict)
 		for _, flag := range command.Flags {
 			var sval starlark.Value
@@ -158,11 +155,12 @@ func createCommandAction(
 			list[i] = starlark.String(a)
 		}
 
-		_, err := starlark.Call(thread, action, starlark.Tuple{&Context{
+		res, err := starlark.Call(thread, action, starlark.Tuple{&Context{
 			Flags:     flags,
 			Args:      argsDict,
 			ArgsSlice: starlark.NewList(list),
 		}}, nil)
+		slog.With(slog.Any("res", res), slog.Any("err", err)).Debug("command done")
 		return err
 	}
 }
@@ -194,21 +192,24 @@ func shmakeCommand(
 	var action starlark.Callable
 	var argsList *starlark.List
 	var flagsDict *starlark.Dict
+	var category string
 	if err := starlark.UnpackArgs("command", args, kwargs,
 		"name", &name,
 		"help?", &help,
 		"action", &action,
 		"args?", &argsList,
 		"flags?", &flagsDict,
+		"category?", &category,
 	); err != nil {
 		return nil, err
 	}
 
 	cmd := &Command{
 		Command: &cli.Command{
-			Name:   name,
-			Usage:  help,
-			Action: createCommandAction(thread, action),
+			Name:     name,
+			Usage:    help,
+			Action:   createCommandAction(name, thread, action),
+			Category: category,
 		},
 	}
 
@@ -248,12 +249,14 @@ func shmakeSubCommand(
 	var action starlark.Callable
 	var argsList *starlark.List
 	var flagsDict *starlark.Dict
+	var category string
 	if err := starlark.UnpackArgs("sub_command", args, kwargs,
 		"path", &pathList,
 		"help?", &help,
 		"action", &action,
 		"args?", &argsList,
 		"flags?", &flagsDict,
+		"category?", &category,
 	); err != nil {
 		return nil, err
 	}
@@ -270,9 +273,10 @@ func shmakeSubCommand(
 
 	cmd := &Command{
 		Command: &cli.Command{
-			Name:   path[len(path)-1],
-			Usage:  help,
-			Action: createCommandAction(thread, action),
+			Name:     path[len(path)-1],
+			Usage:    help,
+			Action:   createCommandAction(path[len(path)-1], thread, action),
+			Category: category,
 		},
 	}
 

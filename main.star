@@ -25,9 +25,10 @@ shmake.command(
 )
 
 shmake.command(
-    name = "cmd",
+    name = "build_cmd",
     help = "imported from cmd.star",
     action = cmd,
+    category = "cmd",
 )
 
 shmake.command(

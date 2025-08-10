@@ -86,7 +86,12 @@ func mapCacheDiffOptions(kwargs []starlark.Tuple) (*cacheDiffOptions, error) {
 	return options, nil
 }
 
-func shmakeDiff(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func shmakeDiff(
+	thread *starlark.Thread,
+	fn *starlark.Builtin,
+	args starlark.Tuple,
+	kwargs []starlark.Tuple,
+) (starlark.Value, error) {
 	options, err := mapCacheDiffOptions(kwargs)
 	if err != nil {
 		return nil, err
@@ -99,7 +104,12 @@ func shmakeDiff(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tup
 	return starlark.Bool(isDiff), nil
 }
 
-func shmakeGetVersion(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func shmakeGetVersion(
+	thread *starlark.Thread,
+	fn *starlark.Builtin,
+	args starlark.Tuple,
+	kwargs []starlark.Tuple,
+) (starlark.Value, error) {
 	if args.Len() != 1 {
 		return nil, fmt.Errorf("get_version() requires exactly 1 argument")
 	}
@@ -120,7 +130,12 @@ func shmakeGetVersion(thread *starlark.Thread, fn *starlark.Builtin, args starla
 	return starlark.String(*v), nil
 }
 
-func shmakeStore(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func shmakeStore(
+	thread *starlark.Thread,
+	fn *starlark.Builtin,
+	args starlark.Tuple,
+	kwargs []starlark.Tuple,
+) (starlark.Value, error) {
 	options, err := mapCacheDiffOptions(kwargs)
 	if err != nil {
 		return nil, err
@@ -137,9 +152,16 @@ func shmakeStore(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tu
 	return starlark.None, nil
 }
 
-func shmakeWithVersion(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func shmakeWithVersion(
+	thread *starlark.Thread,
+	fn *starlark.Builtin,
+	args starlark.Tuple,
+	kwargs []starlark.Tuple,
+) (starlark.Value, error) {
 	if args.Len() != 1 {
-		return nil, fmt.Errorf("with_version() requires exactly 1 positional argument (the function)")
+		return nil, fmt.Errorf(
+			"with_version() requires exactly 1 positional argument (the function)",
+		)
 	}
 
 	fnVal, ok := args.Index(0).(starlark.Callable)

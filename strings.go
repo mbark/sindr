@@ -8,9 +8,16 @@ import (
 	"go.starlark.net/starlark"
 )
 
-func shmakeString(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func shmakeString(
+	thread *starlark.Thread,
+	fn *starlark.Builtin,
+	args starlark.Tuple,
+	kwargs []starlark.Tuple,
+) (starlark.Value, error) {
 	if args.Len() < 1 {
-		return nil, fmt.Errorf("string() requires at least 1 positional argument (the template string)")
+		return nil, fmt.Errorf(
+			"string() requires at least 1 positional argument (the template string)",
+		)
 	}
 
 	tmplVal, ok := args.Index(0).(starlark.String)

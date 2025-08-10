@@ -1,7 +1,7 @@
 # make shmake
 
-`shmake` is a replacement for `make`, allowing the creation of a cli-tool be written using `lua` and run via a single
-binary (built with `go`).
+`shmake` is a replacement for `make`, allowing the creation of a cli-tool be written using `Starlark` and run via a
+single binary (built with `go`).
 
 ## Motivation
 
@@ -11,25 +11,22 @@ Additionally, `Makefiles` have their own syntax which most developers are not ve
 
 ## Goal
 
-The goal of `shmake` is to allow writing a `.lua` file with all script-targets with a batteries included set of
-functions provided by `shmake` as modules. These `.lua` files are then converted into a cli that allows targets,
-sub-targets and the passing of flags.
+The goal of `shmake` is to allow writing a `.star` file with all script-targets with a batteries included set of
+functions provided by `shmake` as modules. These `.star` files are then converted into a cli that allows targets,
+sub-targets and the passing of flags and args.
 
 ## Design
 
-Using a `lua` interpreter written in `go` we can ship a single binary which handles both interpreting and running the
-`lua` file.
-
-With a set of modules provided to allow doing what you typically want to do e.g., watching files, copying and creating
-files or running a command if something has changed since last time.
+Using a `Starlark` interpreter written in `go` we can ship a single binary which handles both interpreting and running
+the `.star` file.
 
 ## TODOs and ideas
 
 - [ ] Allow "importing" package.json files and adding their scripts as commands
-- [ ] Include all `main.lua` files in directories upwards
-    - [ ] How should this work? Do we automatically fetch all `main.lua` files upwards or do something with imports?
-        - Maybe we have something specifies that this is a subset of another file? Enforcing a single `main.lua` file?
+- [ ] Include all `main.star` files in directories upwards
+    - [ ] How should this work? Do we automatically fetch all `main.star` files upwards or do something with imports?
+        - Maybe we have something specifies that this is a subset of another file? Enforcing a single `main.star` file?
 - [ ] Add functionality for setting categories
-    - [ ] Both for the entire shmake struct (e.g., if you have a main.lua file in the backend directory) but also for
+    - [ ] Both for the entire shmake struct (e.g., if you have a main.star file in the backend directory) but also for
       individual commands
 - [ ] lib:ify the `shmake` package to allow people to use and extend it through Go.

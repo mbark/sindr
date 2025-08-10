@@ -12,6 +12,7 @@ import (
 )
 
 func setupStarlarkRuntime(t *testing.T) func() {
+	t.Helper()
 	dir := t.TempDir()
 	err := os.Chdir(dir)
 	require.NoError(t, err)
@@ -22,6 +23,7 @@ func setupStarlarkRuntime(t *testing.T) func() {
 }
 
 func withMainStar(t *testing.T, contents string) {
+	t.Helper()
 	dir, err := os.Getwd()
 	require.NoError(t, err)
 

@@ -28,7 +28,12 @@ var (
 	wg             sync.WaitGroup
 )
 
-func shmakeCLI(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func shmakeCLI(
+	thread *starlark.Thread,
+	fn *starlark.Builtin,
+	args starlark.Tuple,
+	kwargs []starlark.Tuple,
+) (starlark.Value, error) {
 	var name, usage string
 	if err := starlark.UnpackArgs("cli", args, kwargs,
 		"name", &name,
@@ -47,7 +52,144 @@ func shmakeCLI(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tupl
 	return starlark.None, nil
 }
 
-func shmakeCommand(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+// processFlags handles flag configuration for commands.
+func processFlags(flagsDict *starlark.Dict, cmd *Command) error {
+	if flagsDict == nil {
+		return nil
+	}
+
+	for _, item := range flagsDict.Items() {
+		key, ok := item[0].(starlark.String)
+		if !ok {
+			return fmt.Errorf("flag name must be string")
+		}
+		flagDef, ok := item[1].(*starlark.Dict)
+		if !ok {
+			return fmt.Errorf("flag value must be dict")
+		}
+
+		var defaultVal starlark.Value
+		var flagHelp string
+		var builder func() cli.Flag
+		for _, kv := range flagDef.Items() {
+			k := string(kv[0].(starlark.String))
+			switch k {
+			case "type":
+				typeName := string(kv[1].(starlark.String))
+				switch typeName {
+				case "bool":
+					builder = func() cli.Flag {
+						return &cli.BoolFlag{
+							Name:  string(key),
+							Usage: flagHelp,
+							Value: bool(defaultVal.(starlark.Bool)),
+						}
+					}
+				case "string":
+					builder = func() cli.Flag {
+						return &cli.StringFlag{
+							Name:  string(key),
+							Usage: flagHelp,
+							Value: string(defaultVal.(starlark.String)),
+						}
+					}
+				case "int":
+					i, _ := defaultVal.(starlark.Int).Int64()
+					builder = func() cli.Flag {
+						return &cli.IntFlag{
+							Name:  string(key),
+							Usage: flagHelp,
+							Value: int(i),
+						}
+					}
+				default:
+					return fmt.Errorf("unknown flag type: %s", typeName)
+				}
+			case "default":
+				defaultVal = kv[1]
+			case "help":
+				flagHelp = string(kv[1].(starlark.String))
+			}
+		}
+
+		cmd.Command.Flags = append(cmd.Command.Flags, builder())
+	}
+
+	return nil
+}
+
+// createCommandAction creates the action function for a command.
+func createCommandAction(
+	thread *starlark.Thread,
+	action starlark.Callable,
+) func(context.Context, *cli.Command) error {
+	return func(ctx context.Context, command *cli.Command) error {
+		flags := make(starlark.StringDict)
+		for _, flag := range command.Flags {
+			var sval starlark.Value
+			switch val := flag.Get().(type) {
+			case string:
+				sval = starlark.String(val)
+			case int:
+				sval = starlark.MakeInt(val)
+			case bool:
+				sval = starlark.Bool(val)
+			default:
+				return fmt.Errorf("unknown flag value type: %v", flag)
+			}
+			for _, f := range flag.Names() {
+				flags[f] = sval
+			}
+		}
+
+		argsDict := make(starlark.StringDict)
+		for _, arg := range command.Arguments {
+			switch a := arg.(type) {
+			case *cli.StringArg:
+				argsDict[a.Name] = starlark.String(command.StringArg(a.Name))
+			case *cli.IntArg:
+				argsDict[a.Name] = starlark.MakeInt(command.IntArg(a.Name))
+			}
+		}
+
+		slice := command.Args().Slice()
+		list := make([]starlark.Value, len(slice))
+		for i, a := range slice {
+			list[i] = starlark.String(a)
+		}
+
+		_, err := starlark.Call(thread, action, starlark.Tuple{&Context{
+			Flags:     flags,
+			Args:      argsDict,
+			ArgsSlice: starlark.NewList(list),
+		}}, nil)
+		return err
+	}
+}
+
+// processArgs handles argument configuration for commands.
+func processArgs(argsList *starlark.List, cmd *Command) error {
+	if argsList == nil {
+		return nil
+	}
+
+	for i := 0; i < argsList.Len(); i++ {
+		str, ok := argsList.Index(i).(starlark.String)
+		if !ok {
+			return fmt.Errorf("args must be list of strings")
+		}
+		cmd.Command.Arguments = append(cmd.Command.Arguments, &cli.StringArg{Name: string(str)})
+		cmd.Args = append(cmd.Args, string(str))
+	}
+	return nil
+}
+
+func shmakeCommand(
+	thread *starlark.Thread,
+	fn *starlark.Builtin,
+	args starlark.Tuple,
+	kwargs []starlark.Tuple,
+) (starlark.Value, error) {
 	var name, help string
 	var action starlark.Callable
 	var argsList *starlark.List
@@ -61,119 +203,46 @@ func shmakeCommand(thread *starlark.Thread, fn *starlark.Builtin, args starlark.
 	); err != nil {
 		return nil, err
 	}
+
 	cmd := &Command{
 		Command: &cli.Command{
-			Name:  name,
-			Usage: help,
-			Action: func(ctx context.Context, command *cli.Command) error {
-				flags := make(starlark.StringDict)
-				for _, flag := range command.Flags {
-					var sval starlark.Value
-					switch val := flag.Get().(type) {
-					case string:
-						sval = starlark.String(val)
-					case int:
-						sval = starlark.MakeInt(val)
-					case bool:
-						sval = starlark.Bool(val)
-					default:
-						return fmt.Errorf("unknown flag value type: %v", flag)
-					}
-					for _, f := range flag.Names() {
-						flags[f] = sval
-					}
-				}
-
-				argsDict := make(starlark.StringDict)
-				for _, arg := range command.Arguments {
-					switch a := arg.(type) {
-					case *cli.StringArg:
-						argsDict[a.Name] = starlark.String(command.StringArg(a.Name))
-					case *cli.IntArg:
-						argsDict[a.Name] = starlark.MakeInt(command.IntArg(a.Name))
-					}
-				}
-
-				slice := command.Args().Slice()
-				list := make([]starlark.Value, len(slice))
-				for i, a := range slice {
-					list[i] = starlark.String(a)
-				}
-
-				_, err := starlark.Call(thread, action, starlark.Tuple{&Context{
-					Flags:     flags,
-					Args:      argsDict,
-					ArgsSlice: starlark.NewList(list),
-				}}, nil)
-				return err
-			},
+			Name:   name,
+			Usage:  help,
+			Action: createCommandAction(thread, action),
 		},
 	}
 
-	if argsList != nil {
-		for i := 0; i < argsList.Len(); i++ {
-			str, ok := argsList.Index(i).(starlark.String)
-			if !ok {
-				return nil, fmt.Errorf("args must be list of strings")
-			}
-			cmd.Command.Arguments = append(cmd.Command.Arguments, &cli.StringArg{Name: string(str)})
-			cmd.Args = append(cmd.Args, string(str))
-		}
+	if err := processArgs(argsList, cmd); err != nil {
+		return nil, err
 	}
 
-	if flagsDict != nil {
-		for _, item := range flagsDict.Items() {
-			key, ok := item[0].(starlark.String)
-			if !ok {
-				return nil, fmt.Errorf("flag name must be string")
-			}
-			flagDef, ok := item[1].(*starlark.Dict)
-			if !ok {
-				return nil, fmt.Errorf("flag value must be dict")
-			}
-
-			var defaultVal starlark.Value
-			var flagHelp string
-			var builder func() cli.Flag
-			for _, kv := range flagDef.Items() {
-				k := string(kv[0].(starlark.String))
-				switch k {
-				case "type":
-					typeName := string(kv[1].(starlark.String))
-					switch typeName {
-					case "bool":
-						builder = func() cli.Flag {
-							return &cli.BoolFlag{Name: string(key), Usage: flagHelp, Value: bool(defaultVal.(starlark.Bool))}
-						}
-					case "string":
-						builder = func() cli.Flag {
-							return &cli.StringFlag{Name: string(key), Usage: flagHelp, Value: string(defaultVal.(starlark.String))}
-						}
-					case "int":
-						i, _ := defaultVal.(starlark.Int).Int64()
-						builder = func() cli.Flag { return &cli.IntFlag{Name: string(key), Usage: flagHelp, Value: int(i)} }
-
-					default:
-						return nil, fmt.Errorf("unknown flag type: %s", typeName)
-					}
-
-				case "default":
-					defaultVal = kv[1]
-
-				case "help":
-					flagHelp = string(kv[1].(starlark.String))
-				}
-			}
-
-			cmd.Command.Flags = append(cmd.Command.Flags, builder())
-		}
+	if err := processFlags(flagsDict, cmd); err != nil {
+		return nil, err
 	}
 
 	gCLI.Command.Command.Commands = append(gCLI.Command.Command.Commands, cmd.Command)
 	return starlark.None, nil
 }
 
-func shmakeSubCommand(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+// parsePath converts a Starlark list to a string slice.
+func parsePath(pathList *starlark.List) ([]string, error) {
+	var path []string
+	for i := 0; i < pathList.Len(); i++ {
+		str, ok := pathList.Index(i).(starlark.String)
+		if !ok {
+			return nil, fmt.Errorf("args must be list of strings")
+		}
+		path = append(path, string(str))
+	}
+	return path, nil
+}
+
+func shmakeSubCommand(
+	thread *starlark.Thread,
+	fn *starlark.Builtin,
+	args starlark.Tuple,
+	kwargs []starlark.Tuple,
+) (starlark.Value, error) {
 	var pathList *starlark.List
 	var help string
 	var action starlark.Callable
@@ -189,13 +258,9 @@ func shmakeSubCommand(thread *starlark.Thread, fn *starlark.Builtin, args starla
 		return nil, err
 	}
 
-	var path []string
-	for i := 0; i < pathList.Len(); i++ {
-		str, ok := pathList.Index(i).(starlark.String)
-		if !ok {
-			return nil, fmt.Errorf("args must be list of strings")
-		}
-		path = append(path, string(str))
+	path, err := parsePath(pathList)
+	if err != nil {
+		return nil, err
 	}
 
 	parentCmd, err := findSubCommand(gCLI.Command.Command, path)
@@ -205,110 +270,18 @@ func shmakeSubCommand(thread *starlark.Thread, fn *starlark.Builtin, args starla
 
 	cmd := &Command{
 		Command: &cli.Command{
-			Name:  path[len(path)-1],
-			Usage: help,
-			Action: func(ctx context.Context, command *cli.Command) error {
-				flags := make(starlark.StringDict)
-				for _, flag := range command.Flags {
-					var sval starlark.Value
-					switch val := flag.Get().(type) {
-					case string:
-						sval = starlark.String(val)
-					case int:
-						sval = starlark.MakeInt(val)
-					case bool:
-						sval = starlark.Bool(val)
-					default:
-						return fmt.Errorf("unknown flag value type: %v", flag)
-					}
-					for _, f := range flag.Names() {
-						flags[f] = sval
-					}
-				}
-
-				argsDict := make(starlark.StringDict)
-				for _, arg := range command.Arguments {
-					switch a := arg.(type) {
-					case *cli.StringArg:
-						argsDict[a.Name] = starlark.String(command.StringArg(a.Name))
-					case *cli.IntArg:
-						argsDict[a.Name] = starlark.MakeInt(command.IntArg(a.Name))
-					}
-				}
-
-				slice := command.Args().Slice()
-				list := make([]starlark.Value, len(slice))
-				for i, a := range slice {
-					list[i] = starlark.String(a)
-				}
-
-				_, err := starlark.Call(thread, action, starlark.Tuple{&Context{
-					Flags:     flags,
-					Args:      argsDict,
-					ArgsSlice: starlark.NewList(list),
-				}}, nil)
-				return err
-			},
+			Name:   path[len(path)-1],
+			Usage:  help,
+			Action: createCommandAction(thread, action),
 		},
 	}
 
-	if argsList != nil {
-		for i := 0; i < argsList.Len(); i++ {
-			str, ok := argsList.Index(i).(starlark.String)
-			if !ok {
-				return nil, fmt.Errorf("args must be list of strings")
-			}
-			cmd.Command.Arguments = append(cmd.Command.Arguments, &cli.StringArg{Name: string(str)})
-			cmd.Args = append(cmd.Args, string(str))
-		}
+	if err := processArgs(argsList, cmd); err != nil {
+		return nil, err
 	}
 
-	if flagsDict != nil {
-		for _, item := range flagsDict.Items() {
-			key, ok := item[0].(starlark.String)
-			if !ok {
-				return nil, fmt.Errorf("flag name must be string")
-			}
-			flagDef, ok := item[1].(*starlark.Dict)
-			if !ok {
-				return nil, fmt.Errorf("flag value must be dict")
-			}
-
-			var defaultVal starlark.Value
-			var flagHelp string
-			var builder func() cli.Flag
-			for _, kv := range flagDef.Items() {
-				k := string(kv[0].(starlark.String))
-				switch k {
-				case "type":
-					typeName := string(kv[1].(starlark.String))
-					switch typeName {
-					case "bool":
-						builder = func() cli.Flag {
-							return &cli.BoolFlag{Name: string(key), Usage: flagHelp, Value: bool(defaultVal.(starlark.Bool))}
-						}
-					case "string":
-						builder = func() cli.Flag {
-							return &cli.StringFlag{Name: string(key), Usage: flagHelp, Value: string(defaultVal.(starlark.String))}
-						}
-					case "int":
-						i, _ := defaultVal.(starlark.Int).Int64()
-						builder = func() cli.Flag { return &cli.IntFlag{Name: string(key), Usage: flagHelp, Value: int(i)} }
-
-					default:
-						return nil, fmt.Errorf("unknown flag type: %s", typeName)
-					}
-
-				case "default":
-					defaultVal = kv[1]
-
-				case "help":
-					flagHelp = string(kv[1].(starlark.String))
-				}
-			}
-
-			cmd.Command.Flags = append(cmd.Command.Flags, builder())
-		}
+	if err := processFlags(flagsDict, cmd); err != nil {
+		return nil, err
 	}
 
 	parentCmd.Commands = append(parentCmd.Commands, cmd.Command)
@@ -406,7 +379,7 @@ func (m *FlagMap) Freeze()               {} // assume values are immutable
 func (m *FlagMap) Truth() starlark.Bool  { return starlark.True }
 func (m *FlagMap) Hash() (uint32, error) { return 0, errors.New("unhashable") }
 
-// Attr supports ctx.flags.some_flag
+// Attr supports ctx.flags.some_flag.
 func (m *FlagMap) Attr(name string) (starlark.Value, error) {
 	if realKey, ok := m.aliasKeys[name]; ok {
 		return m.data[realKey], nil

@@ -27,6 +27,51 @@ var (
 	cache   Cache
 )
 
+// createPredeclaredDict creates the predeclared dictionary for Starlark execution.
+func createPredeclaredDict(dir string) starlark.StringDict {
+	return starlark.StringDict{
+		"shmake": starlarkstruct.FromStringDict(starlark.String("shmake"), starlark.StringDict{
+			"cli":          starlark.NewBuiltin("cli", shmakeCLI),
+			"command":      starlark.NewBuiltin("command", shmakeCommand),
+			"sub_command":  starlark.NewBuiltin("sub_command", shmakeSubCommand),
+			"shell":        starlark.NewBuiltin("shell", shmakeShell),
+			"string":       starlark.NewBuiltin("string", shmakeString),
+			"run_async":    starlark.NewBuiltin("run_async", shmakeRunAsync),
+			"wait":         starlark.NewBuiltin("wait", shmakeWait),
+			"watch":        starlark.NewBuiltin("watch", shmakeWatch),
+			"pool":         starlark.NewBuiltin("pool", shmakePool),
+			"diff":         starlark.NewBuiltin("diff", shmakeDiff),
+			"get_version":  starlark.NewBuiltin("get_version", shmakeGetVersion),
+			"store":        starlark.NewBuiltin("store", shmakeStore),
+			"with_version": starlark.NewBuiltin("with_version", shmakeWithVersion),
+		}),
+		"print": starlark.NewBuiltin("print", func(
+			thread *starlark.Thread,
+			fn *starlark.Builtin,
+			args starlark.Tuple,
+			_ []starlark.Tuple,
+		) (starlark.Value, error) {
+			ar := make([]any, args.Len())
+			for i := 0; i < args.Len(); i++ {
+				if s, ok := args.Index(i).(starlark.String); ok {
+					ar[i] = string(s) // unquoted, raw string
+				} else {
+					ar[i] = args.Index(i).String() // fallback to default
+				}
+			}
+			return starlark.None, nil
+		}),
+		"current_dir": starlark.NewBuiltin("current_dir", func(
+			thread *starlark.Thread,
+			fn *starlark.Builtin,
+			args starlark.Tuple,
+			kwargs []starlark.Tuple,
+		) (starlark.Value, error) {
+			return starlark.String(dir), nil
+		}),
+	}
+}
+
 func RunStar(args []string) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -44,38 +89,7 @@ func RunStar(args []string) {
 	err = os.Chdir(dir)
 	checkErr(err)
 
-	// Ensure we have a context before the app starts
-	predeclared := starlark.StringDict{
-		"shmake": starlarkstruct.FromStringDict(starlark.String("shmake"), starlark.StringDict{
-			"cli":          starlark.NewBuiltin("cli", shmakeCLI),
-			"command":      starlark.NewBuiltin("command", shmakeCommand),
-			"sub_command":  starlark.NewBuiltin("sub_command", shmakeSubCommand),
-			"shell":        starlark.NewBuiltin("shell", shmakeShell),
-			"string":       starlark.NewBuiltin("string", shmakeString),
-			"run_async":    starlark.NewBuiltin("run_async", shmakeRunAsync),
-			"wait":         starlark.NewBuiltin("wait", shmakeWait),
-			"watch":        starlark.NewBuiltin("watch", shmakeWatch),
-			"pool":         starlark.NewBuiltin("pool", shmakePool),
-			"diff":         starlark.NewBuiltin("diff", shmakeDiff),
-			"get_version":  starlark.NewBuiltin("get_version", shmakeGetVersion),
-			"store":        starlark.NewBuiltin("store", shmakeStore),
-			"with_version": starlark.NewBuiltin("with_version", shmakeWithVersion),
-		}),
-		"print": starlark.NewBuiltin("print", func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, _ []starlark.Tuple) (starlark.Value, error) {
-			ar := make([]any, args.Len())
-			for i := 0; i < args.Len(); i++ {
-				if s, ok := args.Index(i).(starlark.String); ok {
-					ar[i] = string(s) // unquoted, raw string
-				} else {
-					ar[i] = args.Index(i).String() // fallback to default
-				}
-			}
-			return starlark.None, nil
-		}),
-		"current_dir": starlark.NewBuiltin("current_dir", func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-			return starlark.String(dir), nil
-		}),
-	}
+	predeclared := createPredeclaredDict(dir)
 	g, err := starlark.ExecFileOptions(
 		&syntax.FileOptions{},
 		&starlark.Thread{Name: "cli"},
@@ -105,38 +119,7 @@ func RunStarWithCache(args []string, cacheDir string) {
 	err = os.Chdir(dir)
 	checkErr(err)
 
-	// Ensure we have a context before the app starts
-	predeclared := starlark.StringDict{
-		"shmake": starlarkstruct.FromStringDict(starlark.String("shmake"), starlark.StringDict{
-			"cli":          starlark.NewBuiltin("cli", shmakeCLI),
-			"command":      starlark.NewBuiltin("command", shmakeCommand),
-			"sub_command":  starlark.NewBuiltin("sub_command", shmakeSubCommand),
-			"shell":        starlark.NewBuiltin("shell", shmakeShell),
-			"string":       starlark.NewBuiltin("string", shmakeString),
-			"run_async":    starlark.NewBuiltin("run_async", shmakeRunAsync),
-			"wait":         starlark.NewBuiltin("wait", shmakeWait),
-			"watch":        starlark.NewBuiltin("watch", shmakeWatch),
-			"pool":         starlark.NewBuiltin("pool", shmakePool),
-			"diff":         starlark.NewBuiltin("diff", shmakeDiff),
-			"get_version":  starlark.NewBuiltin("get_version", shmakeGetVersion),
-			"store":        starlark.NewBuiltin("store", shmakeStore),
-			"with_version": starlark.NewBuiltin("with_version", shmakeWithVersion),
-		}),
-		"print": starlark.NewBuiltin("print", func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, _ []starlark.Tuple) (starlark.Value, error) {
-			ar := make([]any, args.Len())
-			for i := 0; i < args.Len(); i++ {
-				if s, ok := args.Index(i).(starlark.String); ok {
-					ar[i] = string(s) // unquoted, raw string
-				} else {
-					ar[i] = args.Index(i).String() // fallback to default
-				}
-			}
-			return starlark.None, nil
-		}),
-		"current_dir": starlark.NewBuiltin("current_dir", func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-			return starlark.String(dir), nil
-		}),
-	}
+	predeclared := createPredeclaredDict(dir)
 	g, err := starlark.ExecFileOptions(
 		&syntax.FileOptions{},
 		&starlark.Thread{Name: "cli"},

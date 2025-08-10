@@ -14,7 +14,12 @@ import (
 	"go.starlark.net/starlarkstruct"
 )
 
-func shmakeRunAsync(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func shmakeRunAsync(
+	thread *starlark.Thread,
+	fn *starlark.Builtin,
+	args starlark.Tuple,
+	kwargs []starlark.Tuple,
+) (starlark.Value, error) {
 	if args.Len() != 1 {
 		return nil, errors.New("run_async() requires exactly 1 argument (a function)")
 	}
@@ -38,12 +43,22 @@ func shmakeRunAsync(thread *starlark.Thread, fn *starlark.Builtin, args starlark
 	return starlark.None, nil
 }
 
-func shmakeWait(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func shmakeWait(
+	thread *starlark.Thread,
+	fn *starlark.Builtin,
+	args starlark.Tuple,
+	kwargs []starlark.Tuple,
+) (starlark.Value, error) {
 	wg.Wait()
 	return starlark.None, nil
 }
 
-func shmakeWatch(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func shmakeWatch(
+	thread *starlark.Thread,
+	fn *starlark.Builtin,
+	args starlark.Tuple,
+	kwargs []starlark.Tuple,
+) (starlark.Value, error) {
 	if args.Len() != 2 {
 		return nil, errors.New("watch() requires exactly 2 arguments (glob pattern and function)")
 	}
@@ -95,7 +110,12 @@ func shmakeWatch(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tu
 	return starlark.None, nil
 }
 
-func shmakePool(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func shmakePool(
+	thread *starlark.Thread,
+	fn *starlark.Builtin,
+	args starlark.Tuple,
+	kwargs []starlark.Tuple,
+) (starlark.Value, error) {
 	pool := &Pool{wg: sync.WaitGroup{}}
 
 	poolMethods := starlark.StringDict{
@@ -106,8 +126,18 @@ func shmakePool(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tup
 	return starlarkstruct.FromStringDict(starlark.String("pool"), poolMethods), nil
 }
 
-func makePoolRun(pool *Pool) func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	return func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func makePoolRun(pool *Pool) func(
+	thread *starlark.Thread,
+	fn *starlark.Builtin,
+	args starlark.Tuple,
+	kwargs []starlark.Tuple,
+) (starlark.Value, error) {
+	return func(
+		thread *starlark.Thread,
+		fn *starlark.Builtin,
+		args starlark.Tuple,
+		kwargs []starlark.Tuple,
+	) (starlark.Value, error) {
 		if args.Len() != 1 {
 			return nil, errors.New("pool.run() requires exactly 1 argument (a function)")
 		}
@@ -132,8 +162,18 @@ func makePoolRun(pool *Pool) func(thread *starlark.Thread, fn *starlark.Builtin,
 	}
 }
 
-func makePoolWait(pool *Pool) func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	return func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func makePoolWait(pool *Pool) func(
+	thread *starlark.Thread,
+	fn *starlark.Builtin,
+	args starlark.Tuple,
+	kwargs []starlark.Tuple,
+) (starlark.Value, error) {
+	return func(
+		thread *starlark.Thread,
+		fn *starlark.Builtin,
+		args starlark.Tuple,
+		kwargs []starlark.Tuple,
+	) (starlark.Value, error) {
 		pool.wg.Wait()
 		return starlark.None, nil
 	}
@@ -144,7 +184,6 @@ type Pool struct {
 }
 
 func runWatchFnOnce(callable *starlark.Function, onChange chan bool) {
-
 }
 
 func startWatching(watchGlob string, onChange chan bool) (func(), error) {

@@ -23,10 +23,5 @@ the `.star` file.
 ## TODOs and ideas
 
 - [ ] Allow "importing" package.json files and adding their scripts as commands
-- [ ] Include all `main.star` files in directories upwards
-    - [ ] How should this work? Do we automatically fetch all `main.star` files upwards or do something with imports?
-        - Maybe we have something specifies that this is a subset of another file? Enforcing a single `main.star` file?
-- [ ] Add functionality for setting categories
-    - [ ] Both for the entire shmake struct (e.g., if you have a main.star file in the backend directory) but also for
-      individual commands
+- [x] Add functionality for setting categories
 - [ ] lib:ify the `shmake` package to allow people to use and extend it through Go.

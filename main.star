@@ -1,5 +1,7 @@
 load('cmd/cmd.star', 'cmd')
 
+shmake.load_package_json('package.json')
+
 def build(ctx):
     out = shmake.shell('echo "foobar"', prefix='hej')
     print('output', out)

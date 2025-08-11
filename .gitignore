@@ -408,7 +408,7 @@ csx/
 ecf/
 rcf/
 
-# Windows Store app package directories and files
+# Windows set_version app package directories and files
 AppPackages/
 BundleArtifacts/
 Package.StoreAssociation.xml

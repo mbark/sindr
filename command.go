@@ -13,6 +13,14 @@ import (
 	"go.starlark.net/starlark"
 )
 
+func init() {
+	gCLI = CLI{
+		Command: &Command{
+			Command: &cli.Command{},
+		},
+	}
+}
+
 type CLI struct {
 	Command *Command
 }
@@ -27,14 +35,6 @@ var (
 	gCLI CLI
 	wg   sync.WaitGroup
 )
-
-func init() {
-	gCLI = CLI{
-		Command: &Command{
-			Command: &cli.Command{},
-		},
-	}
-}
 
 func shmakeCLI(
 	thread *starlark.Thread,
@@ -51,6 +51,103 @@ func shmakeCLI(
 	}
 	gCLI.Command.Command.Name = name
 	gCLI.Command.Command.Usage = usage
+	return starlark.None, nil
+}
+
+func shmakeCommand(
+	thread *starlark.Thread,
+	fn *starlark.Builtin,
+	args starlark.Tuple,
+	kwargs []starlark.Tuple,
+) (starlark.Value, error) {
+	var name, help string
+	var action starlark.Callable
+	var argsList *starlark.List
+	var flagsDict *starlark.Dict
+	var category string
+	if err := starlark.UnpackArgs("command", args, kwargs,
+		"name", &name,
+		"help?", &help,
+		"action", &action,
+		"args?", &argsList,
+		"flags?", &flagsDict,
+		"category?", &category,
+	); err != nil {
+		return nil, err
+	}
+
+	cmd := &Command{
+		Command: &cli.Command{
+			Name:     name,
+			Usage:    help,
+			Action:   createCommandAction(name, thread, action),
+			Category: category,
+		},
+	}
+
+	if err := processArgs(argsList, cmd); err != nil {
+		return nil, err
+	}
+
+	if err := processFlags(flagsDict, cmd); err != nil {
+		return nil, err
+	}
+
+	gCLI.Command.Command.Commands = append(gCLI.Command.Command.Commands, cmd.Command)
+	return starlark.None, nil
+}
+
+func shmakeSubCommand(
+	thread *starlark.Thread,
+	fn *starlark.Builtin,
+	args starlark.Tuple,
+	kwargs []starlark.Tuple,
+) (starlark.Value, error) {
+	var pathList *starlark.List
+	var help string
+	var action starlark.Callable
+	var argsList *starlark.List
+	var flagsDict *starlark.Dict
+	var category string
+	if err := starlark.UnpackArgs("sub_command", args, kwargs,
+		"path", &pathList,
+		"help?", &help,
+		"action", &action,
+		"args?", &argsList,
+		"flags?", &flagsDict,
+		"category?", &category,
+	); err != nil {
+		return nil, err
+	}
+
+	path, err := parsePath(pathList)
+	if err != nil {
+		return nil, err
+	}
+
+	parentCmd, err := findSubCommand(gCLI.Command.Command, path)
+	if err != nil {
+		return nil, err
+	}
+
+	cmd := &Command{
+		Command: &cli.Command{
+			Name:     path[len(path)-1],
+			Usage:    help,
+			Action:   createCommandAction(path[len(path)-1], thread, action),
+			Category: category,
+		},
+	}
+
+	if err := processArgs(argsList, cmd); err != nil {
+		return nil, err
+	}
+
+	if err := processFlags(flagsDict, cmd); err != nil {
+		return nil, err
+	}
+
+	parentCmd.Commands = append(parentCmd.Commands, cmd.Command)
 	return starlark.None, nil
 }
 
@@ -190,49 +287,6 @@ func processArgs(argsList *starlark.List, cmd *Command) error {
 	return nil
 }
 
-func shmakeCommand(
-	thread *starlark.Thread,
-	fn *starlark.Builtin,
-	args starlark.Tuple,
-	kwargs []starlark.Tuple,
-) (starlark.Value, error) {
-	var name, help string
-	var action starlark.Callable
-	var argsList *starlark.List
-	var flagsDict *starlark.Dict
-	var category string
-	if err := starlark.UnpackArgs("command", args, kwargs,
-		"name", &name,
-		"help?", &help,
-		"action", &action,
-		"args?", &argsList,
-		"flags?", &flagsDict,
-		"category?", &category,
-	); err != nil {
-		return nil, err
-	}
-
-	cmd := &Command{
-		Command: &cli.Command{
-			Name:     name,
-			Usage:    help,
-			Action:   createCommandAction(name, thread, action),
-			Category: category,
-		},
-	}
-
-	if err := processArgs(argsList, cmd); err != nil {
-		return nil, err
-	}
-
-	if err := processFlags(flagsDict, cmd); err != nil {
-		return nil, err
-	}
-
-	gCLI.Command.Command.Commands = append(gCLI.Command.Command.Commands, cmd.Command)
-	return starlark.None, nil
-}
-
 // parsePath converts a Starlark list to a string slice.
 func parsePath(pathList *starlark.List) ([]string, error) {
 	var path []string
@@ -244,60 +298,6 @@ func parsePath(pathList *starlark.List) ([]string, error) {
 		path = append(path, string(str))
 	}
 	return path, nil
-}
-
-func shmakeSubCommand(
-	thread *starlark.Thread,
-	fn *starlark.Builtin,
-	args starlark.Tuple,
-	kwargs []starlark.Tuple,
-) (starlark.Value, error) {
-	var pathList *starlark.List
-	var help string
-	var action starlark.Callable
-	var argsList *starlark.List
-	var flagsDict *starlark.Dict
-	var category string
-	if err := starlark.UnpackArgs("sub_command", args, kwargs,
-		"path", &pathList,
-		"help?", &help,
-		"action", &action,
-		"args?", &argsList,
-		"flags?", &flagsDict,
-		"category?", &category,
-	); err != nil {
-		return nil, err
-	}
-
-	path, err := parsePath(pathList)
-	if err != nil {
-		return nil, err
-	}
-
-	parentCmd, err := findSubCommand(gCLI.Command.Command, path)
-	if err != nil {
-		return nil, err
-	}
-
-	cmd := &Command{
-		Command: &cli.Command{
-			Name:     path[len(path)-1],
-			Usage:    help,
-			Action:   createCommandAction(path[len(path)-1], thread, action),
-			Category: category,
-		},
-	}
-
-	if err := processArgs(argsList, cmd); err != nil {
-		return nil, err
-	}
-
-	if err := processFlags(flagsDict, cmd); err != nil {
-		return nil, err
-	}
-
-	parentCmd.Commands = append(parentCmd.Commands, cmd.Command)
-	return starlark.None, nil
 }
 
 func findSubCommand(cmd *cli.Command, path []string) (*cli.Command, error) {

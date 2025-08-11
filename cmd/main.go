@@ -7,5 +7,5 @@ import (
 )
 
 func main() {
-	shmake.RunStar(os.Args)
+	shmake.Run(os.Args)
 }

@@ -92,7 +92,7 @@ The linter configuration ensures code quality and security best practices are fo
 - `shmake.pool()`: Manage groups of concurrent operations
 - `shmake.string()`: Render string templates with Go template syntax
 - `shmake.with_version()`: Cache operations based on versions
-- `shmake.store()` and `shmake.get_version()`: Version storage and retrieval
+- `shmake.set_version()` and `shmake.get_version()`: Version storage and retrieval
 - `shmake.diff()`: Compare values for changes
 
 ### Template System

@@ -54,7 +54,7 @@ func shmakeGetVersion(
 	return starlark.String(*v), nil
 }
 
-func shmakeStore(
+func shmakeSetVersion(
 	thread *starlark.Thread,
 	fn *starlark.Builtin,
 	args starlark.Tuple,
@@ -200,6 +200,7 @@ var (
 	_ starlark.Value    = new(stringOrInt)
 )
 
+// stringOrInt is used to allow the version to be passed in both as a version and an int_version.
 type stringOrInt struct {
 	s      *string
 	i      *int

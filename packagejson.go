@@ -18,10 +18,16 @@ func shmakeLoadPackageJson(
 	kwargs []starlark.Tuple,
 ) (starlark.Value, error) {
 	var file string
+	var bin string
 	err := starlark.UnpackArgs("load_package_json", args, kwargs,
-		"file", &file)
+		"file", &file,
+		"bin?", &bin)
 	if err != nil {
 		return nil, err
+	}
+
+	if bin == "" {
+		bin = "npm"
 	}
 
 	bs, err := os.ReadFile(file)
@@ -42,9 +48,13 @@ func shmakeLoadPackageJson(
 			Action: func(ctx context.Context, command *cli.Command) error {
 				slog.With(slog.String("name", name)).Debug("running command")
 
-				args := []string{"run", name}
-				args = append(args, command.Args().Slice()...)
-				cmd := exec.CommandContext(ctx, "npm", args...)
+				cmdArgs := []string{"run", name}
+				if s := command.Args().Slice(); len(s) > 0 {
+					cmdArgs = append(cmdArgs, "--")
+					cmdArgs = append(cmdArgs, s...)
+				}
+
+				cmd := exec.CommandContext(ctx, bin, cmdArgs...)
 				output, err := startShellCmd(cmd, name)
 				if err != nil {
 					return err

@@ -18,7 +18,7 @@ func setupStarlarkRuntime(t *testing.T) func() {
 	require.NoError(t, err)
 
 	return func() {
-		shmake.RunStarWithCache([]string{t.Name(), "test"}, dir)
+		shmake.RunStar([]string{t.Name(), "test"}, shmake.WithCacheDir(dir))
 	}
 }
 

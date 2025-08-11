@@ -28,6 +28,14 @@ var (
 	wg   sync.WaitGroup
 )
 
+func init() {
+	gCLI = CLI{
+		Command: &Command{
+			Command: &cli.Command{},
+		},
+	}
+}
+
 func shmakeCLI(
 	thread *starlark.Thread,
 	fn *starlark.Builtin,

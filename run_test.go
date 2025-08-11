@@ -107,7 +107,7 @@ def test_action(ctx):
     def async_task():
         shmake.shell('echo "async task done" > async.txt')
     
-    shmake.run_async(async_task)
+    shmake.start(async_task)
     shmake.wait()  # Wait for async task to complete
     
     result = shmake.shell('cat async.txt')
@@ -131,8 +131,8 @@ def test_action(ctx):
     def async2():
         shmake.shell('echo "async2 done" > async2.txt')
     
-    shmake.run_async(async1)
-    shmake.run_async(async2)
+    shmake.start(async1)
+    shmake.start(async2)
     shmake.wait()  # Wait for all async tasks
     
     result1 = shmake.shell('cat async1.txt')
@@ -162,7 +162,7 @@ def test_action(ctx):
         shmake.shell('sleep 0.1')
         shmake.shell('echo "completed" > wait_test.txt')
     
-    shmake.run_async(delayed_task)
+    shmake.start(delayed_task)
     
     # Before wait, task shouldn't be completed yet due to sleep
     shmake.wait()

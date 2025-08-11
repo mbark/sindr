@@ -45,22 +45,16 @@ shmake.sub_command(
         print('running sub command')
 )
 
-def run_async(ctx):
-    shmake.run_async(lambda: shmake.shell('sleep 1; echo "first"', prefix='one'))
-    shmake.run_async(lambda: shmake.shell('sleep 2; echo "second"', prefix='two'))
+def start(ctx):
+    shmake.start(lambda: shmake.shell('sleep 1; echo "first"', prefix='one'))
+    shmake.start(lambda: shmake.shell('sleep 2; echo "second"', prefix='two'))
     shmake.wait()
     shmake.shell('echo "third"')
 
 shmake.command(
     name='async',
-    action=run_async,
+    action=start,
 )
-
-def watch(ctx):
-    shmake.watch('./file3', lambda: print('touched file3, deleting file2'))
-    shmake.watch('./file4', lambda: print('touched file4'))
-
-shmake.command(name='watch', action=watch)
 
 def pooled_start():
     pool = shmake.pool()
@@ -68,11 +62,6 @@ def pooled_start():
     pool.run(lambda: shmake.shell('ping google.com', prefix='google '))
     pool.run(lambda: shmake.shell('ping telness.se', prefix='telness'))
     pool.wait()
-
-shmake.command(
-    name='start',
-    action=lambda ctx: shmake.watch('./file', pooled_start),
-)
 
 print(current_dir)
 # defining a global variable makes it available for string templating

@@ -87,7 +87,7 @@ The linter configuration ensures code quality and security best practices are fo
 - `shmake.command()`: Define top-level commands with name, help, action, args, and flags
 - `shmake.sub_command()`: Define nested subcommands with path arrays
 - `shmake.shell()`: Execute shell commands with optional prefixes and capture output
-- `shmake.run_async()`: Run functions concurrently
+- `shmake.start()`: Run functions concurrently
 - `shmake.wait()`: Wait for async operations to complete
 - `shmake.watch()`: Monitor file changes and trigger actions
 - `shmake.pool()`: Manage groups of concurrent operations

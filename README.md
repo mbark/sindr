@@ -25,3 +25,4 @@ the `.star` file.
 - [x] Allow "importing" package.json files and adding their scripts as commands
 - [x] Add functionality for setting categories
 - [ ] lib:ify the `shmake` package to allow people to use and extend it through Go.
+- [ ] Remove the watch stuff

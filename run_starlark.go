@@ -39,9 +39,8 @@ func createPredeclaredDict(dir string) starlark.StringDict {
 			"sub_command":       starlark.NewBuiltin("sub_command", shmakeSubCommand),
 			"shell":             starlark.NewBuiltin("shell", shmakeShell),
 			"string":            starlark.NewBuiltin("string", shmakeString),
-			"run_async":         starlark.NewBuiltin("run_async", shmakeRunAsync),
+			"start":             starlark.NewBuiltin("start", shmakeStart),
 			"wait":              starlark.NewBuiltin("wait", shmakeWait),
-			"watch":             starlark.NewBuiltin("watch", shmakeWatch),
 			"pool":              starlark.NewBuiltin("pool", shmakePool),
 			"diff":              starlark.NewBuiltin("diff", shmakeDiff),
 			"get_version":       starlark.NewBuiltin("get_version", shmakeGetVersion),
@@ -100,11 +99,6 @@ func RunStar(args []string) {
 		Load: loader.Load,
 		Print: func(thread *starlark.Thread, msg string) {
 			fmt.Println(msg)
-		},
-	}
-	gCLI = CLI{
-		Command: &Command{
-			Command: &cli.Command{},
 		},
 	}
 

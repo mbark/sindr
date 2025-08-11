@@ -5,8 +5,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 `shmake` is a replacement for `make` that allows creating CLI tools written in Starlark and run via a single Go binary. It
-provides a batteries-included set of functions for common development tasks like shell commands,
-watching files, async operations, and string templating.
+provides a batteries-included set of functions for common development tasks like shell commands, async operations, and
+string templating.
 
 ## Architecture
 
@@ -89,7 +89,6 @@ The linter configuration ensures code quality and security best practices are fo
 - `shmake.shell()`: Execute shell commands with optional prefixes and capture output
 - `shmake.start()`: Run functions concurrently
 - `shmake.wait()`: Wait for async operations to complete
-- `shmake.watch()`: Monitor file changes and trigger actions
 - `shmake.pool()`: Manage groups of concurrent operations
 - `shmake.string()`: Render string templates with Go template syntax
 - `shmake.with_version()`: Cache operations based on versions

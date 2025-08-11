@@ -16,18 +16,9 @@ import (
 	"github.com/mbark/shmake/loader"
 )
 
-func checkErr(err error) {
-	if err == nil {
-		return
-	}
-
-	slog.Error(err.Error())
-	os.Exit(1)
-}
-
 var (
 	globals starlark.StringDict
-	cache   Cache
+	cache   diskCache
 )
 
 // createPredeclaredDict creates the predeclared dictionary for Starlark execution.
@@ -187,4 +178,13 @@ func runCLI(ctx context.Context, args []string) {
 	checkErr(err)
 
 	wg.Wait()
+}
+
+func checkErr(err error) {
+	if err == nil {
+		return
+	}
+
+	slog.Error(err.Error())
+	os.Exit(1)
 }

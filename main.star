@@ -76,20 +76,3 @@ shmake.command(
             ''', other_var='other variable')),
     args = ["env"]
 )
-
-def with_version(ctx):
-	# Test that the function is called by checking return value
-	shmake.store(name='test-version', version='')
-	
-	def test_func():
-		print('Function executed correctly!')
-		return True
-		
-	ran = shmake.with_version(test_func, name='test-version', version='v2.0.0')
-
-	if not ran:
-		fail('expected with_version to return true when function runs')
-	
-	print('Test passed: with_version function was called and executed successfully')
-
-shmake.command(name="with_version", action=with_version)

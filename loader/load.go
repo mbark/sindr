@@ -10,6 +10,8 @@ import (
 	"go.starlark.net/syntax"
 )
 
+// Code taken from https://github.com/google/starlark-go/blob/master/starlark/example_test.go
+
 var Predeclared starlark.StringDict
 var entryCache = make(map[string]*entry)
 

@@ -20,41 +20,6 @@ shmake.command(name="test", action=test_action)
 		run()
 	})
 
-	t.Run("uses global variables", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
-		withMainStar(t, `
-version = "1.2.3"
-name = "myapp"
-
-def test_action(ctx):
-    result = shmake.string('{{.name}} version {{.version}}')
-    if result != 'myapp version 1.2.3':
-        print('ERROR: expected "myapp version 1.2.3", got: ' + str(result))
-        return
-
-shmake.cli(name="TestTemplateString", usage="Test string templating")
-shmake.command(name="test", action=test_action)
-`)
-		run()
-	})
-
-	t.Run("globals override local context", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
-		withMainStar(t, `
-name = "global"
-
-def test_action(ctx):
-    result = shmake.string('Hello {{.name}}!', name='Local')
-    if result != 'Hello global!':
-        print('ERROR: expected "Hello global!", got: ' + str(result))
-        return
-
-shmake.cli(name="TestTemplateString", usage="Test string templating")
-shmake.command(name="test", action=test_action)
-`)
-		run()
-	})
-
 	t.Run("handles different variable types", func(t *testing.T) {
 		run := setupStarlarkRuntime(t)
 		withMainStar(t, `

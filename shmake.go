@@ -13,16 +13,14 @@ import (
 	"go.starlark.net/starlarkstruct"
 	"go.starlark.net/syntax"
 
+	"github.com/mbark/shmake/cache"
 	"github.com/mbark/shmake/loader"
-)
-
-var (
-	globals starlark.StringDict
-	cache   diskCache
 )
 
 type runOptions struct {
 	cacheDir string
+	fileName string
+	globals  starlark.StringDict
 }
 
 type RunOption func(*runOptions)
@@ -33,18 +31,29 @@ func WithCacheDir(dir string) RunOption {
 	}
 }
 
-func Run(args []string, opts ...RunOption) {
+func WithFileName(name string) RunOption {
+	return func(o *runOptions) {
+		o.fileName = name
+	}
+}
+
+func WithGlobal(name string, value starlark.Value) RunOption {
+	return func(o *runOptions) {
+		o.globals[name] = value
+	}
+}
+
+func Run(ctx context.Context, args []string, opts ...RunOption) {
 	options := runOptions{
 		cacheDir: cacheHome(),
+		fileName: "main.star",
+		globals:  starlark.StringDict{},
 	}
 	for _, o := range opts {
 		o(&options)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	cache = NewCache(options.cacheDir)
+	cache.SetCache(options.cacheDir)
 
 	logger := slog.New(log.NewWithOptions(os.Stderr, log.Options{}))
 	slog.SetDefault(logger)
@@ -56,6 +65,10 @@ func Run(args []string, opts ...RunOption) {
 	checkErr(err)
 
 	predeclared := createPredeclaredDict(dir)
+	for name, value := range options.globals {
+		predeclared[name] = value
+	}
+
 	loader.Predeclared = predeclared
 	thread := &starlark.Thread{
 		Name: "cli",
@@ -64,17 +77,15 @@ func Run(args []string, opts ...RunOption) {
 			fmt.Println(msg)
 		},
 	}
-
-	g, err := starlark.ExecFileOptions(
+	_, err = starlark.ExecFileOptions(
 		&syntax.FileOptions{},
 		thread,
-		"main.star",
+		options.fileName,
 		nil,
 		predeclared,
 	)
 	checkErr(err)
 
-	globals = g
 	runCLI(ctx, args)
 }
 
@@ -103,7 +114,7 @@ func runCLI(ctx context.Context, args []string) {
 			)))
 		}
 		if noCache {
-			cache.ForceOutOfDate = noCache
+			cache.GlobalCache.ForceOutOfDate = noCache
 		}
 		return ctx, nil
 	}
@@ -132,12 +143,7 @@ func createPredeclaredDict(dir string) starlark.StringDict {
 
 			"load_package_json": starlark.NewBuiltin("load_package_json", shmakeLoadPackageJson),
 		}),
-		"cache": starlarkstruct.FromStringDict(starlark.String("shmake"), starlark.StringDict{
-			"diff":         starlark.NewBuiltin("diff", shmakeDiff),
-			"get_version":  starlark.NewBuiltin("get_version", shmakeGetVersion),
-			"set_version":  starlark.NewBuiltin("set_version", shmakeSetVersion),
-			"with_version": starlark.NewBuiltin("with_version", shmakeWithVersion),
-		}),
+		"cache": starlark.NewBuiltin("cache", cache.NewCacheValue),
 		"current_dir": starlark.NewBuiltin("current_dir", func(
 			thread *starlark.Thread,
 			fn *starlark.Builtin,

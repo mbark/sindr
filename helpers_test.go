@@ -18,7 +18,7 @@ func setupStarlarkRuntime(t *testing.T) func() {
 	require.NoError(t, err)
 
 	return func() {
-		shmake.Run([]string{t.Name(), "test"}, shmake.WithCacheDir(dir))
+		shmake.Run(t.Context(), []string{t.Name(), "test"}, shmake.WithCacheDir(dir))
 	}
 }
 

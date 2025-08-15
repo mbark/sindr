@@ -91,9 +91,22 @@ The linter configuration ensures code quality and security best practices are fo
 - `shmake.wait()`: Wait for async operations to complete
 - `shmake.pool()`: Manage groups of concurrent operations
 - `shmake.string()`: Render string templates with Go template syntax
-- `shmake.with_version()`: Cache operations based on versions
-- `shmake.set_version()` and `shmake.get_version()`: Version storage and retrieval
-- `shmake.diff()`: Compare values for changes
+- `cache()`: Create a cache instance for version management and caching operations
+
+### Cache Functions
+
+The cache system has been refactored to use cache instances created with `cache()`. Each cache instance provides:
+
+- `cache.diff(name, version)`: Check if the current version differs from the stored version
+- `cache.get_version(name)`: Retrieve the stored version for a given name
+- `cache.set_version(name, version)`: Store a version for a given name
+- `cache.with_version(function, name, version)`: Execute a function only if the version has changed
+
+Cache instances can optionally specify a custom cache directory:
+```python
+c = cache()  # Uses default cache directory
+c = cache(cache_dir="/custom/path")  # Uses custom cache directory
+```
 
 ### Template System
 
@@ -107,7 +120,7 @@ The linter configuration ensures code quality and security best practices are fo
 - `run_starlark.go`: Main runtime and Starlark integration
 - `command.go`: CLI command building and Starlark integration
 - `shell.go`: Shell execution with async support
-- `cache.go`: Caching system for expensive operations
+- `cache/cache.go`: Caching system for expensive operations
 - `strings.go`: String templating system
 - `main.star`: Example/development configuration file
 
@@ -116,7 +129,7 @@ The linter configuration ensures code quality and security best practices are fo
 - The project looks for `main.star` in the current directory or parent directories
 - Logging goes to stderr using structured JSON logging
 - GoReleaser configuration exists for multi-platform builds
-- Uses disk-based caching in user cache directory for `with_version` operations
+- Uses disk-based caching in user cache directory for cache operations
 
 ## Starlark Configuration Example
 
@@ -150,6 +163,19 @@ shmake.sub_command(
     path = ["deploy", "staging"],
     action = lambda ctx: print("Deploying to staging")
 )
+
+# Use cache for version management
+def deploy(ctx):
+    c = cache()
+    def build_task():
+        shmake.shell('go build .')
+        print('Built successfully')
+    
+    # Only rebuild if version changed
+    if c.with_version(build_task, name='build', version='1.2.3'):
+        print('Build executed')
+    else:
+        print('Build skipped - version unchanged')
 ```
 
 ## Linting Guidelines

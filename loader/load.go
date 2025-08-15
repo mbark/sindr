@@ -12,8 +12,10 @@ import (
 
 // Code taken from https://github.com/google/starlark-go/blob/master/starlark/example_test.go
 
-var Predeclared starlark.StringDict
-var entryCache = make(map[string]*entry)
+var (
+	Predeclared starlark.StringDict
+	entryCache  = make(map[string]*entry)
+)
 
 func Load(_ *starlark.Thread, module string) (starlark.StringDict, error) {
 	e, ok := entryCache[module]
@@ -27,9 +29,15 @@ func Load(_ *starlark.Thread, module string) (starlark.StringDict, error) {
 		entryCache[module] = nil
 
 		// Load and initialize the module in a new thread.
-		//data := fakeFilesystem[module]
+		// data := fakeFilesystem[module]
 		thread := &starlark.Thread{Name: "exec " + module, Load: Load}
-		globals, err := starlark.ExecFileOptions(&syntax.FileOptions{}, thread, module, nil, Predeclared)
+		globals, err := starlark.ExecFileOptions(
+			&syntax.FileOptions{},
+			thread,
+			module,
+			nil,
+			Predeclared,
+		)
 		e = &entry{globals: globals, err: err}
 
 		// Update the cache.

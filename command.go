@@ -225,6 +225,9 @@ func createCommandAction(
 ) func(context.Context, *cli.Command) error {
 	return func(ctx context.Context, command *cli.Command) error {
 		slog.With(slog.String("name", name)).Debug("running command")
+		if action == nil {
+			return nil
+		}
 
 		flags := make(starlark.StringDict)
 		for _, flag := range command.Flags {
@@ -318,6 +321,11 @@ func findSubCommand(cmd *cli.Command, path []string) (*cli.Command, error) {
 	return nil, fmt.Errorf("no command with name %s found", path[0])
 }
 
+var (
+	_ starlark.Value    = (*Context)(nil)
+	_ starlark.HasAttrs = (*Context)(nil)
+)
+
 type Context struct {
 	Flags     starlark.StringDict
 	Args      starlark.StringDict
@@ -345,7 +353,10 @@ func (c *Context) AttrNames() []string {
 	return []string{"flags", "args"}
 }
 
-var _ starlark.Mapping = (*FlagMap)(nil)
+var (
+	_ starlark.Value   = (*FlagMap)(nil)
+	_ starlark.Mapping = (*FlagMap)(nil)
+)
 
 // FlagMap allows both dot-access and index-access to flags:
 //

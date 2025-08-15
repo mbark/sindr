@@ -1,11 +1,12 @@
 package main
 
 import (
+	"context"
 	"os"
 
 	"github.com/mbark/shmake"
 )
 
 func main() {
-	shmake.Run(os.Args)
+	shmake.Run(context.Background(), os.Args)
 }

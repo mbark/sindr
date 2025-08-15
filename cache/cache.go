@@ -1,4 +1,4 @@
-package shmake
+package cache
 
 import (
 	"fmt"
@@ -10,25 +10,107 @@ import (
 	"go.starlark.net/starlark"
 )
 
-func shmakeDiff(
+var GlobalCache diskCache
+
+func SetCache(file string) {
+	GlobalCache = NewCache(file)
+}
+
+func NewCacheValue(
+	_ *starlark.Thread,
+	fn *starlark.Builtin,
+	args starlark.Tuple,
+	kwargs []starlark.Tuple,
+) (starlark.Value, error) {
+	var cacheDir string
+	err := starlark.UnpackArgs(fn.Name(), args, kwargs, "cache_dir?", &cacheDir)
+	if err != nil {
+		return nil, err
+	}
+
+	c := &Cache{cacheDir: cacheDir}
+	if cacheDir != "" {
+		c.diskCache = NewCache(cacheDir)
+	} else {
+		c.diskCache = GlobalCache // Use global cache
+	}
+
+	return c, nil
+}
+
+var (
+	_ starlark.Value    = (*Cache)(nil)
+	_ starlark.HasAttrs = (*Cache)(nil)
+)
+
+type Cache struct {
+	cacheDir  string
+	diskCache diskCache
+}
+
+func (c Cache) String() string {
+	return "cache"
+}
+
+func (c Cache) Type() string {
+	return "cache"
+}
+
+func (c Cache) Freeze() {
+	// Cache is immutable, no-op
+}
+
+func (c Cache) Truth() starlark.Bool {
+	return starlark.True
+}
+
+func (c Cache) Hash() (uint32, error) {
+	h := fnv.New32a()
+	if c.cacheDir != "" {
+		_, _ = h.Write([]byte(c.cacheDir))
+	}
+	return h.Sum32(), nil
+}
+
+func (c Cache) Attr(name string) (starlark.Value, error) {
+	switch name {
+	case "diff":
+		return starlark.NewBuiltin("diff", c.diff), nil
+	case "get_version":
+		return starlark.NewBuiltin("get_version", c.getVersion), nil
+	case "set_version":
+		return starlark.NewBuiltin("set_version", c.setVersion), nil
+	case "with_version":
+		return starlark.NewBuiltin("with_version", c.withVersion), nil
+	default:
+		return nil, nil
+	}
+}
+
+func (c Cache) AttrNames() []string {
+	return []string{"diff", "get_version", "set_version", "with_version"}
+}
+
+// Method wrappers for Cache to expose the shmake functions.
+func (c *Cache) diff(
 	thread *starlark.Thread,
 	fn *starlark.Builtin,
 	args starlark.Tuple,
 	kwargs []starlark.Tuple,
 ) (starlark.Value, error) {
-	options, err := unpackCacheOptions(fn, args, kwargs)
+	options, err := unpackCacheOptions(fn, kwargs)
 	if err != nil {
 		return nil, err
 	}
 
-	isDiff, err := checkIfDiff(cache, *options)
+	isDiff, err := checkIfDiff(c.diskCache, *options)
 	if err != nil {
 		return nil, err
 	}
 	return starlark.Bool(isDiff), nil
 }
 
-func shmakeGetVersion(
+func (c *Cache) getVersion(
 	thread *starlark.Thread,
 	fn *starlark.Builtin,
 	args starlark.Tuple,
@@ -43,7 +125,7 @@ func shmakeGetVersion(
 		return nil, fmt.Errorf("name must be a string")
 	}
 
-	v, err := cache.GetVersion(string(name))
+	v, err := c.diskCache.GetVersion(string(name))
 	if err != nil {
 		return nil, err
 	}
@@ -54,13 +136,13 @@ func shmakeGetVersion(
 	return starlark.String(*v), nil
 }
 
-func shmakeSetVersion(
+func (c *Cache) setVersion(
 	thread *starlark.Thread,
 	fn *starlark.Builtin,
 	args starlark.Tuple,
 	kwargs []starlark.Tuple,
 ) (starlark.Value, error) {
-	options, err := unpackCacheOptions(fn, args, kwargs)
+	options, err := unpackCacheOptions(fn, kwargs)
 	if err != nil {
 		return nil, err
 	}
@@ -70,13 +152,13 @@ func shmakeSetVersion(
 		With(slog.String("name", options.name)).
 		Debug("storing cache version")
 
-	if err := cache.StoreVersion(options.name, options.version); err != nil {
+	if err := c.diskCache.StoreVersion(options.name, options.version); err != nil {
 		return nil, err
 	}
 	return starlark.None, nil
 }
 
-func shmakeWithVersion(
+func (c *Cache) withVersion(
 	thread *starlark.Thread,
 	fn *starlark.Builtin,
 	args starlark.Tuple,
@@ -93,12 +175,12 @@ func shmakeWithVersion(
 		return nil, fmt.Errorf("first argument must be callable")
 	}
 
-	options, err := unpackCacheOptions(fn, args, kwargs)
+	options, err := unpackCacheOptions(fn, kwargs)
 	if err != nil {
 		return nil, err
 	}
 
-	isDiff, err := checkIfDiff(cache, *options)
+	isDiff, err := checkIfDiff(c.diskCache, *options)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +197,7 @@ func shmakeWithVersion(
 		slog.Any("response", res),
 	).Debug("with_version function returned")
 
-	if err := cache.StoreVersion(options.name, options.version); err != nil {
+	if err := c.diskCache.StoreVersion(options.name, options.version); err != nil {
 		return nil, err
 	}
 	return starlark.Bool(true), nil
@@ -142,10 +224,13 @@ type cacheDiffOptions struct {
 	version string
 }
 
-func unpackCacheOptions(fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (*cacheDiffOptions, error) {
+func unpackCacheOptions(
+	fn *starlark.Builtin,
+	kwargs []starlark.Tuple,
+) (*cacheDiffOptions, error) {
 	var name string
 	var version stringOrInt
-	err := starlark.UnpackArgs(fn.Name(), args, kwargs,
+	err := starlark.UnpackArgs(fn.Name(), nil, kwargs,
 		"name", &name,
 		"version", &version,
 	)

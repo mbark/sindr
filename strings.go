@@ -26,14 +26,6 @@ func shmakeString(
 	}
 
 	values := make(map[string]any)
-	for k, v := range globals {
-		val, ok := v.(starlark.String)
-		if !ok {
-			continue
-		}
-
-		values[k] = string(val)
-	}
 	for _, kv := range kwargs {
 		key, ok := kv[0].(starlark.String)
 		if !ok {

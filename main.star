@@ -310,6 +310,101 @@ shmake.sub_command(
 )
 
 # ============================================================================
+# FILE TIMESTAMP EXAMPLES
+# ============================================================================
+def demo_file_timestamps(ctx):
+    """Demonstrates file timestamp functions newest_ts and oldest_ts"""
+    print("=== File Timestamp Demo ===")
+    
+    # Create some test files for demonstration
+    shmake.shell('echo "File 1" > demo1.txt && sleep 1')
+    shmake.shell('echo "File 2" > demo2.txt && sleep 1') 
+    shmake.shell('echo "File 3" > demo3.txt')
+    
+    # Example 1: Get newest timestamp from a single glob pattern
+    newest = shmake.newest_ts('demo*.txt')
+    print("Newest file timestamp:", newest)
+    
+    # Example 2: Get oldest timestamp from a single glob pattern  
+    oldest = shmake.oldest_ts('demo*.txt')
+    print("Oldest file timestamp:", oldest)
+    
+    # Create files in different directories for list example
+    shmake.shell('mkdir -p src logs')
+    shmake.shell('echo "Source code" > src/main.go && sleep 1')
+    shmake.shell('echo "Log entry" > logs/app.log')
+    
+    # Example 3: Use list of globs to check multiple patterns
+    newest_multi = shmake.newest_ts(['demo*.txt', 'src/*.go', 'logs/*.log'])
+    oldest_multi = shmake.oldest_ts(['demo*.txt', 'src/*.go', 'logs/*.log'])
+    
+    print("Newest across all patterns:", newest_multi)
+    print("Oldest across all patterns:", oldest_multi)
+    
+    # Show timestamp difference in seconds
+    diff_seconds = newest - oldest
+    print("Time difference:", diff_seconds, "seconds")
+    
+    # Clean up demo files
+    shmake.shell('rm -f demo*.txt && rm -rf src logs')
+    print("Demo files cleaned up")
+
+shmake.command(
+    name = "timestamps",
+    help = "Demonstrate file timestamp functions newest_ts and oldest_ts",
+    action = demo_file_timestamps
+)
+
+def demo_build_cache(ctx):
+    """Advanced example using file timestamps for build caching"""
+    print("=== Build Cache with File Timestamps ===")
+    
+    # Create source files
+    shmake.shell('mkdir -p src')
+    shmake.shell('echo "package main" > src/main.go')
+    shmake.shell('echo "// helper functions" > src/utils.go')
+    
+    # Simulate build output
+    shmake.shell('mkdir -p bin')
+    shmake.shell('echo "fake binary" > bin/app')
+    
+    # Get timestamps
+    source_newest = shmake.newest_ts('src/*.go')
+    
+    # Check if binary exists and get its timestamp
+    # Note: We'll use shell to check if file exists since Starlark doesn't have try/except
+    check_result = shmake.shell('test -f bin/app && echo "exists" || echo "not_exists"')
+    binary_exists = check_result.strip() == "exists"
+    
+    if binary_exists:
+        binary_ts = shmake.oldest_ts('bin/app')
+    else:
+        binary_ts = 0
+    
+    print("Source files newest timestamp:", source_newest)
+    print("Binary timestamp:", binary_ts if binary_exists else "N/A (binary doesn't exist)")
+    
+    # Determine if rebuild is needed
+    needs_rebuild = not binary_exists or source_newest > binary_ts
+    
+    if needs_rebuild:
+        print("Rebuild needed - sources are newer than binary")
+        shmake.shell('echo "Rebuilding..." && sleep 1 && echo "fake binary $(date)" > bin/app', prefix='[BUILD]')
+        print("Build completed!")
+    else:
+        print("Build up-to-date - no rebuild necessary")
+    
+    # Clean up
+    shmake.shell('rm -rf src bin')
+    print("Demo files cleaned up")
+
+shmake.command(
+    name = "build-cache",
+    help = "Advanced example using timestamps for intelligent build caching",
+    action = demo_build_cache
+)
+
+# ============================================================================
 # HELP COMMAND
 # ============================================================================
 def show_examples(ctx):
@@ -324,6 +419,8 @@ Basic Commands:
   ./shmake templates   - String templating features
   ./shmake versioning  - Version storage and caching with cache instances
   ./shmake diff        - Version comparison with cache.diff()
+  ./shmake timestamps  - File timestamp functions newest_ts and oldest_ts
+  ./shmake build-cache - Advanced build caching using file timestamps
 
 Advanced Examples:
   ./shmake build [target] --verbose --parallel

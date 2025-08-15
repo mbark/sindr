@@ -25,7 +25,7 @@ the `.star` file.
 - [x] Allow "importing" package.json files and adding their scripts as commands
 - [x] Add functionality for setting categories
 - [x] Remove the watch stuff
-- [ ] lib:ify the `shmake` package to allow people to use and extend it through Go.
+- [x] lib:ify the `shmake` package to allow people to use and extend it through Go.
 - [ ] Add the newest_ts and oldest_ts functions back
 - [ ] When running a command, show it in some nice way.
 - [] Improve the tests for `packagejson` and command to actually check the commands are added (e.g., via --help)

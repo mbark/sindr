@@ -86,7 +86,7 @@ The linter configuration ensures code quality and security best practices are fo
 - `shmake.cli()`: Configure the CLI tool name and usage
 - `shmake.command()`: Define top-level commands with name, help, action, args, and flags
 - `shmake.sub_command()`: Define nested subcommands with path arrays
-- `shmake.shell()`: Execute shell commands with optional prefixes and capture output
+- `shmake.shell()`: Execute shell commands with optional prefixes and return a structured result containing stdout, stderr, exit code, and success status
 - `shmake.start()`: Run functions concurrently
 - `shmake.wait()`: Wait for async operations to complete
 - `shmake.pool()`: Manage groups of concurrent operations
@@ -113,6 +113,36 @@ c = cache(cache_dir="/custom/path")  # Uses custom cache directory
 - String templates support Go template syntax with `{{.variable}}`
 - Global Starlark variables are automatically available in templates
 - `shmake.string()` function renders templates with optional additional context
+
+### Shell Command Results
+
+The `shmake.shell()` function returns a structured result object with the following attributes:
+
+- `result.stdout`: String containing the command's standard output (trimmed of surrounding whitespace)
+- `result.stderr`: String containing the command's standard error output (trimmed of surrounding whitespace)
+- `result.exit_code`: Integer exit code returned by the command
+- `result.success`: Boolean indicating whether the command succeeded (exit code 0)
+
+The result object can be used directly as a string (returns stdout) or in boolean context (returns success status):
+
+```python
+# Access specific outputs
+result = shmake.shell('echo "hello" && echo "error" >&2')
+print("Output:", result.stdout)  # "hello"
+print("Error:", result.stderr)   # "error"
+print("Success:", result.success) # True
+print("Exit code:", result.exit_code) # 0
+
+# Use as string (returns stdout)
+output = shmake.shell('echo "hello world"')
+print(str(output))  # "hello world"
+
+# Use in boolean context (returns success)
+if shmake.shell('test -f myfile.txt'):
+    print("File exists")
+else:
+    print("File does not exist")
+```
 
 ## Project Structure
 

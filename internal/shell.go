@@ -3,6 +3,7 @@ package internal
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os/exec"
@@ -32,40 +33,40 @@ func ShmakeShell(
 	slog.With(slog.String("command", command)).Debug("running shell command")
 
 	cmd := exec.CommandContext(ctx, "bash", "-c", command) // #nosec G204
-	out, err := StartShellCmd(cmd, prefix)
+	res, err := StartShellCmd(cmd, prefix)
 	if err != nil {
 		return nil, fmt.Errorf("start shell cmd failed: %w", err)
 	}
 
-	out = strings.TrimSpace(out)
-	return starlark.String(out), nil
+	return res, nil
 }
 
-func StartShellCmd(cmd *exec.Cmd, name string) (string, error) {
-	stdout, err := cmd.StdoutPipe()
+func StartShellCmd(cmd *exec.Cmd, name string) (*ShellResult, error) {
+	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
-		return "", fmt.Errorf("stdout pipe: %w", err)
+		return nil, fmt.Errorf("stdout pipe: %w", err)
 	}
 
-	stderr, err := cmd.StderrPipe()
+	stderrPipe, err := cmd.StderrPipe()
 	if err != nil {
-		return "", fmt.Errorf("stderr pipe: %w", err)
+		return nil, fmt.Errorf("stderr pipe: %w", err)
 	}
 
 	if err := cmd.Start(); err != nil {
-		return "", fmt.Errorf("cmd start: %w", err)
+		return nil, fmt.Errorf("cmd start: %w", err)
 	}
 
 	prefix := func(s string) string {
 		return termenv.String(s).Foreground(termenv.ANSIBrightBlue).Faint().String()
 	}
-	var out strings.Builder
+	var stdoutBuilder, stderrBuilder strings.Builder
+
 	go func() {
-		scanner := bufio.NewScanner(stdout)
+		scanner := bufio.NewScanner(stdoutPipe)
 		scanner.Split(bufio.ScanLines)
 		for scanner.Scan() {
 			m := scanner.Text()
-			out.WriteString(m + "\n")
+			stdoutBuilder.WriteString(m + "\n")
 			if name != "" {
 				fmt.Printf("%s | %s\n", prefix(name), m)
 			} else {
@@ -75,10 +76,11 @@ func StartShellCmd(cmd *exec.Cmd, name string) (string, error) {
 	}()
 
 	go func() {
-		scanner := bufio.NewScanner(stderr)
+		scanner := bufio.NewScanner(stderrPipe)
 		scanner.Split(bufio.ScanLines)
 		for scanner.Scan() {
 			m := scanner.Text()
+			stderrBuilder.WriteString(m + "\n")
 			if name != "" {
 				fmt.Printf("%s | %s\n", prefix(name), m)
 			} else {
@@ -88,5 +90,76 @@ func StartShellCmd(cmd *exec.Cmd, name string) (string, error) {
 	}()
 
 	err = cmd.Wait()
-	return out.String(), err
+	stdout, stderr := strings.TrimSpace(stdoutBuilder.String()), strings.TrimSpace(stderrBuilder.String())
+	if err != nil {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			return &ShellResult{
+				Stdout:   stdout,
+				Stderr:   stderr,
+				Success:  exitErr.Success(),
+				ExitCode: exitErr.ExitCode(),
+			}, nil
+		}
+
+		return nil, err
+	}
+
+	return &ShellResult{
+		Stdout:   stdout,
+		Stderr:   stderr,
+		Success:  cmd.ProcessState.Success(),
+		ExitCode: cmd.ProcessState.ExitCode(),
+	}, err
+}
+
+var (
+	_ starlark.Value    = (*ShellResult)(nil)
+	_ starlark.HasAttrs = (*ShellResult)(nil)
+)
+
+type ShellResult struct {
+	Stdout   string
+	Stderr   string
+	ExitCode int
+	Success  bool
+}
+
+func (s ShellResult) Attr(name string) (starlark.Value, error) {
+	switch name {
+	case "stdout":
+		return starlark.String(s.Stdout), nil
+	case "stderr":
+		return starlark.String(s.Stderr), nil
+	case "exit_code":
+		return starlark.MakeInt(s.ExitCode), nil
+	case "success":
+		return starlark.Bool(s.Success), nil
+	default:
+		return nil, nil
+	}
+}
+
+func (s ShellResult) AttrNames() []string {
+	return []string{"stdout", "stderr", "exit_code", "success"}
+}
+
+func (s ShellResult) String() string {
+	return s.Stdout
+}
+
+func (s ShellResult) Type() string {
+	return "shell_result"
+}
+
+func (s ShellResult) Freeze() {
+	// ShellResult is immutable, so no-op
+}
+
+func (s ShellResult) Truth() starlark.Bool {
+	return starlark.Bool(s.Success)
+}
+
+func (s ShellResult) Hash() (uint32, error) {
+	return starlark.String(s.Stdout).Hash()
 }

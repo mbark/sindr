@@ -17,8 +17,10 @@ def demo_shell(ctx):
     print("=== Shell Command Demo ===")
     
     # Basic shell command
-    output = shmake.shell('echo "Hello from shmake!"')
-    print("Shell output:", output)
+    result = shmake.shell('echo "Hello from shmake!"')
+    print("Shell output:", result.stdout)
+    print("Command success:", result.success)
+    print("Exit code:", result.exit_code)
     
     # Shell command with prefix
     shmake.shell('echo "This has a prefix"', prefix='[DEMO]')
@@ -226,8 +228,8 @@ def comprehensive_build(ctx):
     
     # Create cache instance and set build version using shell command to get timestamp
     c = cache()
-    timestamp_output = shmake.shell('date +%s')
-    build_version = "build-" + timestamp_output.strip()
+    timestamp_result = shmake.shell('date +%s')
+    build_version = "build-" + timestamp_result.stdout.strip()
     c.set_version(name="current_build", version=build_version)
     
     # Create build script using templates
@@ -372,9 +374,8 @@ def demo_build_cache(ctx):
     source_newest = shmake.newest_ts('src/*.go')
     
     # Check if binary exists and get its timestamp
-    # Note: We'll use shell to check if file exists since Starlark doesn't have try/except
-    check_result = shmake.shell('test -f bin/app && echo "exists" || echo "not_exists"')
-    binary_exists = check_result.strip() == "exists"
+    check_result = shmake.shell('test -f bin/app && echo "exists"')
+    binary_exists = check_result.stdout.strip() == "exists"
     
     if binary_exists:
         binary_ts = shmake.oldest_ts('bin/app')

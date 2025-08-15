@@ -163,8 +163,12 @@ func createPredeclaredDict(dir string) starlark.StringDict {
 
 			"newest_ts": starlark.NewBuiltin("newest_ts", internal.ShmakeNewestTS),
 			"oldest_ts": starlark.NewBuiltin("oldest_ts", internal.ShmakeOldestTS),
+			"glob":      starlark.NewBuiltin("glob", internal.ShmakeGlob),
 
-			"load_package_json": starlark.NewBuiltin("load_package_json", internal.ShmakeLoadPackageJson),
+			"load_package_json": starlark.NewBuiltin(
+				"load_package_json",
+				internal.ShmakeLoadPackageJson,
+			),
 		}),
 		"cache":       starlark.NewBuiltin("cache", cache.NewCacheValue),
 		"current_dir": starlark.String("current_dir"),

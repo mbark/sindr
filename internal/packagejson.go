@@ -42,27 +42,31 @@ func ShmakeLoadPackageJson(
 	}
 
 	for name := range packageJson.Scripts {
-		GlobalCLI.Command.Command.Commands = append(GlobalCLI.Command.Command.Commands, &cli.Command{
-			Name:            name,
-			SkipFlagParsing: true,
-			Action: func(ctx context.Context, command *cli.Command) error {
-				slog.With(slog.String("name", name)).Debug("running command")
+		GlobalCLI.Command.Command.Commands = append(
+			GlobalCLI.Command.Command.Commands,
+			&cli.Command{
+				Name:            name,
+				SkipFlagParsing: true,
+				Action: func(ctx context.Context, command *cli.Command) error {
+					slog.With(slog.String("name", name)).Debug("running command")
 
-				cmdArgs := []string{"run", name}
-				if s := command.Args().Slice(); len(s) > 0 {
-					cmdArgs = append(cmdArgs, "--")
-					cmdArgs = append(cmdArgs, s...)
-				}
+					cmdArgs := []string{"run", name}
+					if s := command.Args().Slice(); len(s) > 0 {
+						cmdArgs = append(cmdArgs, "--")
+						cmdArgs = append(cmdArgs, s...)
+					}
 
-				cmd := exec.CommandContext(ctx, bin, cmdArgs...)
-				output, err := StartShellCmd(cmd, name, true)
-				if err != nil {
-					return err
-				}
-				slog.With(slog.Any("output", output), slog.Any("err", err)).Debug("command done")
-				return nil
+					cmd := exec.CommandContext(ctx, bin, cmdArgs...)
+					output, err := StartShellCmd(cmd, name, true)
+					if err != nil {
+						return err
+					}
+					slog.With(slog.Any("output", output), slog.Any("err", err)).
+						Debug("command done")
+					return nil
+				},
 			},
-		})
+		)
 	}
 
 	return starlark.None, nil

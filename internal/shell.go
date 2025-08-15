@@ -84,7 +84,11 @@ func StartShellCmd(cmd *exec.Cmd, name string, noOutput bool) (*ShellResult, err
 	scan(stdoutPipe, stdoutBuilder)
 	scan(stderrPipe, stderrBuilder)
 	err = cmd.Wait()
-	stdout, stderr := strings.TrimSpace(stdoutBuilder.String()), strings.TrimSpace(stderrBuilder.String())
+	stdout, stderr := strings.TrimSpace(
+		stdoutBuilder.String(),
+	), strings.TrimSpace(
+		stderrBuilder.String(),
+	)
 	if err != nil {
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {

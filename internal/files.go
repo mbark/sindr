@@ -29,9 +29,15 @@ func ShmakeOldestTS(
 }
 
 // findExtremeTimestamp finds either the newest or oldest timestamp based on the findNewest flag.
-func findExtremeTimestamp(args starlark.Tuple, fnName string, findNewest bool) (starlark.Value, error) {
+func findExtremeTimestamp(
+	args starlark.Tuple,
+	fnName string,
+	findNewest bool,
+) (starlark.Value, error) {
 	if args.Len() != 1 {
-		return nil, errors.New(fnName + " requires exactly 1 argument (a glob pattern or list of patterns)")
+		return nil, errors.New(
+			fnName + " requires exactly 1 argument (a glob pattern or list of patterns)",
+		)
 	}
 
 	globs, err := parseGlobArg(args.Index(0))
@@ -71,6 +77,59 @@ func findExtremeTimestamp(args starlark.Tuple, fnName string, findNewest bool) (
 	}
 
 	return starlark.MakeInt64(result), nil
+}
+
+// ShmakeGlob returns a list of file paths that match the given glob pattern(s).
+func ShmakeGlob(
+	thread *starlark.Thread,
+	fn *starlark.Builtin,
+	args starlark.Tuple,
+	kwargs []starlark.Tuple,
+) (starlark.Value, error) {
+	if args.Len() != 1 {
+		return nil, errors.New(
+			"glob() requires exactly 1 argument (a glob pattern or list of patterns)",
+		)
+	}
+
+	globs, err := parseGlobArg(args.Index(0))
+	if err != nil {
+		return nil, err
+	}
+
+	var allMatches []string
+	seen := make(map[string]bool) // To avoid duplicates
+
+	for _, glob := range globs {
+		matches, err := filepath.Glob(glob)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, match := range matches {
+			info, err := os.Stat(match)
+			if err != nil {
+				continue // skip files that can't be stat'd
+			}
+
+			if info.IsDir() {
+				continue // skip directories
+			}
+
+			if !seen[match] {
+				allMatches = append(allMatches, match)
+				seen[match] = true
+			}
+		}
+	}
+
+	// Convert to Starlark list
+	starlarkList := starlark.NewList(make([]starlark.Value, len(allMatches)))
+	for i, match := range allMatches {
+		starlarkList.SetIndex(i, starlark.String(match))
+	}
+
+	return starlarkList, nil
 }
 
 // parseGlobArg parses the argument which can be either a string glob or a list of string globs.

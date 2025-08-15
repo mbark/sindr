@@ -406,6 +406,93 @@ shmake.command(
 )
 
 # ============================================================================
+# GLOB FUNCTION EXAMPLE
+# ============================================================================
+def demo_glob(ctx):
+    """Demonstrates the glob function for file pattern matching"""
+    print("=== Glob Function Demo ===")
+    
+    # Create some test files for demonstration
+    shmake.shell('mkdir -p src test docs')
+    shmake.shell('echo "package main" > src/main.go')
+    shmake.shell('echo "package utils" > src/utils.go')
+    shmake.shell('echo "import unittest" > test/test_main.py')
+    shmake.shell('echo "import pytest" > test/test_utils.py')
+    shmake.shell('echo "# README" > docs/README.md')
+    shmake.shell('echo "# API Guide" > docs/api.md')
+    shmake.shell('echo "config data" > config.json')
+    shmake.shell('echo "more config" > settings.yml')
+    
+    # Example 1: Single glob pattern
+    print("\n1. Finding all Go files:")
+    go_files = shmake.glob('src/*.go')
+    for file in go_files:
+        print("  -", file)
+    
+    # Example 2: Multiple patterns using a list
+    print("\n2. Finding Python and Markdown files:")
+    script_files = shmake.glob(['test/*.py', 'docs/*.md'])
+    for file in script_files:
+        print("  -", file)
+    
+    # Example 3: Complex patterns with multiple extensions
+    print("\n3. Finding all configuration files:")
+    config_files = shmake.glob(['*.json', '*.yml', '*.yaml'])
+    for file in config_files:
+        print("  -", file)
+    
+    # Example 4: Using glob results in other operations
+    print("\n4. Processing Go files individually:")
+    for go_file in shmake.glob('src/*.go'):
+        # Get file size instead of line count for simpler demo
+        size_result = shmake.shell('stat -c %s ' + go_file + ' 2>/dev/null || stat -f %z ' + go_file)
+        size = size_result.stdout.strip()
+        print("  ", go_file, "is", size, "bytes")
+    
+    # Example 5: Combining glob with newest_ts/oldest_ts
+    print("\n5. File age analysis:")
+    all_source_files = shmake.glob(['src/*.go', 'test/*.py'])
+    if all_source_files:
+        newest_ts = shmake.newest_ts(['src/*.go', 'test/*.py'])
+        oldest_ts = shmake.oldest_ts(['src/*.go', 'test/*.py'])
+        print("  Found", len(all_source_files), "source files")
+        print("  Newest file timestamp:", newest_ts)
+        print("  Oldest file timestamp:", oldest_ts)
+        print("  Age difference:", newest_ts - oldest_ts, "seconds")
+    
+    # Example 6: Conditional processing based on file existence
+    print("\n6. Conditional operations:")
+    makefile_candidates = shmake.glob(['Makefile', 'makefile', '*.mk'])
+    if makefile_candidates:
+        print("  Found build files:", makefile_candidates)
+    else:
+        print("  No build files found")
+    
+    # Example 7: File counting and statistics
+    print("\n7. File statistics:")
+    all_files = shmake.glob(['*', 'src/*', 'test/*', 'docs/*'])
+    extensions = {}
+    for file in all_files:
+        if '.' in file:
+            ext = file.split('.')[-1]
+            extensions[ext] = extensions.get(ext, 0) + 1
+    
+    print("  Total files found:", len(all_files))
+    print("  Files by extension:")
+    for ext, count in extensions.items():
+        print("    ." + ext + ":", count)
+    
+    # Clean up demo files
+    shmake.shell('rm -rf src test docs config.json settings.yml')
+    print("\nDemo files cleaned up")
+
+shmake.command(
+    name = "glob",
+    help = "Demonstrate glob function for file pattern matching",
+    action = demo_glob
+)
+
+# ============================================================================
 # HELP COMMAND
 # ============================================================================
 def show_examples(ctx):
@@ -421,6 +508,7 @@ Basic Commands:
   ./shmake versioning  - Version storage and caching with cache instances
   ./shmake diff        - Version comparison with cache.diff()
   ./shmake timestamps  - File timestamp functions newest_ts and oldest_ts
+  ./shmake glob        - File pattern matching with glob function
   ./shmake build-cache - Advanced build caching using file timestamps
 
 Advanced Examples:

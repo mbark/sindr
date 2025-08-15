@@ -13,14 +13,6 @@ import (
 	"go.starlark.net/starlark"
 )
 
-func init() {
-	GlobalCLI = CLI{
-		Command: &Command{
-			Command: &cli.Command{},
-		},
-	}
-}
-
 type CLI struct {
 	Command *Command
 }
@@ -32,7 +24,11 @@ type Command struct {
 }
 
 var (
-	GlobalCLI CLI
+	GlobalCLI CLI = CLI{
+		Command: &Command{
+			Command: &cli.Command{},
+		},
+	}
 	WaitGroup sync.WaitGroup
 )
 

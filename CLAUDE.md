@@ -62,7 +62,8 @@ go test ./...
 The project uses `golangci-lint` for code quality checks. All code must pass linting before being committed:
 
 ```bash
-golangci-lint run
+golangci-lint fmt --config .golangci.yml
+golangci-lint run --config .golangci.yml
 ```
 
 The linter configuration ensures code quality and security best practices are followed.

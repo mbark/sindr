@@ -17,6 +17,10 @@ import (
 	"github.com/mbark/shmake/loader"
 )
 
+// StarlarkBuiltin exposes the expected function signature for a starlark builtin function. It's just added here to
+// simplify adding additional Globals.
+type StarlarkBuiltin = func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error)
+
 type runOptions struct {
 	cacheDir string
 	fileName string
@@ -37,9 +41,15 @@ func WithFileName(name string) RunOption {
 	}
 }
 
-func WithGlobal(name string, value starlark.Value) RunOption {
+func WithGlobalValue(name string, value starlark.Value) RunOption {
 	return func(o *runOptions) {
 		o.globals[name] = value
+	}
+}
+
+func WithBuiltin(name string, builtin StarlarkBuiltin) RunOption {
+	return func(o *runOptions) {
+		o.globals[name] = starlark.NewBuiltin(name, builtin)
 	}
 }
 
@@ -58,7 +68,7 @@ func Run(ctx context.Context, args []string, opts ...RunOption) {
 	logger := slog.New(log.NewWithOptions(os.Stderr, log.Options{}))
 	slog.SetDefault(logger)
 
-	dir, err := findPathUpdwards("main.star")
+	dir, err := findPathUpdwards(options.fileName)
 	checkErr(err)
 
 	err = os.Chdir(dir)
@@ -143,15 +153,8 @@ func createPredeclaredDict(dir string) starlark.StringDict {
 
 			"load_package_json": starlark.NewBuiltin("load_package_json", shmakeLoadPackageJson),
 		}),
-		"cache": starlark.NewBuiltin("cache", cache.NewCacheValue),
-		"current_dir": starlark.NewBuiltin("current_dir", func(
-			thread *starlark.Thread,
-			fn *starlark.Builtin,
-			args starlark.Tuple,
-			kwargs []starlark.Tuple,
-		) (starlark.Value, error) {
-			return starlark.String(dir), nil
-		}),
+		"cache":       starlark.NewBuiltin("cache", cache.NewCacheValue),
+		"current_dir": starlark.String("current_dir"),
 	}
 }
 

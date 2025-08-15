@@ -8,5 +8,15 @@ import (
 )
 
 func main() {
-	shmake.Run(context.Background(), os.Args)
+	err := shmake.Run(context.Background(), os.Args)
+	checkErr(err)
+}
+
+func checkErr(err error) {
+	if err == nil {
+		return
+	}
+
+	slog.Error(err.Error())
+	os.Exit(1)
 }

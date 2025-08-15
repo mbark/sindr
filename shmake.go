@@ -14,6 +14,7 @@ import (
 	"go.starlark.net/syntax"
 
 	"github.com/mbark/shmake/cache"
+	"github.com/mbark/shmake/internal"
 	"github.com/mbark/shmake/loader"
 )
 
@@ -53,7 +54,7 @@ func WithBuiltin(name string, builtin StarlarkBuiltin) RunOption {
 	}
 }
 
-func Run(ctx context.Context, args []string, opts ...RunOption) {
+func Run(ctx context.Context, args []string, opts ...RunOption) error {
 	options := runOptions{
 		cacheDir: cacheHome(),
 		fileName: "main.star",
@@ -69,10 +70,14 @@ func Run(ctx context.Context, args []string, opts ...RunOption) {
 	slog.SetDefault(logger)
 
 	dir, err := findPathUpdwards(options.fileName)
-	checkErr(err)
+	if err != nil {
+		return err
+	}
 
 	err = os.Chdir(dir)
-	checkErr(err)
+	if err != nil {
+		return err
+	}
 
 	predeclared := createPredeclaredDict(dir)
 	for name, value := range options.globals {
@@ -94,12 +99,14 @@ func Run(ctx context.Context, args []string, opts ...RunOption) {
 		nil,
 		predeclared,
 	)
-	checkErr(err)
+	if err != nil {
+		return err
+	}
 
-	runCLI(ctx, args)
+	return runCLI(ctx, args)
 }
 
-func runCLI(ctx context.Context, args []string) {
+func runCLI(ctx context.Context, args []string) error {
 	var verbose, noCache bool
 	cliFlags := []cli.Flag{
 		&cli.BoolFlag{
@@ -114,7 +121,7 @@ func runCLI(ctx context.Context, args []string) {
 		},
 	}
 
-	cmd := gCLI.Command.Command
+	cmd := internal.GlobalCLI.Command.Command
 	cmd.Flags = append(cmd.Flags, cliFlags...)
 	cmd.Before = func(ctx context.Context, cmd *cli.Command) (context.Context, error) {
 		if verbose {
@@ -130,28 +137,31 @@ func runCLI(ctx context.Context, args []string) {
 	}
 
 	err := cmd.Run(ctx, args)
-	checkErr(err)
+	if err != nil {
+		return err
+	}
 
-	wg.Wait()
+	internal.WaitGroup.Wait()
+	return nil
 }
 
 // createPredeclaredDict creates the predeclared dictionary for Starlark execution.
 func createPredeclaredDict(dir string) starlark.StringDict {
 	return starlark.StringDict{
 		"shmake": starlarkstruct.FromStringDict(starlark.String("shmake"), starlark.StringDict{
-			"cli":         starlark.NewBuiltin("cli", shmakeCLI),
-			"command":     starlark.NewBuiltin("command", shmakeCommand),
-			"sub_command": starlark.NewBuiltin("sub_command", shmakeSubCommand),
+			"cli":         starlark.NewBuiltin("cli", internal.ShmakeCLI),
+			"command":     starlark.NewBuiltin("command", internal.ShmakeCommand),
+			"sub_command": starlark.NewBuiltin("sub_command", internal.ShmakeSubCommand),
 
-			"shell": starlark.NewBuiltin("shell", shmakeShell),
+			"shell": starlark.NewBuiltin("shell", internal.ShmakeShell),
 
-			"string": starlark.NewBuiltin("string", shmakeString),
+			"string": starlark.NewBuiltin("string", internal.ShmakeString),
 
-			"start": starlark.NewBuiltin("start", shmakeStart),
-			"wait":  starlark.NewBuiltin("wait", shmakeWait),
-			"pool":  starlark.NewBuiltin("pool", shmakePool),
+			"start": starlark.NewBuiltin("start", internal.ShmakeStart),
+			"wait":  starlark.NewBuiltin("wait", internal.ShmakeWait),
+			"pool":  starlark.NewBuiltin("pool", internal.ShmakePool),
 
-			"load_package_json": starlark.NewBuiltin("load_package_json", shmakeLoadPackageJson),
+			"load_package_json": starlark.NewBuiltin("load_package_json", internal.ShmakeLoadPackageJson),
 		}),
 		"cache":       starlark.NewBuiltin("cache", cache.NewCacheValue),
 		"current_dir": starlark.String("current_dir"),

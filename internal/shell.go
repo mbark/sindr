@@ -1,4 +1,4 @@
-package shmake
+package internal
 
 import (
 	"bufio"
@@ -12,7 +12,7 @@ import (
 	"go.starlark.net/starlark"
 )
 
-func shmakeShell(
+func ShmakeShell(
 	thread *starlark.Thread,
 	fn *starlark.Builtin,
 	args starlark.Tuple,
@@ -32,7 +32,7 @@ func shmakeShell(
 	slog.With(slog.String("command", command)).Debug("running shell command")
 
 	cmd := exec.CommandContext(ctx, "bash", "-c", command) // #nosec G204
-	out, err := startShellCmd(cmd, prefix)
+	out, err := StartShellCmd(cmd, prefix)
 	if err != nil {
 		return nil, fmt.Errorf("start shell cmd failed: %w", err)
 	}
@@ -41,7 +41,7 @@ func shmakeShell(
 	return starlark.String(out), nil
 }
 
-func startShellCmd(cmd *exec.Cmd, name string) (string, error) {
+func StartShellCmd(cmd *exec.Cmd, name string) (string, error) {
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return "", fmt.Errorf("stdout pipe: %w", err)

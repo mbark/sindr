@@ -116,12 +116,13 @@ c = cache(cache_dir="/custom/path")  # Uses custom cache directory
 
 ## Project Structure
 
-- `cmd/main.go`: Entry point that calls `shmake.RunStar()`
-- `run_starlark.go`: Main runtime and Starlark integration
-- `command.go`: CLI command building and Starlark integration
-- `shell.go`: Shell execution with async support
+- `cmd/main.go`: Entry point that calls `shmake.Run()`
+- `internal/run.go`: Main runtime and Starlark integration
+- `internal/command.go`: CLI command building and Starlark integration
+- `internal/shell.go`: Shell execution with async support
+- `internal/strings.go`: String templating system
+- `internal/helpers_test.go`: Test helper functions for consistent test setup
 - `cache/cache.go`: Caching system for expensive operations
-- `strings.go`: String templating system
 - `main.star`: Example/development configuration file
 
 ## Development Notes
@@ -192,7 +193,7 @@ All tests must follow this consistent pattern:
 
 ### Test Structure Pattern
 
-1. **Use helper functions from `helpers_test.go`**:
+1. **Use helper functions from `internal/helpers_test.go`**:
    - `setupStarlarkRuntime(t)` - Creates runtime with temp directory and returns a run function
    - `withMainStar(t, starlarkCode)` - Creates main.star file with Starlark test code
 
@@ -216,7 +217,7 @@ All tests must follow this consistent pattern:
    ```
 
 3. **Required elements**:
-   - Package: `package shmake_test`  
+   - Package: `package internal_test` for tests in the internal package
    - Use `setupStarlarkRuntime(t)` for consistent test environment
    - Use `withMainStar(t, starlarkCode)` for Starlark script setup
    - Call the returned `run()` function to execute the test

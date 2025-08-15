@@ -1,4 +1,4 @@
-package shmake
+package internal
 
 import (
 	"errors"
@@ -9,7 +9,7 @@ import (
 	"go.starlark.net/starlarkstruct"
 )
 
-func shmakeStart(
+func ShmakeStart(
 	thread *starlark.Thread,
 	fn *starlark.Builtin,
 	args starlark.Tuple,
@@ -24,9 +24,9 @@ func shmakeStart(
 		return nil, errors.New("start() argument must be a callable function")
 	}
 
-	wg.Add(1)
+	WaitGroup.Add(1)
 	go func() {
-		defer wg.Done()
+		defer WaitGroup.Done()
 
 		newThread := &starlark.Thread{Name: "async"}
 		_, err := starlark.Call(newThread, callable, starlark.Tuple{}, nil)
@@ -38,17 +38,17 @@ func shmakeStart(
 	return starlark.None, nil
 }
 
-func shmakeWait(
+func ShmakeWait(
 	thread *starlark.Thread,
 	fn *starlark.Builtin,
 	args starlark.Tuple,
 	kwargs []starlark.Tuple,
 ) (starlark.Value, error) {
-	wg.Wait()
+	WaitGroup.Wait()
 	return starlark.None, nil
 }
 
-func shmakePool(
+func ShmakePool(
 	thread *starlark.Thread,
 	fn *starlark.Builtin,
 	args starlark.Tuple,
@@ -57,14 +57,14 @@ func shmakePool(
 	pool := &Pool{wg: sync.WaitGroup{}}
 
 	poolMethods := starlark.StringDict{
-		"run":  starlark.NewBuiltin("pool.run", makePoolRun(pool)),
-		"wait": starlark.NewBuiltin("pool.wait", makePoolWait(pool)),
+		"run":  starlark.NewBuiltin("pool.run", MakePoolRun(pool)),
+		"wait": starlark.NewBuiltin("pool.wait", MakePoolWait(pool)),
 	}
 
 	return starlarkstruct.FromStringDict(starlark.String("pool"), poolMethods), nil
 }
 
-func makePoolRun(pool *Pool) func(
+func MakePoolRun(pool *Pool) func(
 	thread *starlark.Thread,
 	fn *starlark.Builtin,
 	args starlark.Tuple,
@@ -100,7 +100,7 @@ func makePoolRun(pool *Pool) func(
 	}
 }
 
-func makePoolWait(pool *Pool) func(
+func MakePoolWait(pool *Pool) func(
 	thread *starlark.Thread,
 	fn *starlark.Builtin,
 	args starlark.Tuple,

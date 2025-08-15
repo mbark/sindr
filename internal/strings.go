@@ -1,4 +1,4 @@
-package shmake
+package internal
 
 import (
 	"bytes"
@@ -8,7 +8,7 @@ import (
 	"go.starlark.net/starlark"
 )
 
-func shmakeString(
+func ShmakeString(
 	thread *starlark.Thread,
 	fn *starlark.Builtin,
 	args starlark.Tuple,

@@ -1,4 +1,4 @@
-package shmake
+package internal
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 )
 
 func init() {
-	gCLI = CLI{
+	GlobalCLI = CLI{
 		Command: &Command{
 			Command: &cli.Command{},
 		},
@@ -32,11 +32,11 @@ type Command struct {
 }
 
 var (
-	gCLI CLI
-	wg   sync.WaitGroup
+	GlobalCLI CLI
+	WaitGroup sync.WaitGroup
 )
 
-func shmakeCLI(
+func ShmakeCLI(
 	thread *starlark.Thread,
 	fn *starlark.Builtin,
 	args starlark.Tuple,
@@ -49,12 +49,12 @@ func shmakeCLI(
 	); err != nil {
 		return nil, err
 	}
-	gCLI.Command.Command.Name = name
-	gCLI.Command.Command.Usage = usage
+	GlobalCLI.Command.Command.Name = name
+	GlobalCLI.Command.Command.Usage = usage
 	return starlark.None, nil
 }
 
-func shmakeCommand(
+func ShmakeCommand(
 	thread *starlark.Thread,
 	fn *starlark.Builtin,
 	args starlark.Tuple,
@@ -93,11 +93,11 @@ func shmakeCommand(
 		return nil, err
 	}
 
-	gCLI.Command.Command.Commands = append(gCLI.Command.Command.Commands, cmd.Command)
+	GlobalCLI.Command.Command.Commands = append(GlobalCLI.Command.Command.Commands, cmd.Command)
 	return starlark.None, nil
 }
 
-func shmakeSubCommand(
+func ShmakeSubCommand(
 	thread *starlark.Thread,
 	fn *starlark.Builtin,
 	args starlark.Tuple,
@@ -125,7 +125,7 @@ func shmakeSubCommand(
 		return nil, err
 	}
 
-	parentCmd, err := findSubCommand(gCLI.Command.Command, path)
+	parentCmd, err := findSubCommand(GlobalCLI.Command.Command, path)
 	if err != nil {
 		return nil, err
 	}

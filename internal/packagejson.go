@@ -1,4 +1,4 @@
-package shmake
+package internal
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"go.starlark.net/starlark"
 )
 
-func shmakeLoadPackageJson(
+func ShmakeLoadPackageJson(
 	thread *starlark.Thread,
 	fn *starlark.Builtin,
 	args starlark.Tuple,
@@ -42,7 +42,7 @@ func shmakeLoadPackageJson(
 	}
 
 	for name := range packageJson.Scripts {
-		gCLI.Command.Command.Commands = append(gCLI.Command.Command.Commands, &cli.Command{
+		GlobalCLI.Command.Command.Commands = append(GlobalCLI.Command.Command.Commands, &cli.Command{
 			Name:            name,
 			SkipFlagParsing: true,
 			Action: func(ctx context.Context, command *cli.Command) error {
@@ -55,7 +55,7 @@ func shmakeLoadPackageJson(
 				}
 
 				cmd := exec.CommandContext(ctx, bin, cmdArgs...)
-				output, err := startShellCmd(cmd, name)
+				output, err := StartShellCmd(cmd, name)
 				if err != nil {
 					return err
 				}

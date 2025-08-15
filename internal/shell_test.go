@@ -232,4 +232,31 @@ shmake.command(name="test", action=test_action)
 `)
 		run()
 	})
+
+	t.Run("no_output parameter prevents capturing output", func(t *testing.T) {
+		run := setupStarlarkRuntime(t)
+		withMainStar(t, `
+def test_action(ctx):
+    result = shmake.shell('echo "should not be captured" && echo "error output" >&2', no_output=True)
+    print('DEBUG: stdout=' + repr(result.stdout))
+    print('DEBUG: stderr=' + repr(result.stderr))
+    if result.stdout != '':
+        print('ERROR: expected empty stdout when no_output=True, got: ' + str(result.stdout))
+        fail('stdout should be empty with no_output=True')
+    if result.stderr != '':
+        print('ERROR: expected empty stderr when no_output=True, got: ' + str(result.stderr))
+        fail('stderr should be empty with no_output=True')
+    # Exit code and success should still be captured
+    if result.exit_code != 0:
+        print('ERROR: expected exit code 0, got: ' + str(result.exit_code))
+        fail('exit code should be 0')
+    if not result.success:
+        print('ERROR: expected success to be True')
+        fail('success should be True')
+
+shmake.cli(name="TestShell", usage="Test shell functionality")
+shmake.command(name="test", action=test_action)
+`)
+		run()
+	})
 }

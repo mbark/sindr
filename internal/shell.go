@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"os/exec"
 	"strings"
@@ -20,9 +21,11 @@ func ShmakeShell(
 	kwargs []starlark.Tuple,
 ) (starlark.Value, error) {
 	var command, prefix string
+	var noOutput bool
 	if err := starlark.UnpackArgs("shell", args, kwargs,
 		"command", &command,
 		"prefix?", &prefix,
+		"no_output?", &noOutput,
 	); err != nil {
 		return nil, err
 	}
@@ -33,7 +36,7 @@ func ShmakeShell(
 	slog.With(slog.String("command", command)).Debug("running shell command")
 
 	cmd := exec.CommandContext(ctx, "bash", "-c", command) // #nosec G204
-	res, err := StartShellCmd(cmd, prefix)
+	res, err := StartShellCmd(cmd, prefix, noOutput)
 	if err != nil {
 		return nil, fmt.Errorf("start shell cmd failed: %w", err)
 	}
@@ -41,7 +44,7 @@ func ShmakeShell(
 	return res, nil
 }
 
-func StartShellCmd(cmd *exec.Cmd, name string) (*ShellResult, error) {
+func StartShellCmd(cmd *exec.Cmd, name string, noOutput bool) (*ShellResult, error) {
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
 		return nil, fmt.Errorf("stdout pipe: %w", err)
@@ -61,34 +64,25 @@ func StartShellCmd(cmd *exec.Cmd, name string) (*ShellResult, error) {
 	}
 	var stdoutBuilder, stderrBuilder strings.Builder
 
-	go func() {
-		scanner := bufio.NewScanner(stdoutPipe)
+	scan := func(pipe io.ReadCloser, builder strings.Builder) {
+		scanner := bufio.NewScanner(pipe)
 		scanner.Split(bufio.ScanLines)
 		for scanner.Scan() {
 			m := scanner.Text()
-			stdoutBuilder.WriteString(m + "\n")
+
+			if !noOutput {
+				builder.WriteString(m + "\n")
+			}
 			if name != "" {
 				fmt.Printf("%s | %s\n", prefix(name), m)
 			} else {
 				fmt.Println(m)
 			}
 		}
-	}()
+	}
 
-	go func() {
-		scanner := bufio.NewScanner(stderrPipe)
-		scanner.Split(bufio.ScanLines)
-		for scanner.Scan() {
-			m := scanner.Text()
-			stderrBuilder.WriteString(m + "\n")
-			if name != "" {
-				fmt.Printf("%s | %s\n", prefix(name), m)
-			} else {
-				fmt.Println(m)
-			}
-		}
-	}()
-
+	scan(stdoutPipe, stdoutBuilder)
+	scan(stderrPipe, stderrBuilder)
 	err = cmd.Wait()
 	stdout, stderr := strings.TrimSpace(stdoutBuilder.String()), strings.TrimSpace(stderrBuilder.String())
 	if err != nil {

@@ -55,7 +55,7 @@ func ShmakeLoadPackageJson(
 				}
 
 				cmd := exec.CommandContext(ctx, bin, cmdArgs...)
-				output, err := StartShellCmd(cmd, name)
+				output, err := StartShellCmd(cmd, name, true)
 				if err != nil {
 					return err
 				}

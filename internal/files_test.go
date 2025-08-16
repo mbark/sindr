@@ -146,7 +146,7 @@ def test_action(ctx):
 shmake.cli(name="TestNoFilesError")
 shmake.command(name="test", action=test_action)
 `)
-		run()
+		run(false)
 	})
 
 	t.Run("skips directories", func(t *testing.T) {
@@ -326,6 +326,6 @@ def test_action(ctx):
 shmake.cli(name="TestGlobInvalidArg")
 shmake.command(name="test", action=test_action)
 `)
-		run()
+		run(false)
 	})
 }

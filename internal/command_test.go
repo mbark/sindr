@@ -342,7 +342,7 @@ shmake.command(
 shmake.command(name="test", action=lambda ctx: print("test executed"))
 `)
 
-		run()
+		run(false)
 	})
 
 	t.Run("non-string args should fail", func(t *testing.T) {
@@ -360,8 +360,7 @@ shmake.command(
 shmake.command(name="test", action=lambda ctx: print("test executed"))
 `)
 
-		// The error is logged but doesn't cause a panic, just test that it runs
-		run()
+		run(false)
 	})
 
 	t.Run("invalid subcommand path should fail", func(t *testing.T) {
@@ -379,7 +378,6 @@ shmake.sub_command(
 shmake.command(name="test", action=lambda ctx: print("test executed"))
 `)
 
-		// The error is logged but doesn't cause a panic, just test that it runs
-		run()
+		run(false)
 	})
 }

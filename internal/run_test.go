@@ -25,12 +25,10 @@ def test_action(ctx):
     task1_result = shmake.shell('cat task1.txt')
     task2_result = shmake.shell('cat task2.txt')
     
-    if task1_result != 'task1 done':
-        print('ERROR: expected task1 done, got: ' + str(task1_result))
-        return
-    if task2_result != 'task2 done':
-        print('ERROR: expected task2 done, got: ' + str(task2_result))
-        return
+    if str(task1_result) != 'task1 done':
+        fail('expected "task1 done", got: ' + str(task1_result))
+    if str(task2_result) != 'task2 done':
+        fail('expected "task2 done", got: ' + str(task2_result))
 
 shmake.cli(name="TestPool", usage="Test pool functionality")
 shmake.command(name="test", action=test_action)
@@ -53,9 +51,8 @@ def test_action(ctx):
     pool.wait()  # This should wait for the delayed task
     
     result = shmake.shell('cat delayed.txt')
-    if result != 'delayed task done':
-        print('ERROR: expected delayed task done, got: ' + str(result))
-        return
+    if str(result) != 'delayed task done':
+        fail('expected "delayed task done", got: ' + str(result))
 
 shmake.cli(name="TestPool", usage="Test pool functionality")
 shmake.command(name="test", action=test_action)
@@ -85,12 +82,10 @@ def test_action(ctx):
     result1 = shmake.shell('cat pool1.txt')
     result2 = shmake.shell('cat pool2.txt')
     
-    if result1 != 'pool1 task':
-        print('ERROR: expected pool1 task, got: ' + str(result1))
-        return
-    if result2 != 'pool2 task':
-        print('ERROR: expected pool2 task, got: ' + str(result2))
-        return
+    if str(result1) != 'pool1 task':
+        fail('expected "pool1 task", got: ' + str(result1))
+    if str(result2) != 'pool2 task':
+        fail('expected "pool2 task", got: ' + str(result2))
 
 shmake.cli(name="TestPool", usage="Test pool functionality")
 shmake.command(name="test", action=test_action)
@@ -111,9 +106,8 @@ def test_action(ctx):
     shmake.wait()  # Wait for async task to complete
     
     result = shmake.shell('cat async.txt')
-    if result != 'async task done':
-        print('ERROR: expected async task done, got: ' + str(result))
-        return
+    if str(result) != 'async task done':
+        fail('expected "async task done", got: ' + str(result))
 
 shmake.cli(name="TestAsync", usage="Test async functionality")
 shmake.command(name="test", action=test_action)
@@ -138,12 +132,10 @@ def test_action(ctx):
     result1 = shmake.shell('cat async1.txt')
     result2 = shmake.shell('cat async2.txt')
     
-    if result1 != 'async1 done':
-        print('ERROR: expected async1 done, got: ' + str(result1))
-        return
-    if result2 != 'async2 done':
-        print('ERROR: expected async2 done, got: ' + str(result2))
-        return
+    if str(result1) != 'async1 done':
+        fail('expected "async1 done", got: ' + str(result1))
+    if str(result2) != 'async2 done':
+        fail('expected "async2 done", got: ' + str(result2))
 
 shmake.cli(name="TestAsync", usage="Test async functionality")
 shmake.command(name="test", action=test_action)
@@ -169,9 +161,8 @@ def test_action(ctx):
     
     # After wait, task should be completed
     result = shmake.shell('cat wait_test.txt')
-    if result != 'completed':
-        print('ERROR: expected completed, got: ' + str(result))
-        return
+    if str(result) != 'completed':
+        fail('expected "completed", got: ' + str(result))
 
 shmake.cli(name="TestWait", usage="Test wait functionality")
 shmake.command(name="test", action=test_action)
@@ -189,11 +180,9 @@ def test_action(ctx):
     
     # Verify pool has expected methods - in Starlark we can check attributes exist
     if not hasattr(pool, 'run'):
-        print('ERROR: expected pool to have run method')
-        return
+        fail('expected pool to have run method')
     if not hasattr(pool, 'wait'):
-        print('ERROR: expected pool to have wait method')
-        return
+        fail('expected pool to have wait method')
 
 shmake.cli(name="TestRunTypeCreation", usage="Test pool type creation")
 shmake.command(name="test", action=test_action)

@@ -11,14 +11,29 @@ import (
 	"github.com/mbark/shmake"
 )
 
-func setupStarlarkRuntime(t *testing.T) func() {
+func setupStarlarkRuntime(t *testing.T) func(...bool) {
 	t.Helper()
 	dir := t.TempDir()
 	err := os.Chdir(dir)
 	require.NoError(t, err)
 
-	return func() {
-		shmake.Run(t.Context(), []string{t.Name(), "test"}, shmake.WithCacheDir(dir))
+	return func(noError ...bool) {
+		var hasNoError bool
+		switch len(noError) {
+		case 0:
+			hasNoError = true
+		case 1:
+			hasNoError = noError[0]
+		default:
+			require.Fail(t, "setupStarlarkRuntime called with too many arguments")
+		}
+
+		err := shmake.Run(t.Context(), []string{t.Name(), "test"}, shmake.WithCacheDir(dir))
+		if hasNoError {
+			require.NoError(t, err)
+		} else {
+			require.Error(t, err)
+		}
 	}
 }
 

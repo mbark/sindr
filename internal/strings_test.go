@@ -11,8 +11,7 @@ func TestTemplateString(t *testing.T) {
 def test_action(ctx):
     result = shmake.string('Hello {{.name}}!', name='World')
     if result != 'Hello World!':
-        print('ERROR: expected "Hello World!", got: ' + str(result))
-        return
+        fail('expected "Hello World!", got: ' + str(result))
 
 shmake.cli(name="TestTemplateString", usage="Test string templating")
 shmake.command(name="test", action=test_action)
@@ -30,8 +29,7 @@ bool_var = True
 def test_action(ctx):
     result = shmake.string('{{.str_var}} {{.num_var}} {{.bool_var}}')
     if result != 'text 42 true':
-        print('ERROR: expected "text 42 true", got: ' + str(result))
-        return
+        fail('expected "text 42 true", got: ' + str(result))
 
 shmake.cli(name="TestTemplateString", usage="Test string templating")
 shmake.command(name="test", action=test_action)
@@ -48,8 +46,7 @@ target = "World"
 def test_action(ctx):
     result = shmake.string('{{.greeting}} {{.target}}!')
     if result != 'Hello World!':
-        print('ERROR: expected "Hello World!", got: ' + str(result))
-        return
+        fail('expected "Hello World!", got: ' + str(result))
 
 shmake.cli(name="TestTemplateString", usage="Test string templating")
 shmake.command(name="test", action=test_action)
@@ -65,8 +62,7 @@ debug = True
 def test_action(ctx):
     result = shmake.string('{{if .debug}}DEBUG: {{end}}message', message='test')
     if result != 'DEBUG: message':
-        print('ERROR: expected "DEBUG: message", got: ' + str(result))
-        return
+        fail('expected "DEBUG: message", got: ' + str(result))
 
 shmake.cli(name="TestTemplateString", usage="Test string templating")
 shmake.command(name="test", action=test_action)
@@ -81,8 +77,7 @@ def test_action(ctx):
     items = ['apple', 'banana', 'cherry']
     result = shmake.string('{{range .items}}{{.}} {{end}}', items=items)
     if result != 'apple banana cherry ':
-        print('ERROR: expected "apple banana cherry ", got: ' + str(result))
-        return
+        fail('expected "apple banana cherry ", got: ' + str(result))
 
 shmake.cli(name="TestTemplateString", usage="Test string templating")
 shmake.command(name="test", action=test_action)
@@ -119,8 +114,7 @@ Features: auth logging metrics
 """
     
     if result != expected:
-        print('ERROR: template did not render correctly')
-        return
+        fail('template did not render correctly')
 
 shmake.cli(name="TestTemplateString", usage="Test string templating")
 shmake.command(name="test", action=test_action)

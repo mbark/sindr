@@ -135,7 +135,7 @@ shmake.load_package_json(file="nonexistent.json")
 shmake.command(name="test", action=test_action)
 `)
 
-		run()
+		run(false)
 	})
 
 	t.Run("fails when package.json contains invalid JSON", func(t *testing.T) {
@@ -158,7 +158,7 @@ shmake.load_package_json(file="invalid.json")
 shmake.command(name="test", action=test_action)
 `)
 
-		run()
+		run(false)
 	})
 }
 
@@ -185,7 +185,7 @@ def test_action(ctx):
     print("PackageJson struct test completed")
 
 shmake.cli(name="TestPackageJsonStruct")
-shmake.load_package_json(file="test.json")
+shmake.load_package_json(file="package.json")
 shmake.command(name="test", action=test_action)
 `)
 		run()

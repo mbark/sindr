@@ -10,8 +10,24 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/muesli/termenv"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 	"go.starlark.net/starlark"
+)
+
+var (
+	commandStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.ANSIColor(ansi.Magenta)).
+			Bold(true)
+	stdoutStyle = lipgloss.NewStyle().
+			Faint(true).
+			Padding(0, 1)
+	stderrStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.ANSIColor(ansi.Red)).
+			Padding(0, 1)
+	prefixStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.ANSIColor(ansi.BrightBlack)).
+			Faint(true)
 )
 
 func ShmakeShell(
@@ -32,6 +48,12 @@ func ShmakeShell(
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	if prefix != "" {
+		fmt.Printf("%s %s\n", prefixStyle.Render(prefix), commandStyle.Render(command))
+	} else {
+		fmt.Println(commandStyle.Render(command))
+	}
 
 	slog.With(slog.String("command", command)).Debug("running shell command")
 
@@ -59,12 +81,8 @@ func StartShellCmd(cmd *exec.Cmd, name string, noOutput bool) (*ShellResult, err
 		return nil, fmt.Errorf("cmd start: %w", err)
 	}
 
-	prefix := func(s string) string {
-		return termenv.String(s).Foreground(termenv.ANSIBrightBlue).Faint().String()
-	}
 	var stdoutBuilder, stderrBuilder strings.Builder
-
-	scan := func(pipe io.ReadCloser, builder strings.Builder) {
+	scan := func(pipe io.ReadCloser, builder *strings.Builder, style lipgloss.Style) {
 		scanner := bufio.NewScanner(pipe)
 		scanner.Split(bufio.ScanLines)
 		for scanner.Scan() {
@@ -74,15 +92,15 @@ func StartShellCmd(cmd *exec.Cmd, name string, noOutput bool) (*ShellResult, err
 				builder.WriteString(m + "\n")
 			}
 			if name != "" {
-				fmt.Printf("%s | %s\n", prefix(name), m)
+				fmt.Printf("%s %s\n", prefixStyle.Render(name), style.Render(m))
 			} else {
-				fmt.Println(m)
+				fmt.Println(style.Render(m))
 			}
 		}
 	}
 
-	scan(stdoutPipe, stdoutBuilder)
-	scan(stderrPipe, stderrBuilder)
+	scan(stdoutPipe, &stdoutBuilder, stdoutStyle)
+	scan(stderrPipe, &stderrBuilder, stderrStyle)
 	err = cmd.Wait()
 	stdout, stderr := strings.TrimSpace(
 		stdoutBuilder.String(),

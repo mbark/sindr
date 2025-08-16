@@ -17,7 +17,7 @@ import (
 
 var (
 	commandStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.ANSIColor(ansi.Magenta)).
+			Foreground(lipgloss.ANSIColor(ansi.Blue)).
 			Bold(true)
 	stdoutStyle = lipgloss.NewStyle().
 			Faint(true).

@@ -17,17 +17,17 @@ import (
 
 var (
 	commandStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.ANSIColor(ansi.Blue)).
-			Bold(true)
+		Foreground(lipgloss.ANSIColor(ansi.Blue)).
+		Bold(true)
 	stdoutStyle = lipgloss.NewStyle().
-			Faint(true).
-			Padding(0, 1)
+		Faint(true).
+		Padding(0, 1)
 	stderrStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.ANSIColor(ansi.Red)).
-			Padding(0, 1)
+		Foreground(lipgloss.ANSIColor(ansi.Red)).
+		Padding(0, 1)
 	prefixStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.ANSIColor(ansi.BrightBlack)).
-			Faint(true)
+		Foreground(lipgloss.ANSIColor(ansi.BrightBlack)).
+		Faint(true)
 )
 
 func ShmakeShell(
@@ -50,9 +50,9 @@ func ShmakeShell(
 	defer cancel()
 
 	if prefix != "" {
-		fmt.Printf("%s %s\n", prefixStyle.Render(prefix), commandStyle.Render(command))
+		Log(prefixStyle.Render(prefix), commandStyle.Render(command))
 	} else {
-		fmt.Println(commandStyle.Render(command))
+		Log(commandStyle.Render(command))
 	}
 
 	slog.With(slog.String("command", command)).Debug("running shell command")
@@ -92,9 +92,9 @@ func StartShellCmd(cmd *exec.Cmd, name string, noOutput bool) (*ShellResult, err
 				builder.WriteString(m + "\n")
 			}
 			if name != "" {
-				fmt.Printf("%s %s\n", prefixStyle.Render(name), style.Render(m))
+				Log(prefixStyle.Render(name), style.Render(m))
 			} else {
-				fmt.Println(style.Render(m))
+				Log(style.Render(m))
 			}
 		}
 	}

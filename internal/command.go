@@ -9,8 +9,6 @@ import (
 	"sync"
 	"unicode"
 
-	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/x/ansi"
 	"github.com/urfave/cli/v3"
 	"go.starlark.net/starlark"
 )
@@ -261,21 +259,11 @@ func createCommandAction(
 			list[i] = starlark.String(a)
 		}
 
-		shell := lipgloss.NewStyle().
-			Foreground(lipgloss.ANSIColor(ansi.Magenta)).
-			Border(lipgloss.RoundedBorder()).
-			Padding(0, 1).
-			Width(30).
-			Align(lipgloss.Center).
-			Bold(true)
-		fmt.Println(shell.Render(name))
-
-		res, err := starlark.Call(thread, action, starlark.Tuple{&Context{
+		_, err := starlark.Call(thread, action, starlark.Tuple{&Context{
 			Flags:     flags,
 			Args:      argsDict,
 			ArgsSlice: starlark.NewList(list),
 		}}, nil)
-		slog.With(slog.Any("res", res), slog.Any("err", err)).Debug("command done")
 		return err
 	}
 }

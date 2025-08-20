@@ -2,7 +2,6 @@ package shmake
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"os"
 
@@ -89,7 +88,7 @@ func Run(ctx context.Context, args []string, opts ...RunOption) error {
 		Name: "cli",
 		Load: loader.Load,
 		Print: func(thread *starlark.Thread, msg string) {
-			fmt.Println(msg)
+			internal.Log(msg)
 		},
 	}
 	_, err = starlark.ExecFileOptions(
@@ -173,13 +172,4 @@ func createPredeclaredDict(dir string) starlark.StringDict {
 		"cache":       starlark.NewBuiltin("cache", cache.NewCacheValue),
 		"current_dir": starlark.String("current_dir"),
 	}
-}
-
-func checkErr(err error) {
-	if err == nil {
-		return
-	}
-
-	slog.Error(err.Error())
-	os.Exit(1)
 }

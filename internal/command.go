@@ -5,10 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"strings"
 	"sync"
 	"unicode"
 
+	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/urfave/cli/v3"
 	"go.starlark.net/starlark"
 )
@@ -220,43 +223,73 @@ func createCommandAction(
 	action starlark.Callable,
 ) func(context.Context, *cli.Command) error {
 	return func(ctx context.Context, command *cli.Command) error {
+		Log(lipgloss.NewStyle().Foreground(lipgloss.ANSIColor(ansi.Magenta)).Bold(true).Render(name))
 		slog.With(slog.String("name", name)).Debug("running command")
 		if action == nil {
 			return nil
 		}
 
+		// The help flag is always defined
+		if len(command.Flags) > 1 {
+			Log(lipgloss.NewStyle().Padding(0, 2).Foreground(lipgloss.ANSIColor(ansi.Cyan)).Render("Flags"))
+		}
+
 		flags := make(starlark.StringDict)
 		for _, flag := range command.Flags {
 			var sval starlark.Value
+			var lval string
 			switch val := flag.Get().(type) {
 			case string:
 				sval = starlark.String(val)
+				lval = fmt.Sprintf("'%s'", val)
 			case int:
 				sval = starlark.MakeInt(val)
+				lval = strconv.Itoa(val)
 			case bool:
 				sval = starlark.Bool(val)
+				lval = strconv.FormatBool(val)
 			default:
 				return fmt.Errorf("unknown flag value type: %v", flag)
 			}
+
 			for _, f := range flag.Names() {
 				flags[f] = sval
 			}
+			if flag.Names()[0] != "help" {
+				Log(lipgloss.NewStyle().Faint(true).Padding(0, 4).
+					Render(fmt.Sprintf("%s: %s", strings.Join(flag.Names(), ","), lval)))
+			}
+		}
+
+		if len(command.Arguments) > 0 {
+			Log(lipgloss.NewStyle().Padding(0, 2).Foreground(lipgloss.ANSIColor(ansi.Cyan)).Render("Named arguments"))
 		}
 
 		argsDict := make(starlark.StringDict)
 		for _, arg := range command.Arguments {
+			var argName, lval string
 			switch a := arg.(type) {
 			case *cli.StringArg:
 				argsDict[a.Name] = starlark.String(command.StringArg(a.Name))
+				argName, lval = a.Name, fmt.Sprintf("'%s'", command.StringArg(a.Name))
 			case *cli.IntArg:
 				argsDict[a.Name] = starlark.MakeInt(command.IntArg(a.Name))
+				argName, lval = a.Name, strconv.Itoa(command.IntArg(a.Name))
 			}
+			Log(lipgloss.NewStyle().Faint(true).Padding(0, 4).
+				Render(fmt.Sprintf("%s: %s", argName, lval)))
 		}
 
 		slice := command.Args().Slice()
 		list := make([]starlark.Value, len(slice))
+		if len(slice) > 0 {
+			Log(lipgloss.NewStyle().Padding(0, 2).Foreground(lipgloss.ANSIColor(ansi.Cyan)).
+				Render("Positional arguments"))
+		}
 		for i, a := range slice {
 			list[i] = starlark.String(a)
+			Log(lipgloss.NewStyle().Faint(true).Padding(0, 4).
+				Render(fmt.Sprintf("%d: %s", i, a)))
 		}
 
 		_, err := starlark.Call(thread, action, starlark.Tuple{&Context{

@@ -21,10 +21,10 @@ var (
 		Bold(true)
 	stdoutStyle = lipgloss.NewStyle().
 		Faint(true).
-		Padding(0, 1)
+		Padding(0, 2)
 	stderrStyle = lipgloss.NewStyle().
 		Foreground(lipgloss.ANSIColor(ansi.Red)).
-		Padding(0, 1)
+		Padding(0, 2)
 	prefixStyle = lipgloss.NewStyle().
 		Foreground(lipgloss.ANSIColor(ansi.BrightBlack)).
 		Faint(true)
@@ -50,9 +50,9 @@ func ShmakeShell(
 	defer cancel()
 
 	if prefix != "" {
-		Log(prefixStyle.Render(prefix), commandStyle.Render(command))
+		Log(prefixStyle.Render(prefix), commandStyle.Render("$ "+command))
 	} else {
-		Log(commandStyle.Render(command))
+		Log(commandStyle.Render("$ " + command))
 	}
 
 	slog.With(slog.String("command", command)).Debug("running shell command")

@@ -284,15 +284,20 @@ shmake.command(
 )
 
 def string_slice_flag(ctx):
-    print('flags', ctx.flags)
+    print('strings:', ctx.flags.strings)
+    print('ints:', ctx.flags.ints)
 
 shmake.command(
     name = 'slice_flag',
     action=string_slice_flag,
     flags = {
-        "slice": {
+        "strings": {
             "type": "strings",
             "default": ["1","2"],
+        },
+        "ints": {
+            "type": "ints",
+            "default": [1,2,3],
         }
     }
 )

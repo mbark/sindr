@@ -49,10 +49,17 @@ func errorAs[T error](err error) (T, bool) {
 	return e, false
 }
 
-func toStringList(l []string) *starlark.List {
+func toList[T any](l []T, fn func(T) starlark.Value) *starlark.List {
 	list := make([]starlark.Value, len(l))
 	for i, a := range l {
-		list[i] = starlark.String(a)
+		list[i] = fn(a)
 	}
 	return starlark.NewList(list)
+}
+func mapList[T, V any](l []T, fn func(T) V) []V {
+	v := make([]V, len(l))
+	for i, a := range l {
+		v[i] = fn(a)
+	}
+	return v
 }

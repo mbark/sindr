@@ -278,6 +278,27 @@ func parseFlag(name string, flagDef *starlark.Dict) (cli.Flag, error) {
 				Value: i,
 			}
 
+		case "ints":
+			list, err := cast[*starlark.List](defaultVal)
+			if err != nil {
+				return nil, fmt.Errorf("flag default value: %w", err)
+			}
+
+			var value []int
+			for elem := range starlark.Elements(list) {
+				i, err := castInt(elem)
+				if err != nil {
+					return nil, fmt.Errorf("flag default value: %w", err)
+				}
+				value = append(value, i)
+			}
+
+			cliFlag = &cli.IntSliceFlag{
+				Name:  name,
+				Usage: flagHelp,
+				Value: value,
+			}
+
 		default:
 			return nil, fmt.Errorf("unknown flag type: %s", typeName)
 		}
@@ -324,8 +345,14 @@ func createCommandAction(
 				sval = starlark.Bool(val)
 				lval = strconv.FormatBool(val)
 			case []string:
-				sval = toStringList(val)
+				sval = toList(val, func(s string) starlark.Value { return starlark.String(s) })
 				lval = "[" + strings.Join(val, ", ") + "]"
+			case []int:
+				sval = toList(val, func(i int) starlark.Value { return starlark.MakeInt(i) })
+				lval = "[" + strings.Join(mapList(val, func(i int) string {
+					return strconv.Itoa(i)
+				}), ", ") + "]"
+
 			default:
 				return fmt.Errorf("unknown flag value type for '%s': %T", flag.Names()[0], flag.Get())
 			}

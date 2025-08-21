@@ -44,9 +44,16 @@ func ShmakeLoadPackageJson(
 		return nil, err
 	}
 
-	logger.LogVerbose(lipgloss.NewStyle().Faint(true).Bold(true).Render(fmt.Sprintf("Importing scripts from %s", file)))
+	logger.LogVerbose(
+		lipgloss.NewStyle().
+			Faint(true).
+			Bold(true).
+			Render(fmt.Sprintf("Importing scripts from %s", file)),
+	)
 	for name := range packageJson.Scripts {
-		logger.LogVerbose(lipgloss.NewStyle().Faint(true).Padding(0, 2).Render(fmt.Sprintf("Imported %s", name)))
+		logger.LogVerbose(
+			lipgloss.NewStyle().Faint(true).Padding(0, 2).Render(fmt.Sprintf("Imported %s", name)),
+		)
 		GlobalCLI.Command.Command.Commands = append(
 			GlobalCLI.Command.Command.Commands,
 			&cli.Command{

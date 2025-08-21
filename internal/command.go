@@ -224,14 +224,24 @@ func createCommandAction(
 	action starlark.Callable,
 ) func(context.Context, *cli.Command) error {
 	return func(ctx context.Context, command *cli.Command) error {
-		logger.Log(lipgloss.NewStyle().Foreground(lipgloss.ANSIColor(ansi.Magenta)).Bold(true).Render(name))
+		logger.Log(
+			lipgloss.NewStyle().
+				Foreground(lipgloss.ANSIColor(ansi.Magenta)).
+				Bold(true).
+				Render(name),
+		)
 		if action == nil {
 			return nil
 		}
 
 		// The help flag is always defined
 		if len(command.Flags) > 1 {
-			logger.Log(lipgloss.NewStyle().Padding(0, 2).Foreground(lipgloss.ANSIColor(ansi.Cyan)).Render("Flags"))
+			logger.Log(
+				lipgloss.NewStyle().
+					Padding(0, 2).
+					Foreground(lipgloss.ANSIColor(ansi.Cyan)).
+					Render("Flags"),
+			)
 		}
 
 		flags := make(starlark.StringDict)
@@ -262,7 +272,12 @@ func createCommandAction(
 		}
 
 		if len(command.Arguments) > 0 {
-			logger.Log(lipgloss.NewStyle().Padding(0, 2).Foreground(lipgloss.ANSIColor(ansi.Cyan)).Render("Named arguments"))
+			logger.Log(
+				lipgloss.NewStyle().
+					Padding(0, 2).
+					Foreground(lipgloss.ANSIColor(ansi.Cyan)).
+					Render("Named arguments"),
+			)
 		}
 
 		argsDict := make(starlark.StringDict)

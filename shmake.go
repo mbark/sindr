@@ -2,11 +2,8 @@ package shmake
 
 import (
 	"context"
-	"log/slog"
 	"os"
 
-	"github.com/charmbracelet/log"
-	slogmulti "github.com/samber/slog-multi"
 	"github.com/urfave/cli/v3"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
@@ -14,6 +11,7 @@ import (
 
 	"github.com/mbark/shmake/cache"
 	"github.com/mbark/shmake/internal"
+	"github.com/mbark/shmake/internal/logger"
 	"github.com/mbark/shmake/loader"
 )
 
@@ -65,9 +63,6 @@ func Run(ctx context.Context, args []string, opts ...RunOption) error {
 
 	cache.SetCache(options.cacheDir)
 
-	logger := slog.New(log.NewWithOptions(os.Stderr, log.Options{}))
-	slog.SetDefault(logger)
-
 	dir, err := findPathUpdwards(options.fileName)
 	if err != nil {
 		return err
@@ -88,7 +83,7 @@ func Run(ctx context.Context, args []string, opts ...RunOption) error {
 		Name: "cli",
 		Load: loader.Load,
 		Print: func(thread *starlark.Thread, msg string) {
-			internal.Log(msg)
+			logger.Log(msg)
 		},
 	}
 	_, err = starlark.ExecFileOptions(
@@ -124,10 +119,7 @@ func runCLI(ctx context.Context, args []string) error {
 	cmd.Flags = append(cmd.Flags, cliFlags...)
 	cmd.Before = func(ctx context.Context, cmd *cli.Command) (context.Context, error) {
 		if verbose {
-			slog.SetLogLoggerLevel(slog.LevelDebug)
-			slog.SetDefault(slog.New(slogmulti.Fanout(
-				log.NewWithOptions(os.Stderr, log.Options{Level: log.DebugLevel}),
-			)))
+			logger.DoLogVerbose = true
 		}
 		if noCache {
 			cache.GlobalCache.ForceOutOfDate = noCache

@@ -105,6 +105,68 @@ shmake.command(name="test", action=lambda ctx: print("test executed"))
 		run()
 	})
 
+	t.Run("handles command with strings flag type", func(t *testing.T) {
+		run := setupStarlarkRuntime(t)
+		withMainStar(t, `
+def test_action(ctx):
+    strings_list = ctx.flags.strings
+    if type(strings_list) != "list":
+        fail("Expected strings flag to be a list, got: " + str(type(strings_list)))
+    if len(strings_list) != 2:
+        fail("Expected strings flag to have 2 items, got: " + str(len(strings_list)))
+    if strings_list[0] != "default1" or strings_list[1] != "default2":
+        fail("Expected default strings ['default1', 'default2'], got: " + str(strings_list))
+    print("strings flag test passed:", strings_list)
+
+shmake.cli(name="TestShmakeCommand")
+shmake.command(
+    name="strings-test",
+    help="Test strings flag type",
+    action=test_action,
+    flags={
+        "strings": {
+            "default": ["default1", "default2"],
+            "type": "strings",
+            "help": "List of strings"
+        }
+    }
+)
+shmake.command(name="test", action=lambda ctx: print("test executed"))
+`)
+		run()
+	})
+
+	t.Run("handles command with ints flag type", func(t *testing.T) {
+		run := setupStarlarkRuntime(t)
+		withMainStar(t, `
+def test_action(ctx):
+    ints_list = ctx.flags.ints
+    if type(ints_list) != "list":
+        fail("Expected ints flag to be a list, got: " + str(type(ints_list)))
+    if len(ints_list) != 3:
+        fail("Expected ints flag to have 3 items, got: " + str(len(ints_list)))
+    if ints_list[0] != 10 or ints_list[1] != 20 or ints_list[2] != 30:
+        fail("Expected default ints [10, 20, 30], got: " + str(ints_list))
+    print("ints flag test passed:", ints_list)
+
+shmake.cli(name="TestShmakeCommand")
+shmake.command(
+    name="ints-test",
+    help="Test ints flag type",
+    action=test_action,
+    flags={
+        "ints": {
+            "default": [10, 20, 30],
+            "type": "ints",
+            "help": "List of integers"
+        }
+    }
+)
+shmake.command(name="test", action=lambda ctx: print("test executed"))
+`)
+		run()
+	})
+
 	t.Run("handles command with category", func(t *testing.T) {
 		run := setupStarlarkRuntime(t)
 		withMainStar(t, `

@@ -28,4 +28,6 @@ the `.star` file.
 - [x] lib:ify the `shmake` package to allow people to use and extend it through Go.
 - [x] Add the newest_ts and oldest_ts functions back
 - [x] When running a command, show it in some nice way.
+- [ ] Add an exec command that can be used to run some arbitrary programming language, similar to [shebang recipes](https://github.com/casey/just?tab=readme-ov-file#shebang-recipes)
+- [ ] Add a way to automatically source dotenv files like [just](https://github.com/casey/just?tab=readme-ov-file#dotenv-settings)
 - [ ] Improve the tests for `packagejson` and command to actually check the commands are added (e.g., via --help)

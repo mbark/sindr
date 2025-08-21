@@ -3,7 +3,6 @@ package internal
 import (
 	"bufio"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"os/exec"
@@ -107,8 +106,7 @@ func StartShellCmd(cmd *exec.Cmd, name string, noOutput bool) (*ShellResult, err
 		stderrBuilder.String(),
 	)
 	if err != nil {
-		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) {
+		if exitErr, ok := errorAs[*exec.ExitError](err); ok {
 			return &ShellResult{
 				Stdout:   stdout,
 				Stderr:   stderr,

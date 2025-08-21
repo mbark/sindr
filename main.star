@@ -283,6 +283,20 @@ shmake.command(
     }
 )
 
+def string_slice_flag(ctx):
+    print('flags', ctx.flags)
+
+shmake.command(
+    name = 'slice_flag',
+    action=string_slice_flag,
+    flags = {
+        "slice": {
+            "type": "strings",
+            "default": ["1","2"],
+        }
+    }
+)
+
 # ============================================================================
 # SUB-COMMAND EXAMPLES
 # ============================================================================

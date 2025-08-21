@@ -2,11 +2,12 @@ package internal
 
 import (
 	"errors"
-	"log/slog"
 	"sync"
 
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
+
+	"github.com/mbark/shmake/internal/logger"
 )
 
 func ShmakeStart(
@@ -31,7 +32,7 @@ func ShmakeStart(
 		newThread := &starlark.Thread{Name: "async"}
 		_, err := starlark.Call(newThread, callable, starlark.Tuple{}, nil)
 		if err != nil {
-			slog.Error("async function failed", "error", err)
+			logger.LogErr("started function failed", err)
 		}
 	}()
 
@@ -92,7 +93,7 @@ func MakePoolRun(pool *Pool) func(
 			newThread := &starlark.Thread{Name: "pool"}
 			_, err := starlark.Call(newThread, callable, starlark.Tuple{}, nil)
 			if err != nil {
-				slog.Error("pool function failed", "error", err)
+				logger.LogErr("pool function failed", err)
 			}
 		}()
 

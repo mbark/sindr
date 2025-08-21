@@ -3,12 +3,15 @@ package internal
 import (
 	"context"
 	"encoding/json"
-	"log/slog"
+	"fmt"
 	"os"
 	"os/exec"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/urfave/cli/v3"
 	"go.starlark.net/starlark"
+
+	"github.com/mbark/shmake/internal/logger"
 )
 
 func ShmakeLoadPackageJson(
@@ -41,15 +44,15 @@ func ShmakeLoadPackageJson(
 		return nil, err
 	}
 
+	logger.LogVerbose(lipgloss.NewStyle().Faint(true).Bold(true).Render(fmt.Sprintf("Importing scripts from %s", file)))
 	for name := range packageJson.Scripts {
+		logger.LogVerbose(lipgloss.NewStyle().Faint(true).Padding(0, 2).Render(fmt.Sprintf("Imported %s", name)))
 		GlobalCLI.Command.Command.Commands = append(
 			GlobalCLI.Command.Command.Commands,
 			&cli.Command{
 				Name:            name,
 				SkipFlagParsing: true,
 				Action: func(ctx context.Context, command *cli.Command) error {
-					slog.With(slog.String("name", name)).Debug("running command")
-
 					cmdArgs := []string{"run", name}
 					if s := command.Args().Slice(); len(s) > 0 {
 						cmdArgs = append(cmdArgs, "--")
@@ -57,12 +60,11 @@ func ShmakeLoadPackageJson(
 					}
 
 					cmd := exec.CommandContext(ctx, bin, cmdArgs...)
-					output, err := StartShellCmd(cmd, name, true)
+					logger.Log(commandStyle.Render(cmd.String()))
+					_, err := StartShellCmd(cmd, "", true)
 					if err != nil {
 						return err
 					}
-					slog.With(slog.Any("output", output), slog.Any("err", err)).
-						Debug("command done")
 					return nil
 				},
 			},

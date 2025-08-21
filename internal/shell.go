@@ -6,28 +6,29 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log/slog"
 	"os/exec"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 	"go.starlark.net/starlark"
+
+	"github.com/mbark/shmake/internal/logger"
 )
 
 var (
 	commandStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.ANSIColor(ansi.Blue)).
-		Bold(true)
+			Foreground(lipgloss.ANSIColor(ansi.Blue)).
+			Bold(true)
 	stdoutStyle = lipgloss.NewStyle().
-		Faint(true).
-		Padding(0, 2)
+			Faint(true).
+			Padding(0, 2)
 	stderrStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.ANSIColor(ansi.Red)).
-		Padding(0, 2)
+			Foreground(lipgloss.ANSIColor(ansi.Red)).
+			Padding(0, 2)
 	prefixStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.ANSIColor(ansi.BrightBlack)).
-		Faint(true)
+			Foreground(lipgloss.ANSIColor(ansi.BrightBlack)).
+			Faint(true)
 )
 
 func ShmakeShell(
@@ -50,12 +51,10 @@ func ShmakeShell(
 	defer cancel()
 
 	if prefix != "" {
-		Log(prefixStyle.Render(prefix), commandStyle.Render("$ "+command))
+		logger.Log(prefixStyle.Render(prefix), commandStyle.Render("$ "+command))
 	} else {
-		Log(commandStyle.Render("$ " + command))
+		logger.Log(commandStyle.Render("$ " + command))
 	}
-
-	slog.With(slog.String("command", command)).Debug("running shell command")
 
 	cmd := exec.CommandContext(ctx, "bash", "-c", command) // #nosec G204
 	res, err := StartShellCmd(cmd, prefix, noOutput)
@@ -92,9 +91,9 @@ func StartShellCmd(cmd *exec.Cmd, name string, noOutput bool) (*ShellResult, err
 				builder.WriteString(m + "\n")
 			}
 			if name != "" {
-				Log(prefixStyle.Render(name), style.Render(m))
+				logger.Log(prefixStyle.Render(name), style.Render(m))
 			} else {
-				Log(style.Render(m))
+				logger.Log(style.Render(m))
 			}
 		}
 	}

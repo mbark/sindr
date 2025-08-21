@@ -8,6 +8,8 @@ import (
 
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
+
+	"github.com/mbark/shmake/internal/logger"
 )
 
 // Code taken from https://github.com/google/starlark-go/blob/master/starlark/example_test.go
@@ -104,7 +106,7 @@ func (c *cache) get(cc *cycleChecker, module string) (starlark.StringDict, error
 func (c *cache) doLoad(cc *cycleChecker, module string) (starlark.StringDict, error) {
 	thread := &starlark.Thread{
 		Name:  "exec " + module,
-		Print: func(_ *starlark.Thread, msg string) { fmt.Println(msg) },
+		Print: func(_ *starlark.Thread, msg string) { logger.Log(msg) },
 		Load: func(_ *starlark.Thread, module string) (starlark.StringDict, error) {
 			// Tunnel the cycle-checker state for this "thread of loading".
 			return c.get(cc, module)

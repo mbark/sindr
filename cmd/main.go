@@ -2,22 +2,15 @@ package main
 
 import (
 	"context"
-	"log/slog"
 	"os"
 
 	"github.com/mbark/shmake"
+	"github.com/mbark/shmake/internal/logger"
 )
 
 func main() {
 	err := shmake.Run(context.Background(), os.Args)
-	checkErr(err)
-}
-
-func checkErr(err error) {
-	if err == nil {
-		return
+	if err != nil {
+		logger.LogErr("error running shmake", err)
 	}
-
-	slog.Error(err.Error())
-	os.Exit(1)
 }

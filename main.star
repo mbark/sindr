@@ -3,6 +3,8 @@ project_name = "shmake-demo"
 version = "1.0.0"
 build_dir = "./build"
 
+shmake.load_package_json('package.json')
+
 # Configure CLI metadata
 shmake.cli(
     name = "shmake",

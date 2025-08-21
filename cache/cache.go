@@ -3,11 +3,12 @@ package cache
 import (
 	"fmt"
 	"hash/fnv"
-	"log/slog"
 	"strconv"
 
 	"github.com/peterbourgon/diskv/v3"
 	"go.starlark.net/starlark"
+
+	"github.com/mbark/shmake/internal/logger"
 )
 
 var GlobalCache diskCache
@@ -147,10 +148,7 @@ func (c *Cache) setVersion(
 		return nil, err
 	}
 
-	slog.
-		With(slog.String("version", options.version)).
-		With(slog.String("name", options.name)).
-		Debug("storing cache version")
+	logger.LogVerbose(fmt.Sprintf("cache: %s: %s", options.name, options.version))
 
 	if err := c.diskCache.StoreVersion(options.name, options.version); err != nil {
 		return nil, err
@@ -188,14 +186,10 @@ func (c *Cache) withVersion(
 		return starlark.Bool(false), nil
 	}
 
-	res, err := starlark.Call(thread, fnVal, nil, nil)
+	_, err = starlark.Call(thread, fnVal, nil, nil)
 	if err != nil {
 		return nil, err
 	}
-	slog.With(
-		slog.String("name", options.name),
-		slog.Any("response", res),
-	).Debug("with_version function returned")
 
 	if err := c.diskCache.StoreVersion(options.name, options.version); err != nil {
 		return nil, err
@@ -210,12 +204,17 @@ func checkIfDiff(cache diskCache, options cacheDiffOptions) (bool, error) {
 	}
 
 	isDiff := currentVersion == nil || *currentVersion != options.version
-	slog.With(
-		slog.String("version", options.version),
-		slog.Any("current_version", currentVersion),
-		slog.String("name", options.name),
-		slog.Bool("is_diff", isDiff),
-	).Debug("diffing cache versions")
+	if currentVersion == nil {
+		logger.LogVerbose(fmt.Sprintf("cache: %s: current not set, given %s",
+			options.name,
+			options.version))
+	} else {
+		logger.LogVerbose(fmt.Sprintf("cache: %s: current %s, given %s",
+			options.name,
+			*currentVersion,
+			options.version))
+	}
+
 	return isDiff, nil
 }
 

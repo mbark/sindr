@@ -5,6 +5,7 @@ import (
 	"hash/fnv"
 	"strconv"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/peterbourgon/diskv/v3"
 	"go.starlark.net/starlark"
 
@@ -137,6 +138,11 @@ func (c *Cache) getVersion(
 	return starlark.String(*v), nil
 }
 
+var (
+	cachePrefixStyle = lipgloss.NewStyle().Faint(true)
+	cacheNameStyle   = lipgloss.NewStyle().Bold(true)
+)
+
 func (c *Cache) setVersion(
 	thread *starlark.Thread,
 	fn *starlark.Builtin,
@@ -148,7 +154,11 @@ func (c *Cache) setVersion(
 		return nil, err
 	}
 
-	logger.LogVerbose(fmt.Sprintf("cache: %s: %s", options.name, options.version))
+	logger.LogVerbose(
+		cachePrefixStyle.Render("cache:"),
+		cacheNameStyle.Render(options.name),
+		cachePrefixStyle.Render("version=")+cacheNameStyle.Render(options.version),
+	)
 
 	if err := c.diskCache.StoreVersion(options.name, options.version); err != nil {
 		return nil, err
@@ -205,14 +215,19 @@ func checkIfDiff(cache diskCache, options cacheDiffOptions) (bool, error) {
 
 	isDiff := currentVersion == nil || *currentVersion != options.version
 	if currentVersion == nil {
-		logger.LogVerbose(fmt.Sprintf("cache: %s: current not set, given %s",
-			options.name,
-			options.version))
+		logger.LogVerbose(
+			cachePrefixStyle.Render("cache:"),
+			cacheNameStyle.Render(options.name),
+			"current not set",
+			cachePrefixStyle.Render("version=")+cacheNameStyle.Render(options.version),
+		)
 	} else {
-		logger.LogVerbose(fmt.Sprintf("cache: %s: current %s, given %s",
-			options.name,
-			*currentVersion,
-			options.version))
+		logger.LogVerbose(
+			cachePrefixStyle.Render("cache:"),
+			cacheNameStyle.Render(options.name),
+			cachePrefixStyle.Render("current=")+cacheNameStyle.Render(*currentVersion),
+			cachePrefixStyle.Render("version=")+cacheNameStyle.Render(options.version),
+		)
 	}
 
 	return isDiff, nil

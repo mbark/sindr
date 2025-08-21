@@ -217,6 +217,12 @@ func processFlags(flagsDict *starlark.Dict, cmd *Command) error {
 	return nil
 }
 
+var (
+	actionHeader    = lipgloss.NewStyle().Foreground(lipgloss.ANSIColor(ansi.Magenta)).Bold(true)
+	argOrFlagHeader = lipgloss.NewStyle().Padding(0, 2).Foreground(lipgloss.ANSIColor(ansi.Cyan))
+	argOrFlagStyle  = lipgloss.NewStyle().Faint(true).Padding(0, 4)
+)
+
 // createCommandAction creates the action function for a command.
 func createCommandAction(
 	name string,
@@ -224,24 +230,14 @@ func createCommandAction(
 	action starlark.Callable,
 ) func(context.Context, *cli.Command) error {
 	return func(ctx context.Context, command *cli.Command) error {
-		logger.Log(
-			lipgloss.NewStyle().
-				Foreground(lipgloss.ANSIColor(ansi.Magenta)).
-				Bold(true).
-				Render(name),
-		)
+		logger.Log(actionHeader.Render(name))
 		if action == nil {
 			return nil
 		}
 
 		// The help flag is always defined
 		if len(command.Flags) > 1 {
-			logger.Log(
-				lipgloss.NewStyle().
-					Padding(0, 2).
-					Foreground(lipgloss.ANSIColor(ansi.Cyan)).
-					Render("Flags"),
-			)
+			logger.Log(argOrFlagHeader.Render("Flags"))
 		}
 
 		flags := make(starlark.StringDict)
@@ -266,18 +262,12 @@ func createCommandAction(
 				flags[f] = sval
 			}
 			if flag.Names()[0] != "help" {
-				logger.Log(lipgloss.NewStyle().Faint(true).Padding(0, 4).
-					Render(fmt.Sprintf("%s: %s", strings.Join(flag.Names(), ","), lval)))
+				logger.Log(argOrFlagStyle.Render(fmt.Sprintf("%s: %s", strings.Join(flag.Names(), ","), lval)))
 			}
 		}
 
 		if len(command.Arguments) > 0 {
-			logger.Log(
-				lipgloss.NewStyle().
-					Padding(0, 2).
-					Foreground(lipgloss.ANSIColor(ansi.Cyan)).
-					Render("Named arguments"),
-			)
+			logger.Log(argOrFlagHeader.Render("Named arguments"))
 		}
 
 		argsDict := make(starlark.StringDict)
@@ -291,20 +281,17 @@ func createCommandAction(
 				argsDict[a.Name] = starlark.MakeInt(command.IntArg(a.Name))
 				argName, lval = a.Name, strconv.Itoa(command.IntArg(a.Name))
 			}
-			logger.Log(lipgloss.NewStyle().Faint(true).Padding(0, 4).
-				Render(fmt.Sprintf("%s: %s", argName, lval)))
+			logger.Log(argOrFlagStyle.Render(fmt.Sprintf("%s: %s", argName, lval)))
 		}
 
 		slice := command.Args().Slice()
 		list := make([]starlark.Value, len(slice))
 		if len(slice) > 0 {
-			logger.Log(lipgloss.NewStyle().Padding(0, 2).Foreground(lipgloss.ANSIColor(ansi.Cyan)).
-				Render("Positional arguments"))
+			logger.Log(argOrFlagHeader.Render("Positional arguments"))
 		}
 		for i, a := range slice {
 			list[i] = starlark.String(a)
-			logger.Log(lipgloss.NewStyle().Faint(true).Padding(0, 4).
-				Render(fmt.Sprintf("%d: %s", i, a)))
+			logger.Log(argOrFlagStyle.Render(fmt.Sprintf("%d: %s", i, a)))
 		}
 
 		_, err := starlark.Call(thread, action, starlark.Tuple{&Context{

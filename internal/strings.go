@@ -3,6 +3,7 @@ package internal
 import (
 	"bytes"
 	"fmt"
+	"strings"
 	"text/template"
 
 	"go.starlark.net/starlark"
@@ -45,7 +46,8 @@ func ShmakeString(
 		}
 	}
 
-	t := template.Must(template.New("").Parse(string(tmplVal)))
+	tmplString := strings.TrimSpace(string(tmplVal))
+	t := template.Must(template.New("").Parse(tmplString))
 	var buf bytes.Buffer
 	err := t.Execute(&buf, values)
 	if err != nil {

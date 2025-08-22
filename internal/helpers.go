@@ -57,6 +57,26 @@ func toList[T any](l []T, fn func(T) starlark.Value) *starlark.List {
 	return starlark.NewList(list)
 }
 
+func fromList[T any](l *starlark.List, fn func(value starlark.Value) (T, error)) ([]T, error) {
+	if l == nil {
+		return nil, nil
+	}
+
+	list := make([]T, l.Len())
+	var idx int
+	var err error
+
+	var merr error
+	for a := range starlark.Elements(l) {
+		list[idx], err = fn(a)
+		if err != nil {
+			merr = errors.Join(merr, fmt.Errorf("element %d: %w", idx, err))
+		}
+	}
+
+	return list, merr
+}
+
 func mapList[T, V any](l []T, fn func(T) V) []V {
 	v := make([]V, len(l))
 	for i, a := range l {

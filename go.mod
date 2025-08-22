@@ -19,6 +19,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/google/btree v1.1.3 // indirect
 	github.com/google/go-cmp v0.5.8 // indirect
+	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect

@@ -144,6 +144,8 @@ func createPredeclaredDict(dir string) starlark.StringDict {
 			"command":     starlark.NewBuiltin("command", internal.ShmakeCommand),
 			"sub_command": starlark.NewBuiltin("sub_command", internal.ShmakeSubCommand),
 
+			"dotenv": starlark.NewBuiltin("dotenv", internal.ShmakeDotenv),
+
 			"shell": starlark.NewBuiltin("shell", internal.ShmakeShell),
 			"exec":  starlark.NewBuiltin("exec", internal.ShmakeExec),
 

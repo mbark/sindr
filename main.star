@@ -313,6 +313,22 @@ shmake.command(
     action=exec,
 )
 
+def dotenv(ctx):
+    shmake.dotenv()
+    res = shmake.shell('echo $FOO')
+    print('FOO is', res.stdout)
+    res = shmake.shell('echo $EDITOR')
+    print('EDITOR is', res.stdout)
+
+    shmake.dotenv(overload=True)
+    res = shmake.shell('echo $EDITOR')
+    print('EDITOR is', res.stdout)
+
+shmake.command(
+    name='dotenv',
+    action=dotenv,
+)
+
 # ============================================================================
 # SUB-COMMAND EXAMPLES
 # ============================================================================

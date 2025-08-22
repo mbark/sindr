@@ -20,6 +20,8 @@ var (
 	commandStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.ANSIColor(ansi.Blue)).
 			Bold(true)
+	commandStyleVerbose = commandStyle.
+				Bold(false)
 	stdoutStyle = lipgloss.NewStyle().
 			Faint(true).
 			Padding(0, 2)
@@ -50,14 +52,20 @@ func ShmakeShell(
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	if prefix != "" {
+		logger.Log(prefixStyle.Render(prefix), commandStyle.Render("$ "+command))
+	} else {
+		logger.Log(commandStyle.Render("$ " + command))
+	}
+
 	command = os.ExpandEnv(command)
 	commandArgs := strings.Fields(command)
 
 	cmd := exec.CommandContext(ctx, commandArgs[0], commandArgs[1:]...) // #nosec G204
 	if prefix != "" {
-		logger.Log(prefixStyle.Render(prefix), commandStyle.Render("$ "+cmd.String()))
+		logger.LogVerbose(prefixStyle.Render(prefix), commandStyleVerbose.Render("$ "+cmd.String()))
 	} else {
-		logger.Log(commandStyle.Render("$ " + cmd.String()))
+		logger.LogVerbose(commandStyleVerbose.Render("$ " + cmd.String()))
 	}
 
 	res, err := StartShellCmd(cmd, prefix, noOutput)

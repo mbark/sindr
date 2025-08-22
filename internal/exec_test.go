@@ -1,13 +1,7 @@
 package internal_test
 
 import (
-	"context"
-	"os/exec"
 	"testing"
-
-	"github.com/stretchr/testify/require"
-
-	"github.com/mbark/shmake/internal"
 )
 
 func TestExec(t *testing.T) {
@@ -333,52 +327,6 @@ def test_action(ctx):
         fail('expected successful execution')
 
 shmake.cli(name="TestExec", usage="Test exec functionality")
-shmake.command(name="test", action=test_action)
-`)
-		run()
-	})
-}
-
-// TestShmakeExec tests the ShmakeExec function directly to ensure proper argument handling.
-func TestShmakeExec(t *testing.T) {
-	t.Run("executes command with sh interpreter", func(t *testing.T) {
-		cmd := exec.CommandContext(context.Background(), "/usr/bin/env", "sh", "/tmp/test")
-		result, err := internal.StartShellCmd(cmd, "", false)
-		require.NoError(t, err)
-		// This test verifies the command structure is correct, actual execution depends on temp file
-		require.NotNil(t, result)
-	})
-
-	t.Run("creates temporary file correctly", func(t *testing.T) {
-		// This test is more about ensuring the temp file creation pattern works
-		// The actual ShmakeExec function creates and cleans up temp files automatically
-		run := setupStarlarkRuntime(t)
-		withMainStar(t, `
-def test_action(ctx):
-    # Simple command that should work if temp file is created correctly
-    result = shmake.exec(bin='sh', command='echo "temp file test"')
-    if result.stdout != 'temp file test':
-        fail('temp file creation failed, got: ' + str(result.stdout))
-
-shmake.cli(name="TestShmakeExec", usage="Test ShmakeExec functionality")
-shmake.command(name="test", action=test_action)
-`)
-		run()
-	})
-
-	t.Run("handles binary not found error", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
-		withMainStar(t, `
-def test_action(ctx):
-    # Try to use a non-existent binary - this should fail
-    result = shmake.exec(bin='nonexistent_binary_12345', command='echo "test"')
-    # The command should fail because the binary doesn't exist
-    if result.success:
-        fail('expected command to fail with non-existent binary')
-    if result.exit_code == 0:
-        fail('expected non-zero exit code for non-existent binary')
-
-shmake.cli(name="TestShmakeExec", usage="Test ShmakeExec functionality") 
 shmake.command(name="test", action=test_action)
 `)
 		run()

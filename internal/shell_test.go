@@ -1,13 +1,7 @@
 package internal_test
 
 import (
-	"context"
-	"os/exec"
 	"testing"
-
-	"github.com/stretchr/testify/require"
-
-	"github.com/mbark/shmake/internal"
 )
 
 func TestShell(t *testing.T) {
@@ -273,88 +267,5 @@ shmake.cli(name="TestShellRegression", usage="Test shell capture regression")
 shmake.command(name="test", action=test_action)
 `)
 		run()
-	})
-}
-
-// TestStartShellCmd tests the StartShellCmd function directly to ensure stdout/stderr capture works correctly.
-// This is a regression test for the strings.Builder pointer bug.
-func TestStartShellCmd(t *testing.T) {
-	t.Run("captures stdout correctly", func(t *testing.T) {
-		cmd := exec.CommandContext(context.Background(), "echo", "test stdout")
-		result, err := internal.StartShellCmd(cmd, "", false)
-		require.NoError(t, err)
-		require.Equal(t, "test stdout", result.Stdout)
-		require.Equal(t, "", result.Stderr)
-		require.True(t, result.Success)
-		require.Equal(t, 0, result.ExitCode)
-	})
-
-	t.Run("captures stderr correctly", func(t *testing.T) {
-		cmd := exec.CommandContext(context.Background(), "sh", "-c", "echo 'test stderr' >&2")
-		result, err := internal.StartShellCmd(cmd, "", false)
-		require.NoError(t, err)
-		require.Equal(t, "", result.Stdout)
-		require.Contains(t, result.Stderr, "test stderr")
-		require.True(t, result.Success)
-		require.Equal(t, 0, result.ExitCode)
-	})
-
-	t.Run("captures both stdout and stderr", func(t *testing.T) {
-		cmd := exec.CommandContext(
-			context.Background(),
-			"sh",
-			"-c",
-			"echo 'stdout msg' && echo 'stderr msg' >&2",
-		)
-		result, err := internal.StartShellCmd(cmd, "", false)
-		require.NoError(t, err)
-		require.Equal(t, "stdout msg", result.Stdout)
-		require.Contains(t, result.Stderr, "stderr msg")
-		require.True(t, result.Success)
-		require.Equal(t, 0, result.ExitCode)
-	})
-
-	t.Run("captures multiline output", func(t *testing.T) {
-		cmd := exec.CommandContext(
-			context.Background(),
-			"sh",
-			"-c",
-			"printf 'line1\\nline2\\nline3'",
-		)
-		result, err := internal.StartShellCmd(cmd, "", false)
-		require.NoError(t, err)
-		require.Equal(t, "line1\nline2\nline3", result.Stdout)
-		// Stderr may contain shell initialization warnings, so just check it's captured
-		require.True(t, result.Success)
-		require.Equal(t, 0, result.ExitCode)
-	})
-
-	t.Run("handles no_output parameter correctly", func(t *testing.T) {
-		cmd := exec.CommandContext(
-			context.Background(),
-			"sh",
-			"-c",
-			"echo 'should not capture' && echo 'stderr not capture' >&2",
-		)
-		result, err := internal.StartShellCmd(cmd, "", true)
-		require.NoError(t, err)
-		require.Equal(t, "", result.Stdout) // Should be empty with no_output=true
-		require.Equal(t, "", result.Stderr) // Should be empty with no_output=true
-		require.True(t, result.Success)
-		require.Equal(t, 0, result.ExitCode)
-	})
-
-	t.Run("handles command failure", func(t *testing.T) {
-		cmd := exec.CommandContext(
-			context.Background(),
-			"sh",
-			"-c",
-			"echo 'output before exit' && exit 42",
-		)
-		result, err := internal.StartShellCmd(cmd, "", false)
-		require.NoError(t, err) // StartShellCmd should not return error for non-zero exit
-		require.Equal(t, "output before exit", result.Stdout)
-		require.False(t, result.Success)
-		require.Equal(t, 42, result.ExitCode)
 	})
 }

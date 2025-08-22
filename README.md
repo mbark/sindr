@@ -1,10 +1,11 @@
 # make shmake
 
+![logo.png](logo.png)
+
 `shmake` is a replacement for `make`, allowing the creation of a cli-tool be written using `Starlark` and run via a
 single binary (built with `go`).
 
 ## Motivation
-
 `make` often ends up being used as a way to write simple scripts that developers want to run often locally. This is not
 ideal as `Makefiles` are weird to write, don't really play nice with configuration variables, nesting of commands, etc.
 Additionally, `Makefiles` have their own syntax which most developers are not very familiar with.
@@ -32,4 +33,9 @@ the `.star` file.
   to [shebang recipes](https://github.com/casey/just?tab=readme-ov-file#shebang-recipes)
 - [x] Add a way to automatically source dotenv files
   like [just](https://github.com/casey/just?tab=readme-ov-file#dotenv-settings)
+- [ ] Move all the commands in the `shmake` "namespace" to be global functions
+- [ ] Rename everything `shmake` to `ba`
+- [ ] Tag a version 0.0.2 to build a binary to test `goreleaser` stuff.
+- [ ] Update the `README` with more context, comparisons to `just`, `mise`, `Makefile` etc.
+- [ ] Generate some logo for this.
 - [ ] Improve the tests for `packagejson` and command to actually check the commands are added (e.g., via --help)

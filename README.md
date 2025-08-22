@@ -1,6 +1,6 @@
 # make shmake
 
-![logo.png](logo.png)
+<img src="logo.png" width="300">
 
 `shmake` is a replacement for `make`, allowing the creation of a cli-tool be written using `Starlark` and run via a
 single binary (built with `go`).

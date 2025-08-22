@@ -106,7 +106,7 @@ func (c *cache) get(cc *cycleChecker, module string) (starlark.StringDict, error
 func (c *cache) doLoad(cc *cycleChecker, module string) (starlark.StringDict, error) {
 	thread := &starlark.Thread{
 		Name:  "exec " + module,
-		Print: func(_ *starlark.Thread, msg string) { logger.Log(msg) },
+		Print: func(thread *starlark.Thread, msg string) { logger.WithStack(thread.CallStack()).Log(msg) },
 		Load: func(_ *starlark.Thread, module string) (starlark.StringDict, error) {
 			// Tunnel the cycle-checker state for this "thread of loading".
 			return c.get(cc, module)

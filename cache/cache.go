@@ -105,7 +105,7 @@ func (c *Cache) diff(
 		return nil, err
 	}
 
-	isDiff, err := checkIfDiff(c.diskCache, *options)
+	isDiff, err := checkIfDiff(logger.WithStack(thread.CallStack()), c.diskCache, *options)
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +154,7 @@ func (c *Cache) setVersion(
 		return nil, err
 	}
 
-	logger.LogVerbose(
+	logger.WithStack(thread.CallStack()).LogVerbose(
 		cachePrefixStyle.Render("cache:"),
 		cacheNameStyle.Render(options.name),
 		cachePrefixStyle.Render("version=")+cacheNameStyle.Render(options.version),
@@ -188,7 +188,7 @@ func (c *Cache) withVersion(
 		return nil, err
 	}
 
-	isDiff, err := checkIfDiff(c.diskCache, *options)
+	isDiff, err := checkIfDiff(logger.WithStack(thread.CallStack()), c.diskCache, *options)
 	if err != nil {
 		return nil, err
 	}
@@ -207,7 +207,7 @@ func (c *Cache) withVersion(
 	return starlark.Bool(true), nil
 }
 
-func checkIfDiff(cache diskCache, options cacheDiffOptions) (bool, error) {
+func checkIfDiff(logger logger.Logger, cache diskCache, options cacheDiffOptions) (bool, error) {
 	currentVersion, err := cache.GetVersion(options.name)
 	if err != nil {
 		return false, err

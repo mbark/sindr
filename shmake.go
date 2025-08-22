@@ -83,7 +83,7 @@ func Run(ctx context.Context, args []string, opts ...RunOption) error {
 		Name: "cli",
 		Load: loader.Load,
 		Print: func(thread *starlark.Thread, msg string) {
-			logger.Log(msg)
+			logger.WithStack(thread.CallStack()).Log(msg)
 		},
 	}
 	_, err = starlark.ExecFileOptions(
@@ -101,7 +101,7 @@ func Run(ctx context.Context, args []string, opts ...RunOption) error {
 }
 
 func runCLI(ctx context.Context, args []string) error {
-	var verbose, noCache bool
+	var verbose, noCache, withLineNumbers bool
 	cliFlags := []cli.Flag{
 		&cli.BoolFlag{
 			Name:        "verbose",
@@ -113,17 +113,19 @@ func runCLI(ctx context.Context, args []string) error {
 			Usage:       "ignore stored values in the cache",
 			Destination: &noCache,
 		},
+		&cli.BoolFlag{
+			Name:        "with-line-numbers",
+			Usage:       "print logs with Starlark line numbers if possible",
+			Destination: &withLineNumbers,
+		},
 	}
 
 	cmd := internal.GlobalCLI.Command.Command
 	cmd.Flags = append(cmd.Flags, cliFlags...)
 	cmd.Before = func(ctx context.Context, cmd *cli.Command) (context.Context, error) {
-		if verbose {
-			logger.DoLogVerbose = true
-		}
-		if noCache {
-			cache.GlobalCache.ForceOutOfDate = noCache
-		}
+		logger.DoLogVerbose = verbose
+		logger.WithLineNumbers = withLineNumbers
+		cache.GlobalCache.ForceOutOfDate = noCache
 		return ctx, nil
 	}
 

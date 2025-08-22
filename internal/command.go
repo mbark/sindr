@@ -320,14 +320,14 @@ func createCommandAction(
 	action starlark.Callable,
 ) func(context.Context, *cli.Command) error {
 	return func(ctx context.Context, command *cli.Command) error {
-		logger.Log(actionHeader.Render(name))
+		logger.WithStack(thread.CallStack()).Log(actionHeader.Render(name))
 		if action == nil {
 			return nil
 		}
 
 		// The help flag is always defined
 		if len(command.Flags) > 1 {
-			logger.Log(argOrFlagHeader.Render("Flags"))
+			logger.WithStack(thread.CallStack()).Log(argOrFlagHeader.Render("Flags"))
 		}
 
 		flags := make(starlark.StringDict)
@@ -361,7 +361,7 @@ func createCommandAction(
 				flags[f] = sval
 			}
 			if flag.Names()[0] != "help" {
-				logger.Log(
+				logger.WithStack(thread.CallStack()).Log(
 					argOrFlagStyle.Render(
 						fmt.Sprintf("%s: %s", strings.Join(flag.Names(), ","), lval),
 					),
@@ -384,17 +384,17 @@ func createCommandAction(
 				argsDict[a.Name] = starlark.MakeInt(command.IntArg(a.Name))
 				argName, lval = a.Name, strconv.Itoa(command.IntArg(a.Name))
 			}
-			logger.Log(argOrFlagStyle.Render(fmt.Sprintf("%s: %s", argName, lval)))
+			logger.WithStack(thread.CallStack()).Log(argOrFlagStyle.Render(fmt.Sprintf("%s: %s", argName, lval)))
 		}
 
 		slice := command.Args().Slice()
 		list := make([]starlark.Value, len(slice))
 		if len(slice) > 0 {
-			logger.Log(argOrFlagHeader.Render("Positional arguments"))
+			logger.WithStack(thread.CallStack()).Log(argOrFlagHeader.Render("Positional arguments"))
 		}
 		for i, a := range slice {
 			list[i] = starlark.String(a)
-			logger.Log(argOrFlagStyle.Render(fmt.Sprintf("%d: %s", i, a)))
+			logger.WithStack(thread.CallStack()).Log(argOrFlagStyle.Render(fmt.Sprintf("%d: %s", i, a)))
 		}
 
 		_, err := starlark.Call(thread, action, starlark.Tuple{&Context{

@@ -36,6 +36,7 @@ func ShmakeDotenv(
 		files = []string{".env"}
 	}
 
+	logger := logger.WithStack(thread.CallStack())
 	logger.Log(
 		lipgloss.NewStyle().Bold(true).Render("loading " + strings.Join(files, ", ")),
 	)

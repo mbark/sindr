@@ -44,6 +44,7 @@ func ShmakeLoadPackageJson(
 		return nil, err
 	}
 
+	logger := logger.WithStack(thread.CallStack())
 	logger.LogVerbose(
 		lipgloss.NewStyle().
 			Faint(true).
@@ -68,7 +69,7 @@ func ShmakeLoadPackageJson(
 
 					cmd := exec.CommandContext(ctx, bin, cmdArgs...)
 					logger.Log(commandStyle.Render(cmd.String()))
-					_, err := StartShellCmd(cmd, "", true)
+					_, err := StartShellCmd(logger, cmd, "", true)
 					if err != nil {
 						return err
 					}

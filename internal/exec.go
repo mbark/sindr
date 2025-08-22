@@ -54,6 +54,7 @@ func ShmakeExec(
 		return nil, fmt.Errorf("create file %s to exec: %w", file, err)
 	}
 
+	logger := logger.WithStack(thread.CallStack())
 	cmd := exec.CommandContext(ctx, "/usr/bin/env", bin, file) // #nosec G204
 	if prefix != "" {
 		logger.LogVerbose(prefixStyle.Render(prefix), commandStyle.Render("$ "+cmd.String()))
@@ -61,7 +62,7 @@ func ShmakeExec(
 		logger.LogVerbose(commandStyle.Render("$ " + cmd.String()))
 	}
 
-	res, err := StartShellCmd(cmd, prefix, noOutput)
+	res, err := StartShellCmd(logger, cmd, prefix, noOutput)
 	if err != nil {
 		return nil, fmt.Errorf("start shell cmd failed: %w", err)
 	}

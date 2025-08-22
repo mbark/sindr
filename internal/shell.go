@@ -18,19 +18,20 @@ import (
 
 var (
 	commandStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.ANSIColor(ansi.Blue)).
-			Bold(true)
+		Foreground(lipgloss.ANSIColor(ansi.Blue)).
+		Bold(true)
 	commandStyleVerbose = commandStyle.
-				Bold(false)
+		Padding(0, 2).
+		Bold(false)
 	stdoutStyle = lipgloss.NewStyle().
-			Faint(true).
-			Padding(0, 2)
+		Faint(true).
+		Padding(0, 2)
 	stderrStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.ANSIColor(ansi.Red)).
-			Padding(0, 2)
+		Foreground(lipgloss.ANSIColor(ansi.Red)).
+		Padding(0, 2)
 	prefixStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.ANSIColor(ansi.BrightBlack)).
-			Faint(true)
+		Foreground(lipgloss.ANSIColor(ansi.BrightBlack)).
+		Faint(true)
 )
 
 func ShmakeShell(
@@ -52,8 +53,10 @@ func ShmakeShell(
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	logger := logger.WithStack(thread.CallStack())
+
 	if prefix != "" {
-		logger.Log(prefixStyle.Render(prefix), commandStyle.Render("$ "+command))
+		logger.Log(prefixStyle.Render(prefix) + " " + commandStyle.Render("$ "+command))
 	} else {
 		logger.Log(commandStyle.Render("$ " + command))
 	}
@@ -63,12 +66,12 @@ func ShmakeShell(
 
 	cmd := exec.CommandContext(ctx, commandArgs[0], commandArgs[1:]...) // #nosec G204
 	if prefix != "" {
-		logger.LogVerbose(prefixStyle.Render(prefix), commandStyleVerbose.Render("$ "+cmd.String()))
+		logger.LogVerbose(prefixStyle.Render(prefix), commandStyleVerbose.Render(cmd.String()))
 	} else {
-		logger.LogVerbose(commandStyleVerbose.Render("$ " + cmd.String()))
+		logger.LogVerbose(commandStyleVerbose.Render(cmd.String()))
 	}
 
-	res, err := StartShellCmd(cmd, prefix, noOutput)
+	res, err := StartShellCmd(logger, cmd, prefix, noOutput)
 	if err != nil {
 		return nil, fmt.Errorf("start shell cmd failed: %w", err)
 	}
@@ -76,7 +79,7 @@ func ShmakeShell(
 	return res, nil
 }
 
-func StartShellCmd(cmd *exec.Cmd, name string, noOutput bool) (*ShellResult, error) {
+func StartShellCmd(logger logger.Logger, cmd *exec.Cmd, name string, noOutput bool) (*ShellResult, error) {
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
 		return nil, fmt.Errorf("stdout pipe: %w", err)

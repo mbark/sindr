@@ -302,6 +302,17 @@ shmake.command(
     }
 )
 
+def exec(ctx):
+    res = shmake.exec('python3', '''
+print('Hello from python!')
+''')
+    print('output:', res.stdout)
+
+shmake.command(
+    name='exec',
+    action=exec,
+)
+
 # ============================================================================
 # SUB-COMMAND EXAMPLES
 # ============================================================================

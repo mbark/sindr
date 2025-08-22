@@ -56,6 +56,7 @@ func toList[T any](l []T, fn func(T) starlark.Value) *starlark.List {
 	}
 	return starlark.NewList(list)
 }
+
 func mapList[T, V any](l []T, fn func(T) V) []V {
 	v := make([]V, len(l))
 	for i, a := range l {

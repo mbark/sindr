@@ -88,6 +88,7 @@ The linter configuration ensures code quality and security best practices are fo
 - `shmake.command()`: Define top-level commands with name, help, action, args, and flags
 - `shmake.sub_command()`: Define nested subcommands with path arrays
 - `shmake.shell()`: Execute shell commands with optional prefixes and return a structured result containing stdout, stderr, exit code, and success status
+- `shmake.exec()`: Execute commands with a specific binary/interpreter by writing the command to a temporary file
 - `shmake.start()`: Run functions concurrently
 - `shmake.wait()`: Wait for async operations to complete
 - `shmake.pool()`: Manage groups of concurrent operations
@@ -145,12 +146,65 @@ else:
     print("File does not exist")
 ```
 
+### Exec Function
+
+The `shmake.exec()` function allows executing commands with a specific binary or interpreter. It writes the command content to a temporary file and executes it with the specified binary. The function signature is:
+
+```python
+shmake.exec(bin, command, args=None, no_output=False, prefix="")
+```
+
+**Parameters:**
+- `bin` (required): The binary/interpreter to use (e.g., "python3", "sh", "awk")
+- `command` (required): The command content to execute
+- `args` (optional): Additional arguments to pass to the binary (currently unused)
+- `no_output` (optional): If True, suppress stdout/stderr capture
+- `prefix` (optional): Logging prefix for the command
+
+The function returns the same structured result object as `shmake.shell()` with stdout, stderr, exit_code, and success attributes.
+
+```python
+# Execute Python code
+result = shmake.exec(bin='python3', command='print("Hello from Python")')
+print(result.stdout)  # "Hello from Python"
+
+# Execute shell script
+shell_script = '''
+echo "Processing files..."
+for file in *.txt; do
+    echo "Found: $file"
+done
+'''
+result = shmake.exec(bin='sh', command=shell_script)
+
+# Execute with different interpreters
+awk_result = shmake.exec(bin='awk', command='BEGIN { print "Hello from AWK" }')
+
+# Handle multiline Python scripts
+python_code = '''
+import sys
+import os
+
+def main():
+    print(f"Python version: {sys.version}")
+    print(f"Current directory: {os.getcwd()}")
+
+if __name__ == "__main__":
+    main()
+'''
+result = shmake.exec(bin='python3', command=python_code)
+
+# Use with prefix and no_output
+shmake.exec(bin='sh', command='echo "Building..."', prefix='BUILD', no_output=True)
+```
+
 ## Project Structure
 
 - `cmd/main.go`: Entry point that calls `shmake.Run()`
 - `internal/run.go`: Main runtime and Starlark integration
 - `internal/command.go`: CLI command building and Starlark integration
 - `internal/shell.go`: Shell execution with async support
+- `internal/exec.go`: Binary/interpreter execution with temporary files
 - `internal/strings.go`: String templating system
 - `internal/helpers_test.go`: Test helper functions for consistent test setup
 - `cache/cache.go`: Caching system for expensive operations
@@ -208,6 +262,34 @@ def deploy(ctx):
         print('Build executed')
     else:
         print('Build skipped - version unchanged')
+
+# Use exec function for running scripts with specific interpreters
+def setup(ctx):
+    # Run Python setup script
+    python_setup = '''
+import json
+import os
+
+config = {
+    "project": "shmake",
+    "version": "1.0.0",
+    "author": "developer"
+}
+
+with open("config.json", "w") as f:
+    json.dump(config, f, indent=2)
+
+print("Configuration file created")
+'''
+    result = shmake.exec(bin='python3', command=python_setup)
+    if result.success:
+        print("Setup completed successfully")
+
+shmake.command(
+    name = "setup", 
+    help = "Set up project configuration",
+    action = setup
+)
 ```
 
 ## Linting Guidelines

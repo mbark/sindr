@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -49,13 +50,16 @@ func ShmakeShell(
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	command = os.ExpandEnv(command)
+	commandArgs := strings.Fields(command)
+
+	cmd := exec.CommandContext(ctx, commandArgs[0], commandArgs[1:]...) // #nosec G204
 	if prefix != "" {
-		logger.Log(prefixStyle.Render(prefix), commandStyle.Render("$ "+command))
+		logger.Log(prefixStyle.Render(prefix), commandStyle.Render("$ "+cmd.String()))
 	} else {
-		logger.Log(commandStyle.Render("$ " + command))
+		logger.Log(commandStyle.Render("$ " + cmd.String()))
 	}
 
-	cmd := exec.CommandContext(ctx, "bash", "-c", command) // #nosec G204
 	res, err := StartShellCmd(cmd, prefix, noOutput)
 	if err != nil {
 		return nil, fmt.Errorf("start shell cmd failed: %w", err)

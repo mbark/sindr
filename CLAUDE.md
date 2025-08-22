@@ -89,6 +89,7 @@ The linter configuration ensures code quality and security best practices are fo
 - `shmake.sub_command()`: Define nested subcommands with path arrays
 - `shmake.shell()`: Execute shell commands with optional prefixes and return a structured result containing stdout, stderr, exit code, and success status
 - `shmake.exec()`: Execute commands with a specific binary/interpreter by writing the command to a temporary file
+- `shmake.dotenv()`: Load environment variables from .env files with optional overloading
 - `shmake.start()`: Run functions concurrently
 - `shmake.wait()`: Wait for async operations to complete
 - `shmake.pool()`: Manage groups of concurrent operations
@@ -198,6 +199,69 @@ result = shmake.exec(bin='python3', command=python_code)
 shmake.exec(bin='sh', command='echo "Building..."', prefix='BUILD', no_output=True)
 ```
 
+### Dotenv Function
+
+The `shmake.dotenv()` function loads environment variables from .env files into the current process. It uses the `godotenv` library to parse files and can handle multiple files and overloading behavior. The function signature is:
+
+```python
+shmake.dotenv(files=None, overload=False)
+```
+
+**Parameters:**
+- `files` (optional): List of .env file paths to load. If not specified, defaults to `[".env"]`
+- `overload` (optional): If True, override existing environment variables. If False (default), skip variables that are already set
+
+**Behavior:**
+- By default, loads `.env` from the current directory
+- Existing environment variables are preserved unless `overload=True`
+- Variables are set in the current process and available to subsequent shell commands
+- Supports standard .env file formats including comments, quotes, and empty values
+- Logs the loading process and provides verbose output about exported, overloaded, and skipped variables
+
+**Return Value:**
+- Returns `None` (Starlark equivalent)
+
+```python
+# Load default .env file
+shmake.dotenv()
+
+# Load specific files
+shmake.dotenv(['.env.local', '.env.production'])
+
+# Load with overloading (override existing variables)
+shmake.dotenv(overload=True)
+
+# Load multiple files with overloading
+shmake.dotenv(['.env', '.env.local'], overload=True)
+
+# Example usage in a command
+def deploy(ctx):
+    # Load environment configuration
+    shmake.dotenv(['.env', '.env.production'])
+    
+    # Use environment variables in shell commands
+    result = shmake.shell('echo "Deploying to $DEPLOY_ENV"')
+    shmake.shell('docker build -t $IMAGE_NAME:$VERSION .')
+```
+
+**Supported .env File Format:**
+```bash
+# Comments are ignored
+DATABASE_URL=postgres://localhost:5432/mydb
+API_KEY=secret-key-here
+DEBUG=true
+
+# Quoted values
+APP_NAME="My Application"
+DESCRIPTION='A sample app'
+
+# Empty values
+OPTIONAL_VAR=
+
+# Values with equals signs
+CONFIG_JSON={"key":"value","nested":{"setting":"enabled"}}
+```
+
 ## Project Structure
 
 - `cmd/main.go`: Entry point that calls `shmake.Run()`
@@ -205,6 +269,7 @@ shmake.exec(bin='sh', command='echo "Building..."', prefix='BUILD', no_output=Tr
 - `internal/command.go`: CLI command building and Starlark integration
 - `internal/shell.go`: Shell execution with async support
 - `internal/exec.go`: Binary/interpreter execution with temporary files
+- `internal/dotenv.go`: Environment variable loading from .env files
 - `internal/strings.go`: String templating system
 - `internal/helpers_test.go`: Test helper functions for consistent test setup
 - `cache/cache.go`: Caching system for expensive operations
@@ -289,6 +354,24 @@ shmake.command(
     name = "setup", 
     help = "Set up project configuration",
     action = setup
+)
+
+# Use dotenv for environment variable management
+def deploy(ctx):
+    # Load environment configuration
+    shmake.dotenv(['.env', '.env.production'])
+    
+    # Use loaded environment variables
+    result = shmake.shell('echo "Deploying $PROJECT_NAME to $DEPLOY_ENV"')
+    if result.success:
+        shmake.shell('docker build -t $IMAGE_NAME:$VERSION .')
+        shmake.shell('docker push $IMAGE_NAME:$VERSION')
+        print("Deployment completed successfully")
+
+shmake.command(
+    name = "deploy",
+    help = "Deploy application with environment configuration", 
+    action = deploy
 )
 ```
 

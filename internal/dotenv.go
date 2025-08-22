@@ -11,7 +11,12 @@ import (
 	"github.com/mbark/shmake/internal/logger"
 )
 
-func ShmakeDotenv(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func ShmakeDotenv(
+	thread *starlark.Thread,
+	fn *starlark.Builtin,
+	args starlark.Tuple,
+	kwargs []starlark.Tuple,
+) (starlark.Value, error) {
 	var list *starlark.List
 	var overload bool
 	err := starlark.UnpackArgs("dotenv", args, kwargs, "files?", &list, "overload?", &overload)

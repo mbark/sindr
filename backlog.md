@@ -11,9 +11,11 @@
 - [x] Add a way to automatically source dotenv files
   like [just](https://github.com/casey/just?tab=readme-ov-file#dotenv-settings)
 - [x] Move all the commands in the `sindr` "namespace" to be global functions
+- [x] Generate some logo for this.
 - [x] Rename everything `shmake` to `sindr`
-- [ ] Tag a version 0.0.2 to build a binary to test `goreleaser` stuff.
+- [ ] Allow both flags and args to be added as simple strings.
 - [ ] Update the `README` with more context, comparisons to `just`, `mise`, `Makefile` etc.
-- [ ] Generate some logo for this.
+- [ ] Allow configuring things like name of file and color via a config file (or global flag).
+- [ ] Tag a version 0.0.2 to build a binary to test `goreleaser` stuff.
 - [ ] Improve the tests for `packagejson` and command to actually check the commands are added (e.g., via --help)
 - [ ] Allow the name of the global option be set via a command-line flag

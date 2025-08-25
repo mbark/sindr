@@ -2,11 +2,17 @@ package sindr
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"path"
+	"strings"
 
+	"github.com/spf13/viper"
 	"github.com/urfave/cli/v3"
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
+
+	flag "github.com/spf13/pflag"
 
 	"github.com/mbark/sindr/cache"
 	"github.com/mbark/sindr/internal"
@@ -19,50 +25,115 @@ import (
 type StarlarkBuiltin = func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error)
 
 type runOptions struct {
-	cacheDir string
-	fileName string
-	globals  starlark.StringDict
+	globals starlark.StringDict
 }
 
-type RunOption func(*runOptions)
+var (
+	cacheDirKey    = "cache_dir"
+	fileNameKey    = "file_name"
+	verboseKey     = "verbose"
+	noCacheKey     = "no_cache"
+	lineNumbersKey = "line_numbers"
+)
+
+type RunOption func(o *runOptions, v *viper.Viper)
 
 func WithCacheDir(dir string) RunOption {
-	return func(o *runOptions) {
-		o.cacheDir = dir
+	return func(o *runOptions, v *viper.Viper) {
+		v.Set(cacheDirKey, dir)
 	}
 }
 
 func WithFileName(name string) RunOption {
-	return func(o *runOptions) {
-		o.fileName = name
+	return func(o *runOptions, v *viper.Viper) {
+		v.Set(fileNameKey, name)
 	}
 }
 
 func WithGlobalValue(name string, value starlark.Value) RunOption {
-	return func(o *runOptions) {
+	return func(o *runOptions, v *viper.Viper) {
 		o.globals[name] = value
 	}
 }
 
+func WithVerboseLogging(verbose bool) RunOption {
+	return func(o *runOptions, v *viper.Viper) {
+		v.Set(verboseKey, verbose)
+	}
+}
+
+func WithLineNumbers(lineNumbers bool) RunOption {
+	return func(o *runOptions, v *viper.Viper) {
+		v.Set(lineNumbersKey, lineNumbers)
+	}
+}
+
+func WithNoCache(noCache bool) RunOption {
+	return func(o *runOptions, v *viper.Viper) {
+		v.Set(noCacheKey, noCache)
+	}
+}
+
+// WithBuiltin does exactly what WithGlobalValue does, but handles the much more common case of wanting to add not just
+// any global but specifically a StarlarkBuiltin.
 func WithBuiltin(name string, builtin StarlarkBuiltin) RunOption {
-	return func(o *runOptions) {
+	return func(o *runOptions, v *viper.Viper) {
 		o.globals[name] = starlark.NewBuiltin(name, builtin)
 	}
 }
 
+func flagName(s string) string {
+	return strings.ReplaceAll(s, "-", "_")
+}
+
 func Run(ctx context.Context, args []string, opts ...RunOption) error {
+	cacheDir := path.Join(xdgPath("CACHE_HOME", path.Join(os.Getenv("HOME"), ".cache")), "sindr")
+
+	v := viper.New()
+
+	fs := flag.NewFlagSet("sindr", flag.ContinueOnError)
+
+	fs.BoolP(flagName(verboseKey), "v", false, "print logs to stdout")
+	fs.BoolP(flagName(noCacheKey), "n", false, "ignore stored values in the cache")
+	fs.BoolP(flagName(lineNumbersKey), "l", false, "print logs with Starlark line numbers if possible")
+	fs.StringP(flagName(fileNameKey), "f", "sindr.star", "path to the Starlark config file")
+	fs.String(flagName(cacheDir), cacheDir, "path to the Starlark config file")
+	err := fs.Parse(args)
+
+	if err != nil {
+		return fmt.Errorf("parsing sindr flags: %w", err)
+	}
+
+	err = v.BindPFlags(fs)
+	if err != nil {
+		return fmt.Errorf("viper bind flags: %w", err)
+	}
+
+	// bind all kebab-cased flags to be accessible via underscore, making "no-cache" available as "no_cache"
+	for _, key := range v.AllKeys() {
+		v.Set(strings.ReplaceAll(key, "-", "_"), v.Get(key))
+	}
+
+	v.SetEnvPrefix("SINDR")
+	v.AutomaticEnv()
+	v.SetConfigFile("sindr")
+	v.AddConfigPath(xdgPath("CONFIG_HOME", path.Join(os.Getenv("HOME"), ".config")))
+
 	options := runOptions{
-		cacheDir: cacheHome(),
-		fileName: "sindr.star",
-		globals:  starlark.StringDict{},
+		globals: starlark.StringDict{},
 	}
 	for _, o := range opts {
-		o(&options)
+		o(&options, v)
 	}
 
-	cache.SetCache(options.cacheDir)
+	fmt.Println(v.GetString(cacheDirKey))
+	logger.DoLogVerbose = v.GetBool(verboseKey)
+	logger.WithLineNumbers = v.GetBool(lineNumbersKey)
+	cache.GlobalCache.ForceOutOfDate = v.GetBool(noCacheKey)
 
-	dir, err := findPathUpdwards(options.fileName)
+	cache.SetCache(v.GetString(cacheDirKey))
+
+	dir, err := findPathUpdwards(v.GetString(fileNameKey))
 	if err != nil {
 		return err
 	}
@@ -88,7 +159,7 @@ func Run(ctx context.Context, args []string, opts ...RunOption) error {
 	_, err = starlark.ExecFileOptions(
 		&syntax.FileOptions{},
 		thread,
-		options.fileName,
+		v.GetString(fileNameKey),
 		nil,
 		predeclared,
 	)
@@ -100,33 +171,28 @@ func Run(ctx context.Context, args []string, opts ...RunOption) error {
 }
 
 func runCLI(ctx context.Context, args []string) error {
-	var verbose, noCache, withLineNumbers bool
+	// TODO: implement it so that all flags are automatically copied over here
+	// in order for urfave/cli to not error out on invalid flags, we repeat our globally defined flags above again.
 	cliFlags := []cli.Flag{
 		&cli.BoolFlag{
-			Name:        "verbose",
-			Usage:       "print logs to stdout",
-			Destination: &verbose,
+			Name:    "verbose",
+			Usage:   "print logs to stdout",
+			Aliases: []string{"v"},
 		},
 		&cli.BoolFlag{
-			Name:        "no-cache",
-			Usage:       "ignore stored values in the cache",
-			Destination: &noCache,
+			Name:    "no-cache",
+			Usage:   "ignore stored values in the cache",
+			Aliases: []string{"n"},
 		},
 		&cli.BoolFlag{
-			Name:        "with-line-numbers",
-			Usage:       "print logs with Starlark line numbers if possible",
-			Destination: &withLineNumbers,
+			Name:    "with-line-numbers",
+			Usage:   "print logs with Starlark line numbers if possible",
+			Aliases: []string{"l"},
 		},
 	}
 
 	cmd := internal.GlobalCLI.Command.Command
 	cmd.Flags = append(cmd.Flags, cliFlags...)
-	cmd.Before = func(ctx context.Context, cmd *cli.Command) (context.Context, error) {
-		logger.DoLogVerbose = verbose
-		logger.WithLineNumbers = withLineNumbers
-		cache.GlobalCache.ForceOutOfDate = noCache
-		return ctx, nil
-	}
 
 	err := cmd.Run(ctx, args)
 	if err != nil {

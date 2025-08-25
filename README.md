@@ -109,7 +109,7 @@ case none are so it will log simply `a_command`.
 
 🚧 **TBD** 🚧
 
-## Comparison
+## Comparison to other popular tools
 
 🚧 **TBD** 🚧
 
@@ -133,3 +133,12 @@ case none are so it will log simply `a_command`.
 
 - [`make`](https://www.gnu.org/software/make/manual/html_node/index.html) the original.
 - [`just`](https://github.com/casey/just) like `make` but explicitly for running commands.
+
+## Credit
+
+`sindr` is primarily an idea built on the shoulder of giants, this is a callout to the great libraries that made this
+possible.
+
+- [`urfave/cli`](https://github.com/urfave/cli) does all the heavy lifting to build a modern CLI.
+- [`charmbracelet/lipgloss`](https://github.com/charmbracelet/lipgloss) colorizes and pads logs to make it look good.
+- [`google/starlark-go`](https://github.com/google/starlark-go) parses and runs the `Starlark`.

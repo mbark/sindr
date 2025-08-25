@@ -384,7 +384,8 @@ func createCommandAction(
 				argsDict[a.Name] = starlark.MakeInt(command.IntArg(a.Name))
 				argName, lval = a.Name, strconv.Itoa(command.IntArg(a.Name))
 			}
-			logger.WithStack(thread.CallStack()).Log(argOrFlagStyle.Render(fmt.Sprintf("%s: %s", argName, lval)))
+			logger.WithStack(thread.CallStack()).
+				Log(argOrFlagStyle.Render(fmt.Sprintf("%s: %s", argName, lval)))
 		}
 
 		slice := command.Args().Slice()
@@ -394,7 +395,8 @@ func createCommandAction(
 		}
 		for i, a := range slice {
 			list[i] = starlark.String(a)
-			logger.WithStack(thread.CallStack()).Log(argOrFlagStyle.Render(fmt.Sprintf("%d: %s", i, a)))
+			logger.WithStack(thread.CallStack()).
+				Log(argOrFlagStyle.Render(fmt.Sprintf("%d: %s", i, a)))
 		}
 
 		_, err := starlark.Call(thread, action, starlark.Tuple{&Context{
@@ -500,16 +502,6 @@ type FlagMap struct {
 	aliasKeys map[string]string // maps snake_case -> actual key (e.g. some_flag -> some-flag)
 }
 
-func (m *FlagMap) Get(value starlark.Value) (v starlark.Value, found bool, err error) {
-	key, ok := value.(starlark.String)
-	if !ok {
-		return starlark.None, false, fmt.Errorf("flag key must be string")
-	}
-
-	v, ok = m.data[string(key)]
-	return v, ok, nil
-}
-
 func NewFlagMap(d starlark.StringDict) *FlagMap {
 	alias := map[string]string{}
 	for k := range d {
@@ -549,6 +541,16 @@ func (m *FlagMap) AttrNames() []string {
 		names = append(names, k)
 	}
 	return names
+}
+
+func (m *FlagMap) Get(value starlark.Value) (v starlark.Value, found bool, err error) {
+	key, ok := value.(starlark.String)
+	if !ok {
+		return starlark.None, false, fmt.Errorf("flag key must be string")
+	}
+
+	v, ok = m.data[string(key)]
+	return v, ok, nil
 }
 
 func (m *FlagMap) Index(i starlark.Value) (starlark.Value, error) {

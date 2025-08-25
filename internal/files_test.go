@@ -8,11 +8,13 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/mbark/sindr/internal/sindrtest"
 )
 
 func TestFileTimestamps(t *testing.T) {
 	t.Run("newest_ts with single glob", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
+		run := sindrtest.SetupStarlarkRuntime(t)
 
 		// Create test files with different modification times
 		file1 := "test1.txt"
@@ -27,7 +29,7 @@ func TestFileTimestamps(t *testing.T) {
 		require.NoError(t, err)
 		expectedNewest := info2.ModTime().Unix()
 
-		withMainStar(t, `
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     result = newest_ts('test*.txt')
     expected = `+strconv.FormatInt(expectedNewest, 10)+`
@@ -41,7 +43,7 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("oldest_ts with single glob", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
+		run := sindrtest.SetupStarlarkRuntime(t)
 
 		// Create test files with different modification times
 		file1 := "old1.txt"
@@ -55,7 +57,7 @@ command(name="test", action=test_action)
 		time.Sleep(10 * time.Millisecond)
 		require.NoError(t, os.WriteFile(file2, []byte("content2"), 0o644))
 
-		withMainStar(t, `
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     result = oldest_ts('old*.txt')
     expected = `+strconv.FormatInt(expectedOldest, 10)+`
@@ -69,7 +71,7 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("newest_ts with list of globs", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
+		run := sindrtest.SetupStarlarkRuntime(t)
 
 		// Create test files in different directories
 		require.NoError(t, os.Mkdir("dir1", 0o755))
@@ -87,7 +89,7 @@ command(name="test", action=test_action)
 		require.NoError(t, err)
 		expectedNewest := info2.ModTime().Unix()
 
-		withMainStar(t, `
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     result = newest_ts(['dir1/*.txt', 'dir2/*.log'])
     expected = `+strconv.FormatInt(expectedNewest, 10)+`
@@ -101,7 +103,7 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("oldest_ts with list of globs", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
+		run := sindrtest.SetupStarlarkRuntime(t)
 
 		// Create test files in different directories
 		require.NoError(t, os.Mkdir("src", 0o755))
@@ -118,7 +120,7 @@ command(name="test", action=test_action)
 		time.Sleep(10 * time.Millisecond)
 		require.NoError(t, os.WriteFile(file2, []byte("# README"), 0o644))
 
-		withMainStar(t, `
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     result = oldest_ts(['src/*.go', 'docs/*.md'])
     expected = `+strconv.FormatInt(expectedOldest, 10)+`
@@ -132,9 +134,9 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("error when no files match", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
+		run := sindrtest.SetupStarlarkRuntime(t)
 
-		withMainStar(t, `
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     try:
         result = newest_ts('nonexistent*.xyz')
@@ -150,7 +152,7 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("skips directories", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
+		run := sindrtest.SetupStarlarkRuntime(t)
 
 		// Create a directory and a file
 		require.NoError(t, os.Mkdir("testdir", 0o755))
@@ -161,7 +163,7 @@ command(name="test", action=test_action)
 		require.NoError(t, err)
 		expectedTS := info.ModTime().Unix()
 
-		withMainStar(t, `
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     result = newest_ts('test*')
     expected = `+strconv.FormatInt(expectedTS, 10)+`
@@ -177,14 +179,14 @@ command(name="test", action=test_action)
 
 func TestGlob(t *testing.T) {
 	t.Run("glob with single pattern", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
+		run := sindrtest.SetupStarlarkRuntime(t)
 
 		// Create test files
 		require.NoError(t, os.WriteFile("glob1.txt", []byte("content1"), 0o644))
 		require.NoError(t, os.WriteFile("glob2.txt", []byte("content2"), 0o644))
 		require.NoError(t, os.WriteFile("other.log", []byte("log"), 0o644))
 
-		withMainStar(t, `
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     result = glob('glob*.txt')
     if len(result) != 2:
@@ -203,7 +205,7 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("glob with list of patterns", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
+		run := sindrtest.SetupStarlarkRuntime(t)
 
 		// Create test files in different directories
 		require.NoError(t, os.Mkdir("src", 0o755))
@@ -226,7 +228,7 @@ command(name="test", action=test_action)
 			os.WriteFile(filepath.Join("test", "test2.py"), []byte("import unittest"), 0o644),
 		)
 
-		withMainStar(t, `
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     result = glob(['src/*.go', 'test/*.py'])
     if len(result) != 4:
@@ -245,9 +247,9 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("glob returns empty list when no matches", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
+		run := sindrtest.SetupStarlarkRuntime(t)
 
-		withMainStar(t, `
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     result = glob('nonexistent*.xyz')
     if len(result) != 0:
@@ -260,13 +262,13 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("glob skips directories", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
+		run := sindrtest.SetupStarlarkRuntime(t)
 
 		// Create a directory and a file with similar names
 		require.NoError(t, os.Mkdir("skipdir", 0o755))
 		require.NoError(t, os.WriteFile("skipfile.txt", []byte("content"), 0o644))
 
-		withMainStar(t, `
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     result = glob('skip*')
     if len(result) != 1:
@@ -282,13 +284,13 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("glob removes duplicates", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
+		run := sindrtest.SetupStarlarkRuntime(t)
 
 		// Create test files
 		require.NoError(t, os.WriteFile("dup1.txt", []byte("content1"), 0o644))
 		require.NoError(t, os.WriteFile("dup2.txt", []byte("content2"), 0o644))
 
-		withMainStar(t, `
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     # Use overlapping patterns that would match the same files
     result = glob(['dup*.txt', 'dup1.txt', '*.txt'])
@@ -312,9 +314,9 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("glob with invalid argument type", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
+		run := sindrtest.SetupStarlarkRuntime(t)
 
-		withMainStar(t, `
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     try:
         result = glob(123)

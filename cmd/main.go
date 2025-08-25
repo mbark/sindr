@@ -4,13 +4,13 @@ import (
 	"context"
 	"os"
 
-	"github.com/mbark/shmake"
-	"github.com/mbark/shmake/internal/logger"
+	"github.com/mbark/sindr"
+	"github.com/mbark/sindr/internal/logger"
 )
 
 func main() {
-	err := shmake.Run(context.Background(), os.Args)
+	err := sindr.Run(context.Background(), os.Args)
 	if err != nil {
-		logger.LogErr("error running shmake", err)
+		logger.LogErr("error running sindr", err)
 	}
 }

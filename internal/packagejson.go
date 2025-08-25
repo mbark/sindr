@@ -11,10 +11,10 @@ import (
 	"github.com/urfave/cli/v3"
 	"go.starlark.net/starlark"
 
-	"github.com/mbark/shmake/internal/logger"
+	"github.com/mbark/sindr/internal/logger"
 )
 
-func ShmakeLoadPackageJson(
+func SindrLoadPackageJson(
 	thread *starlark.Thread,
 	fn *starlark.Builtin,
 	args starlark.Tuple,

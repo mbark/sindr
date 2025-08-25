@@ -9,7 +9,7 @@ import (
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
 
-	"github.com/mbark/shmake/internal/logger"
+	"github.com/mbark/sindr/internal/logger"
 )
 
 // Code taken from https://github.com/google/starlark-go/blob/master/starlark/example_test.go

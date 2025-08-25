@@ -9,7 +9,7 @@ import (
 	"github.com/peterbourgon/diskv/v3"
 	"go.starlark.net/starlark"
 
-	"github.com/mbark/shmake/internal/logger"
+	"github.com/mbark/sindr/internal/logger"
 )
 
 var GlobalCache diskCache
@@ -93,7 +93,7 @@ func (c Cache) AttrNames() []string {
 	return []string{"diff", "get_version", "set_version", "with_version"}
 }
 
-// Method wrappers for Cache to expose the shmake functions.
+// Method wrappers for Cache to expose the sindr functions.
 func (c *Cache) diff(
 	thread *starlark.Thread,
 	fn *starlark.Builtin,

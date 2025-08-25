@@ -22,14 +22,14 @@ The project consists of:
 ### Building
 
 ```bash
-go build -o shmake cmd/main.go
+go build -o sindr cmd/main.go
 ```
 
 ### Running
 
 ```bash
 # Run the built binary
-./shmake [command] [flags]
+./sindr [command] [flags]
 
 # Or run directly with Go
 go run cmd/main.go [command] [flags]
@@ -39,7 +39,7 @@ go run cmd/main.go [command] [flags]
 
 ```bash
 # Build and test with example main.star
-go build -o shmake cmd/main.go && ./shmake build
+go build -o sindr cmd/main.go && ./sindr build
 
 # Format code
 go fmt ./...
@@ -390,15 +390,15 @@ All tests must follow this consistent pattern:
 ### Test Structure Pattern
 
 1. **Use helper functions from `internal/helpers_test.go`**:
-   - `setupStarlarkRuntime(t)` - Creates runtime with temp directory and returns a run function
-   - `withMainStar(t, starlarkCode)` - Creates main.star file with Starlark test code
+   - `sindrtest.SetupStarlarkRuntime(t)` - Creates runtime with temp directory and returns a run function
+   - `sindrtest.WithMainStar(t, starlarkCode)` - Creates main.star file with Starlark test code
 
 2. **Test function structure**:
    ```go
    func TestFunctionName(t *testing.T) {
        t.Run("test case description", func(t *testing.T) {
-           run := setupStarlarkRuntime(t)
-           withMainStar(t, `
+           run := sindrtest.SetupStarlarkRuntime(t)
+           sindrtest.WithMainStar(t, `
    def test_action(ctx):
        result = function_name('args')
        if result != 'expected':
@@ -414,8 +414,8 @@ All tests must follow this consistent pattern:
 
 3. **Required elements**:
    - Package: `package internal_test` for tests in the internal package
-   - Use `setupStarlarkRuntime(t)` for consistent test environment
-   - Use `withMainStar(t, starlarkCode)` for Starlark script setup
+   - Use `sindrtest.SetupStarlarkRuntime(t)` for consistent test environment
+   - Use `sindrtest.WithMainStar(t, starlarkCode)` for Starlark script setup
    - Call the returned `run()` function to execute the test
    - Test command name should match the Go test function
    - Use descriptive sub-test names with `t.Run()`

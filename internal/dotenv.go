@@ -8,10 +8,10 @@ import (
 	"github.com/joho/godotenv"
 	"go.starlark.net/starlark"
 
-	"github.com/mbark/shmake/internal/logger"
+	"github.com/mbark/sindr/internal/logger"
 )
 
-func ShmakeDotenv(
+func SindrDotenv(
 	thread *starlark.Thread,
 	fn *starlark.Builtin,
 	args starlark.Tuple,

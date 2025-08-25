@@ -1,4 +1,4 @@
-package shmake
+package sindr
 
 import (
 	"context"
@@ -8,10 +8,10 @@ import (
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
 
-	"github.com/mbark/shmake/cache"
-	"github.com/mbark/shmake/internal"
-	"github.com/mbark/shmake/internal/logger"
-	"github.com/mbark/shmake/loader"
+	"github.com/mbark/sindr/cache"
+	"github.com/mbark/sindr/internal"
+	"github.com/mbark/sindr/internal/logger"
+	"github.com/mbark/sindr/loader"
 )
 
 // StarlarkBuiltin exposes the expected function signature for a starlark builtin function. It's just added here to
@@ -53,7 +53,7 @@ func WithBuiltin(name string, builtin StarlarkBuiltin) RunOption {
 func Run(ctx context.Context, args []string, opts ...RunOption) error {
 	options := runOptions{
 		cacheDir: cacheHome(),
-		fileName: "main.star",
+		fileName: "sindr.star",
 		globals:  starlark.StringDict{},
 	}
 	for _, o := range opts {
@@ -140,28 +140,28 @@ func runCLI(ctx context.Context, args []string) error {
 // createPredeclaredDict creates the predeclared dictionary for Starlark execution.
 func createPredeclaredDict(dir string) starlark.StringDict {
 	return starlark.StringDict{
-		"cli":         starlark.NewBuiltin("cli", internal.ShmakeCLI),
-		"command":     starlark.NewBuiltin("command", internal.ShmakeCommand),
-		"sub_command": starlark.NewBuiltin("sub_command", internal.ShmakeSubCommand),
+		"cli":         starlark.NewBuiltin("cli", internal.SindrCLI),
+		"command":     starlark.NewBuiltin("command", internal.SindrCommand),
+		"sub_command": starlark.NewBuiltin("sub_command", internal.SindrSubCommand),
 
-		"dotenv": starlark.NewBuiltin("dotenv", internal.ShmakeDotenv),
+		"dotenv": starlark.NewBuiltin("dotenv", internal.SindrDotenv),
 
-		"shell": starlark.NewBuiltin("shell", internal.ShmakeShell),
-		"exec":  starlark.NewBuiltin("exec", internal.ShmakeExec),
+		"shell": starlark.NewBuiltin("shell", internal.SindrShell),
+		"exec":  starlark.NewBuiltin("exec", internal.SindrExec),
 
-		"string": starlark.NewBuiltin("string", internal.ShmakeString),
+		"string": starlark.NewBuiltin("string", internal.SindrString),
 
-		"start": starlark.NewBuiltin("start", internal.ShmakeStart),
-		"wait":  starlark.NewBuiltin("wait", internal.ShmakeWait),
-		"pool":  starlark.NewBuiltin("pool", internal.ShmakePool),
+		"start": starlark.NewBuiltin("start", internal.SindrStart),
+		"wait":  starlark.NewBuiltin("wait", internal.SindrWait),
+		"pool":  starlark.NewBuiltin("pool", internal.SindrPool),
 
-		"newest_ts": starlark.NewBuiltin("newest_ts", internal.ShmakeNewestTS),
-		"oldest_ts": starlark.NewBuiltin("oldest_ts", internal.ShmakeOldestTS),
-		"glob":      starlark.NewBuiltin("glob", internal.ShmakeGlob),
+		"newest_ts": starlark.NewBuiltin("newest_ts", internal.SindrNewestTS),
+		"oldest_ts": starlark.NewBuiltin("oldest_ts", internal.SindrOldestTS),
+		"glob":      starlark.NewBuiltin("glob", internal.SindrGlob),
 
 		"load_package_json": starlark.NewBuiltin(
 			"load_package_json",
-			internal.ShmakeLoadPackageJson,
+			internal.SindrLoadPackageJson,
 		),
 		"cache":       starlark.NewBuiltin("cache", cache.NewCacheValue),
 		"current_dir": starlark.String("current_dir"),

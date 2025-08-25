@@ -1,4 +1,4 @@
-module github.com/mbark/shmake
+module github.com/mbark/sindr
 
 go 1.24
 

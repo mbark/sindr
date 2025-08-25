@@ -7,10 +7,10 @@ import (
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 
-	"github.com/mbark/shmake/internal/logger"
+	"github.com/mbark/sindr/internal/logger"
 )
 
-func ShmakeStart(
+func SindrStart(
 	thread *starlark.Thread,
 	fn *starlark.Builtin,
 	args starlark.Tuple,
@@ -39,7 +39,7 @@ func ShmakeStart(
 	return starlark.None, nil
 }
 
-func ShmakeWait(
+func SindrWait(
 	thread *starlark.Thread,
 	fn *starlark.Builtin,
 	args starlark.Tuple,
@@ -49,7 +49,7 @@ func ShmakeWait(
 	return starlark.None, nil
 }
 
-func ShmakePool(
+func SindrPool(
 	thread *starlark.Thread,
 	fn *starlark.Builtin,
 	args starlark.Tuple,

@@ -9,10 +9,10 @@ import (
 
 	"go.starlark.net/starlark"
 
-	"github.com/mbark/shmake/internal/logger"
+	"github.com/mbark/sindr/internal/logger"
 )
 
-func ShmakeExec(
+func SindrExec(
 	thread *starlark.Thread,
 	fn *starlark.Builtin,
 	args starlark.Tuple,
@@ -37,7 +37,7 @@ func ShmakeExec(
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	tmpdir, err := os.MkdirTemp("", "shmake")
+	tmpdir, err := os.MkdirTemp("", "sindr")
 	if err != nil {
 		return nil, err
 	}

@@ -7,11 +7,13 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/mbark/sindr/internal/sindrtest"
 )
 
-func TestShmakeLoadPackageJson(t *testing.T) {
+func TestSindrLoadPackageJson(t *testing.T) {
 	t.Run("loads package.json scripts as commands", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
+		run := sindrtest.SetupStarlarkRuntime(t)
 
 		withPackageJson(t, map[string]interface{}{
 			"name": "test-project",
@@ -23,11 +25,11 @@ func TestShmakeLoadPackageJson(t *testing.T) {
 			},
 		})
 
-		withMainStar(t, `
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     print("Package.json loaded successfully")
 
-cli(name="TestShmakeLoadPackageJson")
+cli(name="TestSindrLoadPackageJson")
 load_package_json(file="package.json")
 command(name="test", action=test_action)
 `)
@@ -35,7 +37,7 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("loads package.json with custom npm binary", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
+		run := sindrtest.SetupStarlarkRuntime(t)
 
 		withPackageJson(t, map[string]interface{}{
 			"name": "test-project-yarn",
@@ -45,11 +47,11 @@ command(name="test", action=test_action)
 			},
 		})
 
-		withMainStar(t, `
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     print("Package.json loaded with yarn")
 
-cli(name="TestShmakeLoadPackageJson")
+cli(name="TestSindrLoadPackageJson")
 load_package_json(file="package.json", bin="yarn")
 command(name="test", action=test_action)
 `)
@@ -57,18 +59,18 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("handles empty scripts section", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
+		run := sindrtest.SetupStarlarkRuntime(t)
 
 		withPackageJson(t, map[string]interface{}{
 			"name":    "empty-scripts-project",
 			"scripts": map[string]string{},
 		})
 
-		withMainStar(t, `
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     print("Empty scripts package.json loaded")
 
-cli(name="TestShmakeLoadPackageJson")
+cli(name="TestSindrLoadPackageJson")
 load_package_json(file="package.json")
 command(name="test", action=test_action)
 `)
@@ -76,7 +78,7 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("handles package.json without scripts section", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
+		run := sindrtest.SetupStarlarkRuntime(t)
 
 		withPackageJson(t, map[string]interface{}{
 			"name":         "no-scripts-project",
@@ -85,11 +87,11 @@ command(name="test", action=test_action)
 			"dependencies": map[string]string{},
 		})
 
-		withMainStar(t, `
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     print("No scripts package.json loaded")
 
-cli(name="TestShmakeLoadPackageJson")
+cli(name="TestSindrLoadPackageJson")
 load_package_json(file="package.json")
 command(name="test", action=test_action)
 `)
@@ -97,7 +99,7 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("handles complex script names", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
+		run := sindrtest.SetupStarlarkRuntime(t)
 
 		withPackageJson(t, map[string]interface{}{
 			"name": "complex-scripts-project",
@@ -110,11 +112,11 @@ command(name="test", action=test_action)
 			},
 		})
 
-		withMainStar(t, `
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     print("Complex scripts package.json loaded")
 
-cli(name="TestShmakeLoadPackageJson")
+cli(name="TestSindrLoadPackageJson")
 load_package_json(file="package.json")
 command(name="test", action=test_action)
 `)
@@ -122,15 +124,15 @@ command(name="test", action=test_action)
 	})
 }
 
-func TestShmakeLoadPackageJsonErrors(t *testing.T) {
+func TestSindrLoadPackageJsonErrors(t *testing.T) {
 	t.Run("fails when package.json file does not exist", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
+		run := sindrtest.SetupStarlarkRuntime(t)
 
-		withMainStar(t, `
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     print("Should not reach here but errors are logged")
 
-cli(name="TestShmakeLoadPackageJsonErrors")
+cli(name="TestSindrLoadPackageJsonErrors")
 load_package_json(file="nonexistent.json")
 command(name="test", action=test_action)
 `)
@@ -139,7 +141,7 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("fails when package.json contains invalid JSON", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
+		run := sindrtest.SetupStarlarkRuntime(t)
 
 		writePackageJson(t, []byte(`{
 			"name": "invalid-json",
@@ -149,11 +151,11 @@ command(name="test", action=test_action)
 			}
 		}`))
 
-		withMainStar(t, `
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     print("Should not reach here but errors are logged")
 
-cli(name="TestShmakeLoadPackageJsonErrors")
+cli(name="TestSindrLoadPackageJsonErrors")
 load_package_json(file="invalid.json")
 command(name="test", action=test_action)
 `)
@@ -164,7 +166,7 @@ command(name="test", action=test_action)
 
 func TestPackageJsonStruct(t *testing.T) {
 	t.Run("PackageJson struct unmarshals correctly", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
+		run := sindrtest.SetupStarlarkRuntime(t)
 
 		writePackageJson(t, []byte(`{
 			"name": "test-project",
@@ -180,7 +182,7 @@ func TestPackageJsonStruct(t *testing.T) {
 			}
 		}`))
 
-		withMainStar(t, `
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     print("PackageJson struct test completed")
 

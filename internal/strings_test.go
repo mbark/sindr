@@ -2,12 +2,14 @@ package internal_test
 
 import (
 	"testing"
+
+	"github.com/mbark/sindr/internal/sindrtest"
 )
 
 func TestTemplateString(t *testing.T) {
 	t.Run("renders simple template", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
-		withMainStar(t, `
+		run := sindrtest.SetupStarlarkRuntime(t)
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     result = string('Hello {{.name}}!', name='World')
     if result != 'Hello World!':
@@ -20,8 +22,8 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("handles different variable types", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
-		withMainStar(t, `
+		run := sindrtest.SetupStarlarkRuntime(t)
+		sindrtest.WithMainStar(t, `
 str_var = "text"
 num_var = 42
 bool_var = True
@@ -38,8 +40,8 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("renders template without additional context", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
-		withMainStar(t, `
+		run := sindrtest.SetupStarlarkRuntime(t)
+		sindrtest.WithMainStar(t, `
 greeting = "Hello"
 target = "World"
 
@@ -55,8 +57,8 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("handles template with conditional logic", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
-		withMainStar(t, `
+		run := sindrtest.SetupStarlarkRuntime(t)
+		sindrtest.WithMainStar(t, `
 debug = True
 
 def test_action(ctx):
@@ -71,8 +73,8 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("handles template with range", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
-		withMainStar(t, `
+		run := sindrtest.SetupStarlarkRuntime(t)
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     items = ['apple', 'banana', 'cherry']
     result = string('{{range .items}}{{.}} {{end}}', items=items)
@@ -86,8 +88,8 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("handles complex nested templates", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
-		withMainStar(t, `
+		run := sindrtest.SetupStarlarkRuntime(t)
+		sindrtest.WithMainStar(t, `
 app_name = "myapp"
 version = "1.0.0"
 

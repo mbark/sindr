@@ -1,41 +1,135 @@
-# bara
+<h1 align=center><code>🔨✨ sindr</code></h1>
 
-<img src="logo.png" width="300">
+[![Test](https://github.com/mbark/sindr/actions/workflows/lint.yml/badge.svg)](https://github.com/mbark/sindr/actions/workflows/lint.yml)
 
-`shmake` is a replacement for `make`, allowing the creation of a cli-tool be written using `Starlark` and run via a
-single binary (built with `go`).
+`sindr` is a simple way to create a CLI to save and run project-specific commands.
 
-## Motivation
-`make` often ends up being used as a way to write simple scripts that developers want to run often locally. This is not
-ideal as `Makefiles` are weird to write, don't really play nice with configuration variables, nesting of commands, etc.
-Additionally, `Makefiles` have their own syntax which most developers are not very familiar with.
+Using [Starlark](https://github.com/bazelbuild/starlark), a Python-subset, you can create a CLI with flags, arguments
+and autocompletion to save and run project-specific commands.
 
-## Goal
+<img src="carbon.png">
 
-The goal of `shmake` is to allow writing a `.star` file with all script-targets with a batteries included set of
-functions provided by `shmake` as modules. These `.star` files are then converted into a cli that allows targets,
-sub-targets and the passing of flags and args.
+Configure your CLI in `Starlark`, using builtin functions like `command` and `shell` to easily create a CLI for your
+project. Then run `sindr` to get a CLI for your project-specific commands.
 
-## Design
+```
+sindr test -- -race
+test
+  Flags  
+    short: true    
+  Named arguments  
+    args: '-race'    
+$ go test -short -race ./...
+[...]
+```
 
-Using a `Starlark` interpreter written in `go` we can ship a single binary which handles both interpreting and running
-the `.star` file.
+`sindr` has several useful features:
 
-## TODOs and ideas
+- `sindr` generates a fully-fledged CLI giving your developers a familiar interface for how to run scripts.
+- `Starlark` is a Python-subset which makes configuration simple and familiar for developers.
+- Building with `go` gives us a single binary with no external dependencies to run.
+- Error messages are clear and if relevant, point to the exact line and column in `Starlark`.
+- `sindr` can be invoked from any subdirectory, not just the one with `sindr.star`.
+- `sindr` can load `.env` files, making it easy to populate environment variables.
+- allows string-expansion using `golang` templates.
+- has a builtin file-based cache system that can be used to check if some command should be run.
+- several other builtin functions to do common tasks like checking if any files have been updated.
+- allows executing arbitrary languages, like Python or NodeJS.
 
-- [x] Allow "importing" package.json files and adding their scripts as commands
-- [x] Add functionality for setting categories
-- [x] Remove the watch stuff
-- [x] lib:ify the `shmake` package to allow people to use and extend it through Go.
-- [x] Add the newest_ts and oldest_ts functions back
-- [x] When running a command, show it in some nice way.
-- [x] Add an exec command that can be used to run some arbitrary programming language, similar
-  to [shebang recipes](https://github.com/casey/just?tab=readme-ov-file#shebang-recipes)
-- [x] Add a way to automatically source dotenv files
-  like [just](https://github.com/casey/just?tab=readme-ov-file#dotenv-settings)
-- [x] Move all the commands in the `shmake` "namespace" to be global functions
-- [ ] Rename everything `shmake` to `ba`
-- [ ] Tag a version 0.0.2 to build a binary to test `goreleaser` stuff.
-- [ ] Update the `README` with more context, comparisons to `just`, `mise`, `Makefile` etc.
-- [ ] Generate some logo for this.
-- [ ] Improve the tests for `packagejson` and command to actually check the commands are added (e.g., via --help)
+## Installation
+
+🚧 **TBD** 🚧
+
+## Quick start
+
+Create a file named `sindr.star` in the root of your project.
+
+```starlark
+cli(
+    name = "cli_name",
+    usage = "some usage text"
+)
+
+def a_command(ctx):
+    res = shell(string('echo "{{.text}}"',text=ctx.flags.text))
+    print(res.stdout)
+
+command(
+    name = "a_command",
+    action = a_command,
+    flags = {
+        "text": {
+            "type": "string",
+            "default": "hello from sindr",
+            "help": "text to echo"
+        },
+    },
+)
+```
+
+Then invoke `sindr`, it will look in the current directory and upwards for a `sindr.star` file.
+
+When invoking `sindr` with no arguments it will by default show the equivalent of running with `--help`.
+
+```console
+$ sindr
+NAME:
+   cli_name - some usage text
+
+USAGE:
+   cli_name [global options] [command [command options]]
+
+COMMANDS:
+   a_command  
+   help, h    Shows a list of commands or help for one command
+
+GLOBAL OPTIONS:
+   --verbose            print logs to stdout (default: false)
+   --no-cache           ignore stored values in the cache (default: false)
+   --with-line-numbers  print logs with Starlark line numbers if possible (default: false)
+   --help, -h           show help
+```
+
+This will behave exactly as a CLI, meaning to run the command `a_command` just invoke it with that as the argument.
+
+```console
+sindr a_command
+a_command
+  Flags  
+    text: 'hello from sindr'    
+$ echo "hello from sindr"
+  "hello from sindr"  
+"hello from sindr"
+```
+
+When running a command `sindr` will log the name of the command, with flags and arguments if any are defined. In this
+case none are so it will log simply `a_command`.
+
+## Examples
+
+🚧 **TBD** 🚧
+
+## Comparison
+
+🚧 **TBD** 🚧
+
+### Make
+
+🚧 **TBD** 🚧
+
+## Just
+
+🚧 **TBD** 🚧
+
+## package.json
+
+🚧 **TBD** 🚧
+
+## Building your own CLI
+
+🚧 **TBD** 🚧
+
+## Inspiration
+
+- [`make`](https://www.gnu.org/software/make/manual/html_node/index.html) the original.
+- [`just`](https://github.com/casey/just) like `make` but explicitly for running commands.

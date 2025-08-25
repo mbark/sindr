@@ -7,21 +7,21 @@ import (
 
 	"go.starlark.net/starlark"
 
-	"github.com/mbark/shmake"
-	"github.com/mbark/shmake/internal/logger"
+	"github.com/mbark/sindr"
+	"github.com/mbark/sindr/internal/logger"
 )
 
-// This shows an example of using shmake as a library that can be extended with custom functions that you want to use.
+// This shows an example of using sindr as a library that can be extended with custom functions that you want to use.
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	err := shmake.Run(ctx, os.Args,
-		shmake.WithBuiltin("custom_function", CustomFunction),
-		shmake.WithFileName("lib.star"),
+	err := sindr.Run(ctx, os.Args,
+		sindr.WithBuiltin("custom_function", CustomFunction),
+		sindr.WithFileName("lib.star"),
 	)
 	if err != nil {
-		logger.LogErr("error running shmake", err)
+		logger.LogErr("error running sindr", err)
 	}
 }
 

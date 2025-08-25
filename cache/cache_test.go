@@ -1,59 +1,15 @@
 package cache_test
 
 import (
-	"os"
-	"path/filepath"
-	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
-	"github.com/mbark/shmake"
+	"github.com/mbark/sindr/internal/sindrtest"
 )
-
-func setupStarlarkRuntime(t *testing.T) func() {
-	t.Helper()
-	dir := t.TempDir()
-	err := os.Chdir(dir)
-	require.NoError(t, err)
-
-	return func() {
-		t.Helper()
-		err := shmake.Run(t.Context(), []string{t.Name(), "test"}, shmake.WithCacheDir(dir))
-		require.NoError(t, err)
-	}
-}
-
-func withMainStar(t *testing.T, contents string) {
-	t.Helper()
-	dir, err := os.Getwd()
-	require.NoError(t, err)
-
-	err = os.RemoveAll(filepath.Join(dir, "main.star"))
-	require.NoError(t, err)
-
-	f, err := os.Create(filepath.Join(dir, "main.star"))
-	require.NoError(t, err)
-
-	t.Cleanup(func() {
-		err := f.Close()
-		require.NoError(t, err)
-	})
-
-	_, err = f.WriteString(contents)
-	require.NoError(t, err)
-
-	t.Log("=== main.star ===")
-	for i, line := range strings.Split(contents, "\n") {
-		t.Logf("%3d: %s", i+1, line)
-	}
-	t.Log()
-}
 
 func TestDiff(t *testing.T) {
 	t.Run("with diff expected", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
-		withMainStar(t, `
+		run := sindrtest.SetupStarlarkRuntime(t)
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
 	c = cache()
 	if not c.diff(name='version', version='1'):
@@ -66,8 +22,8 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("with no diff expected", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
-		withMainStar(t, `
+		run := sindrtest.SetupStarlarkRuntime(t)
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
 	c = cache()
 	c.set_version(name='version', version='1')
@@ -83,8 +39,8 @@ command(name="test", action=test_action)
 
 func TestStore(t *testing.T) {
 	t.Run("set_version version successfully", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
-		withMainStar(t, `
+		run := sindrtest.SetupStarlarkRuntime(t)
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
 	c = cache()
 	c.set_version(name='test-key', version='v1.0.0')
@@ -101,8 +57,8 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("set_version with int version", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
-		withMainStar(t, `
+		run := sindrtest.SetupStarlarkRuntime(t)
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
 	c = cache()
 	c.set_version(name='test-int', version=42)
@@ -121,8 +77,8 @@ command(name="test", action=test_action)
 
 func TestWithVersion(t *testing.T) {
 	t.Run("runs function when version differs", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
-		withMainStar(t, `
+		run := sindrtest.SetupStarlarkRuntime(t)
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
 	c = cache()
 	def version_func():
@@ -143,8 +99,8 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("skips function when version matches", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
-		withMainStar(t, `
+		run := sindrtest.SetupStarlarkRuntime(t)
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
 	c = cache()
 	def version_func():
@@ -168,8 +124,8 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("runs function with int version", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
-		withMainStar(t, `
+		run := sindrtest.SetupStarlarkRuntime(t)
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
 	c = cache()
 	def version_func():
@@ -197,8 +153,8 @@ command(name="test", action=test_action)
 
 func TestCacheWithCustomDir(t *testing.T) {
 	t.Run("create cache with custom directory", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
-		withMainStar(t, `
+		run := sindrtest.SetupStarlarkRuntime(t)
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
 	c = cache(cache_dir="/tmp/test-cache")
 	c.set_version(name='custom-dir-test', version='v1.0.0')

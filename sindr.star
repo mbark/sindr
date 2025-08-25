@@ -1,25 +1,16 @@
-# Global variables for template examples
-project_name = "shmake-demo"
-version = "1.0.0"
-build_dir = "./build"
-
-load_package_json('package.json')
-
 # Configure CLI metadata
 cli(
-    name = "shmake",
-    usage = "Comprehensive demo of shmake features and functions"
+    name = "sindr",
+    usage = "Comprehensive demo of sindr features and functions"
 )
 
-# ============================================================================
-# BASIC SHELL COMMAND EXAMPLE
-# ============================================================================
+
 def demo_shell(ctx):
     """Demonstrates shell() with different options"""
     print("=== Shell Command Demo ===")
     
     # Basic shell command
-    result = shell('echo "Hello from shmake!"')
+    result = shell('echo "Hello from sindr!"')
     print("Shell output:", result.stdout)
     print("Command success:", result.success)
     print("Exit code:", result.exit_code)
@@ -35,6 +26,8 @@ command(
     help = "Demonstrate shell command execution",
     action = demo_shell
 )
+
+load_package_json('package.json')
 
 # ============================================================================
 # ASYNC OPERATIONS EXAMPLE
@@ -94,7 +87,7 @@ def demo_templates(ctx):
 Project: {{.project_name}}
 Version: {{.version}}
 Build Directory: {{.build_dir}}
-''', project_name=project_name, version=version, build_dir=build_dir)
+''', project_name='sindr', version='0.0.1', build_dir=current_dir)
     print("Template with global variables:")
     print(template1)
     
@@ -546,26 +539,26 @@ command(
 def show_examples(ctx):
     """Show available example commands"""
     print("""
-=== Available shmake Feature Demos ===
+=== Available sindr Feature Demos ===
 
 Basic Commands:
-  ./shmake shell       - Shell command execution
-  ./shmake async       - Async operations with start/wait  
-  ./shmake pool        - Pool-based concurrent operations
-  ./shmake templates   - String templating features
-  ./shmake versioning  - Version storage and caching with cache instances
-  ./shmake diff        - Version comparison with cache.diff()
-  ./shmake timestamps  - File timestamp functions newest_ts and oldest_ts
-  ./shmake glob        - File pattern matching with glob function
-  ./shmake build-cache - Advanced build caching using file timestamps
+  ./sindr shell       - Shell command execution
+  ./sindr async       - Async operations with start/wait
+  ./sindr pool        - Pool-based concurrent operations
+  ./sindr templates   - String templating features
+  ./sindr versioning  - Version storage and caching with cache instances
+  ./sindr diff        - Version comparison with cache.diff()
+  ./sindr timestamps  - File timestamp functions newest_ts and oldest_ts
+  ./sindr glob        - File pattern matching with glob function
+  ./sindr build-cache - Advanced build caching using file timestamps
 
 Advanced Examples:
-  ./shmake build [target] --verbose --parallel
+  ./sindr build [target] --verbose --parallel
                        - Comprehensive build with args/flags
-  ./shmake deploy staging     - Deploy to staging
-  ./shmake deploy production  - Deploy to production
+  ./sindr deploy staging     - Deploy to staging
+  ./sindr deploy production  - Deploy to production
 
-Try running any of these commands to see shmake features in action!
+Try running any of these commands to see sindr features in action!
 """)
 
 command(

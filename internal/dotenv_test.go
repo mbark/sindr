@@ -3,12 +3,14 @@ package internal_test
 import (
 	"os"
 	"testing"
+
+	"github.com/mbark/sindr/internal/sindrtest"
 )
 
 func TestDotenv(t *testing.T) {
 	t.Run("loads default .env file", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
-		withMainStar(t, `
+		run := sindrtest.SetupStarlarkRuntime(t)
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     # Use exec to create a .env file using Python
     exec('python3', '''
@@ -32,8 +34,8 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("loads multiple env files", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
-		withMainStar(t, `
+		run := sindrtest.SetupStarlarkRuntime(t)
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     # Create multiple env files using Python
     exec('python3', '''
@@ -69,8 +71,8 @@ command(name="test", action=test_action)
 		os.Setenv("EXISTING_VAR", "original")
 		defer os.Unsetenv("EXISTING_VAR")
 
-		run := setupStarlarkRuntime(t)
-		withMainStar(t, `
+		run := sindrtest.SetupStarlarkRuntime(t)
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     # Verify existing variable is set
     result = shell('echo $EXISTING_VAR')
@@ -103,8 +105,8 @@ command(name="test", action=test_action)
 		os.Setenv("OVERRIDE_VAR", "original")
 		defer os.Unsetenv("OVERRIDE_VAR")
 
-		run := setupStarlarkRuntime(t)
-		withMainStar(t, `
+		run := sindrtest.SetupStarlarkRuntime(t)
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     # Verify existing variable is set
     result = shell('echo $OVERRIDE_VAR')
@@ -133,8 +135,8 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("handles missing env file gracefully", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
-		withMainStar(t, `
+		run := sindrtest.SetupStarlarkRuntime(t)
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     # Try to load non-existent file - should fail
     try:
@@ -150,8 +152,8 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("loads complex env file with different formats", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
-		withMainStar(t, `
+		run := sindrtest.SetupStarlarkRuntime(t)
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     # Create complex .env file using Python
     exec('python3', '''
@@ -199,8 +201,8 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("handles env variables with export in shell context", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
-		withMainStar(t, `
+		run := sindrtest.SetupStarlarkRuntime(t)
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     # Create .env file using Python
     exec('python3', '''
@@ -229,8 +231,8 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("multiple dotenv calls work correctly", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
-		withMainStar(t, `
+		run := sindrtest.SetupStarlarkRuntime(t)
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     # Create first .env file using Python
     exec('python3', '''

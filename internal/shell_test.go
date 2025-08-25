@@ -2,12 +2,14 @@ package internal_test
 
 import (
 	"testing"
+
+	"github.com/mbark/sindr/internal/sindrtest"
 )
 
 func TestShell(t *testing.T) {
 	t.Run("executes basic shell command", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
-		withMainStar(t, `
+		run := sindrtest.SetupStarlarkRuntime(t)
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     result = shell('echo "hello world"')
     if result.stdout != 'hello world':
@@ -20,8 +22,8 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("captures command output", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
-		withMainStar(t, `
+		run := sindrtest.SetupStarlarkRuntime(t)
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     result = shell('printf "line1\\nline2\\nline3"')
     expected = 'line1\\nline2\\nline3'
@@ -35,8 +37,8 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("works with shell variables", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
-		withMainStar(t, `
+		run := sindrtest.SetupStarlarkRuntime(t)
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     result = shell('VAR="test value" && echo $VAR')
     if result.stdout != 'test value':
@@ -49,8 +51,8 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("handles command with options prefix", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
-		withMainStar(t, `
+		run := sindrtest.SetupStarlarkRuntime(t)
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     result = shell('echo "prefixed output"', prefix='TEST')
     if result.stdout != 'prefixed output':
@@ -63,8 +65,8 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("trims whitespace from output", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
-		withMainStar(t, `
+		run := sindrtest.SetupStarlarkRuntime(t)
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     result = shell('echo "  content with spaces  "')
     if result.stdout != 'content with spaces':
@@ -82,8 +84,8 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("handles empty command output", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
-		withMainStar(t, `
+		run := sindrtest.SetupStarlarkRuntime(t)
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     result = shell('true')  # command that produces no output
     if result.stdout != '':
@@ -96,8 +98,8 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("works with complex commands", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
-		withMainStar(t, `
+		run := sindrtest.SetupStarlarkRuntime(t)
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     # Create a test file and read it back
     shell('echo "test content" > test.txt')
@@ -115,8 +117,8 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("captures stderr output", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
-		withMainStar(t, `
+		run := sindrtest.SetupStarlarkRuntime(t)
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     result = shell('echo "error message" >&2')
     if result.stderr != 'error message':
@@ -131,8 +133,8 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("handles successful command exit code", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
-		withMainStar(t, `
+		run := sindrtest.SetupStarlarkRuntime(t)
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     result = shell('exit 0')
     if result.exit_code != 0:
@@ -147,8 +149,8 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("handles failed command exit code", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
-		withMainStar(t, `
+		run := sindrtest.SetupStarlarkRuntime(t)
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     result = shell('exit 1')
     if result.exit_code != 1:
@@ -163,8 +165,8 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("handles command with both stdout and stderr", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
-		withMainStar(t, `
+		run := sindrtest.SetupStarlarkRuntime(t)
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     result = shell('echo "stdout message" && echo "stderr message" >&2')
     if result.stdout != 'stdout message':
@@ -181,8 +183,8 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("result truthiness matches success status", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
-		withMainStar(t, `
+		run := sindrtest.SetupStarlarkRuntime(t)
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     success_result = shell('exit 0')
     if not success_result:
@@ -199,8 +201,8 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("string representation returns stdout", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
-		withMainStar(t, `
+		run := sindrtest.SetupStarlarkRuntime(t)
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     result = shell('echo "test output"')
     str_result = str(result)
@@ -214,8 +216,8 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("no_output parameter prevents capturing output", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
-		withMainStar(t, `
+		run := sindrtest.SetupStarlarkRuntime(t)
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     result = shell('echo "should not be captured" && echo "error output" >&2', no_output=True)
     print('DEBUG: stdout=' + repr(result.stdout))
@@ -237,8 +239,8 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("stdout and stderr capture regression test", func(t *testing.T) {
-		run := setupStarlarkRuntime(t)
-		withMainStar(t, `
+		run := sindrtest.SetupStarlarkRuntime(t)
+		sindrtest.WithMainStar(t, `
 def test_action(ctx):
     # Test stdout capture
     stdout_result = shell('echo "stdout test"')

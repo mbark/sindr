@@ -13,7 +13,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 	"go.starlark.net/starlark"
 
-	"github.com/mbark/shmake/internal/logger"
+	"github.com/mbark/sindr/internal/logger"
 )
 
 var (
@@ -34,7 +34,7 @@ var (
 			Faint(true)
 )
 
-func ShmakeShell(
+func SindrShell(
 	thread *starlark.Thread,
 	fn *starlark.Builtin,
 	args starlark.Tuple,

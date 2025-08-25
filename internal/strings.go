@@ -9,7 +9,7 @@ import (
 	"go.starlark.net/starlark"
 )
 
-func ShmakeString(
+func SindrString(
 	thread *starlark.Thread,
 	fn *starlark.Builtin,
 	args starlark.Tuple,

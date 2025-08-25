@@ -14,7 +14,7 @@ import (
 	"github.com/urfave/cli/v3"
 	"go.starlark.net/starlark"
 
-	"github.com/mbark/shmake/internal/logger"
+	"github.com/mbark/sindr/internal/logger"
 )
 
 type CLI struct {
@@ -36,7 +36,7 @@ var (
 	WaitGroup sync.WaitGroup
 )
 
-func ShmakeCLI(
+func SindrCLI(
 	thread *starlark.Thread,
 	fn *starlark.Builtin,
 	args starlark.Tuple,
@@ -54,7 +54,7 @@ func ShmakeCLI(
 	return starlark.None, nil
 }
 
-func ShmakeCommand(
+func SindrCommand(
 	thread *starlark.Thread,
 	fn *starlark.Builtin,
 	args starlark.Tuple,
@@ -97,7 +97,7 @@ func ShmakeCommand(
 	return starlark.None, nil
 }
 
-func ShmakeSubCommand(
+func SindrSubCommand(
 	thread *starlark.Thread,
 	fn *starlark.Builtin,
 	args starlark.Tuple,

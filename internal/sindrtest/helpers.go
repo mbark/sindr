@@ -1,4 +1,4 @@
-package internal_test
+package sindrtest
 
 import (
 	"os"
@@ -8,16 +8,19 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/mbark/shmake"
+	"github.com/mbark/sindr"
 )
 
-func setupStarlarkRuntime(t *testing.T) func(...bool) {
+var fileName = "test.star"
+
+func SetupStarlarkRuntime(t *testing.T) func(noError ...bool) {
 	t.Helper()
 	dir := t.TempDir()
 	err := os.Chdir(dir)
 	require.NoError(t, err)
 
 	return func(noError ...bool) {
+		t.Helper()
 		var hasNoError bool
 		switch len(noError) {
 		case 0:
@@ -28,7 +31,11 @@ func setupStarlarkRuntime(t *testing.T) func(...bool) {
 			require.Fail(t, "setupStarlarkRuntime called with too many arguments")
 		}
 
-		err := shmake.Run(t.Context(), []string{t.Name(), "test"}, shmake.WithCacheDir(dir))
+		err := sindr.Run(t.Context(),
+			[]string{t.Name(), "test"},
+			sindr.WithCacheDir(dir),
+			sindr.WithFileName(fileName),
+		)
 		if hasNoError {
 			require.NoError(t, err)
 		} else {
@@ -37,15 +44,15 @@ func setupStarlarkRuntime(t *testing.T) func(...bool) {
 	}
 }
 
-func withMainStar(t *testing.T, contents string) {
+func WithMainStar(t *testing.T, contents string) {
 	t.Helper()
 	dir, err := os.Getwd()
 	require.NoError(t, err)
 
-	err = os.RemoveAll(filepath.Join(dir, "main.star"))
+	err = os.RemoveAll(filepath.Join(dir, fileName))
 	require.NoError(t, err)
 
-	f, err := os.Create(filepath.Join(dir, "main.star"))
+	f, err := os.Create(filepath.Join(dir, fileName))
 	require.NoError(t, err)
 
 	t.Cleanup(func() {

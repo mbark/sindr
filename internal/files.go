@@ -8,8 +8,8 @@ import (
 	"go.starlark.net/starlark"
 )
 
-// ShmakeNewestTS finds the newest modification time among files matching the given globs.
-func ShmakeNewestTS(
+// SindrNewestTS finds the newest modification time among files matching the given globs.
+func SindrNewestTS(
 	thread *starlark.Thread,
 	fn *starlark.Builtin,
 	args starlark.Tuple,
@@ -18,8 +18,8 @@ func ShmakeNewestTS(
 	return findExtremeTimestamp(args, "newest_ts()", true)
 }
 
-// ShmakeOldestTS finds the oldest modification time among files matching the given globs.
-func ShmakeOldestTS(
+// SindrOldestTS finds the oldest modification time among files matching the given globs.
+func SindrOldestTS(
 	thread *starlark.Thread,
 	fn *starlark.Builtin,
 	args starlark.Tuple,
@@ -79,8 +79,8 @@ func findExtremeTimestamp(
 	return starlark.MakeInt64(result), nil
 }
 
-// ShmakeGlob returns a list of file paths that match the given glob pattern(s).
-func ShmakeGlob(
+// SindrGlob returns a list of file paths that match the given glob pattern(s).
+func SindrGlob(
 	thread *starlark.Thread,
 	fn *starlark.Builtin,
 	args starlark.Tuple,

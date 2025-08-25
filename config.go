@@ -1,4 +1,4 @@
-package shmake
+package sindr
 
 import (
 	"errors"
@@ -11,7 +11,7 @@ import (
 func cacheHome() string {
 	home := os.Getenv("HOME")
 	cacheDir := xdgPath("CACHE_HOME", path.Join(home, ".cache"))
-	return path.Join(cacheDir, "shmake")
+	return path.Join(cacheDir, "sindr")
 }
 
 func xdgPath(name, defaultPath string) string {
@@ -24,26 +24,23 @@ func xdgPath(name, defaultPath string) string {
 }
 
 func findPathUpdwards(search string) (string, error) {
-	dir := "."
-
-	for {
-		// If we hit the root, we're done
-		if rel, _ := filepath.Rel("/", search); rel == "." {
-			break
-		}
-
-		_, err := os.Stat(filepath.Join(dir, search))
-		if err != nil {
-			if os.IsNotExist(err) {
-				dir += "/.."
-				continue
-			}
-
-			return "", err
-		}
-
-		return filepath.Abs(dir)
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", err
 	}
 
-	return "", errors.New("path not found")
+	for {
+		candidate := filepath.Join(dir, search)
+		if _, err := os.Stat(candidate); err == nil {
+			return dir, nil
+		}
+
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+
+	return "", errors.New("file not found: " + search)
 }

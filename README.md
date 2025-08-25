@@ -33,7 +33,7 @@ the `.star` file.
   to [shebang recipes](https://github.com/casey/just?tab=readme-ov-file#shebang-recipes)
 - [x] Add a way to automatically source dotenv files
   like [just](https://github.com/casey/just?tab=readme-ov-file#dotenv-settings)
-- [ ] Move all the commands in the `shmake` "namespace" to be global functions
+- [x] Move all the commands in the `shmake` "namespace" to be global functions
 - [ ] Rename everything `shmake` to `ba`
 - [ ] Tag a version 0.0.2 to build a binary to test `goreleaser` stuff.
 - [ ] Update the `README` with more context, comparisons to `just`, `mise`, `Makefile` etc.

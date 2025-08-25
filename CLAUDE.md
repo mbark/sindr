@@ -78,22 +78,22 @@ The linter configuration ensures code quality and security best practices are fo
 
 ### Command System
 
-- Commands defined in Starlark using `shmake.command()` function calls
-- Supports nested subcommands via `shmake.sub_command()` with path arrays
+- Commands defined in Starlark using `command()` function calls
+- Supports nested subcommands via `sub_command()` with path arrays
 - Flags, arguments, and actions are defined as function parameters
 
 ### Available Functions
 
-- `shmake.cli()`: Configure the CLI tool name and usage
-- `shmake.command()`: Define top-level commands with name, help, action, args, and flags
-- `shmake.sub_command()`: Define nested subcommands with path arrays
-- `shmake.shell()`: Execute shell commands with optional prefixes and return a structured result containing stdout, stderr, exit code, and success status
-- `shmake.exec()`: Execute commands with a specific binary/interpreter by writing the command to a temporary file
-- `shmake.dotenv()`: Load environment variables from .env files with optional overloading
-- `shmake.start()`: Run functions concurrently
-- `shmake.wait()`: Wait for async operations to complete
-- `shmake.pool()`: Manage groups of concurrent operations
-- `shmake.string()`: Render string templates with Go template syntax
+- `cli()`: Configure the CLI tool name and usage
+- `command()`: Define top-level commands with name, help, action, args, and flags
+- `sub_command()`: Define nested subcommands with path arrays
+- `shell()`: Execute shell commands with optional prefixes and return a structured result containing stdout, stderr, exit code, and success status
+- `exec()`: Execute commands with a specific binary/interpreter by writing the command to a temporary file
+- `dotenv()`: Load environment variables from .env files with optional overloading
+- `start()`: Run functions concurrently
+- `wait()`: Wait for async operations to complete
+- `pool()`: Manage groups of concurrent operations
+- `string()`: Render string templates with Go template syntax
 - `cache()`: Create a cache instance for version management and caching operations
 
 ### Cache Functions
@@ -115,11 +115,11 @@ c = cache(cache_dir="/custom/path")  # Uses custom cache directory
 
 - String templates support Go template syntax with `{{.variable}}`
 - Global Starlark variables are automatically available in templates
-- `shmake.string()` function renders templates with optional additional context
+- `string()` function renders templates with optional additional context
 
 ### Shell Command Results
 
-The `shmake.shell()` function returns a structured result object with the following attributes:
+The `shell()` function returns a structured result object with the following attributes:
 
 - `result.stdout`: String containing the command's standard output (trimmed of surrounding whitespace)
 - `result.stderr`: String containing the command's standard error output (trimmed of surrounding whitespace)
@@ -130,18 +130,18 @@ The result object can be used directly as a string (returns stdout) or in boolea
 
 ```python
 # Access specific outputs
-result = shmake.shell('echo "hello" && echo "error" >&2')
+result = shell('echo "hello" && echo "error" >&2')
 print("Output:", result.stdout)  # "hello"
 print("Error:", result.stderr)   # "error"
 print("Success:", result.success) # True
 print("Exit code:", result.exit_code) # 0
 
 # Use as string (returns stdout)
-output = shmake.shell('echo "hello world"')
+output = shell('echo "hello world"')
 print(str(output))  # "hello world"
 
 # Use in boolean context (returns success)
-if shmake.shell('test -f myfile.txt'):
+if shell('test -f myfile.txt'):
     print("File exists")
 else:
     print("File does not exist")
@@ -149,10 +149,10 @@ else:
 
 ### Exec Function
 
-The `shmake.exec()` function allows executing commands with a specific binary or interpreter. It writes the command content to a temporary file and executes it with the specified binary. The function signature is:
+The `exec()` function allows executing commands with a specific binary or interpreter. It writes the command content to a temporary file and executes it with the specified binary. The function signature is:
 
 ```python
-shmake.exec(bin, command, args=None, no_output=False, prefix="")
+exec(bin, command, args=None, no_output=False, prefix="")
 ```
 
 **Parameters:**
@@ -162,11 +162,11 @@ shmake.exec(bin, command, args=None, no_output=False, prefix="")
 - `no_output` (optional): If True, suppress stdout/stderr capture
 - `prefix` (optional): Logging prefix for the command
 
-The function returns the same structured result object as `shmake.shell()` with stdout, stderr, exit_code, and success attributes.
+The function returns the same structured result object as `shell()` with stdout, stderr, exit_code, and success attributes.
 
 ```python
 # Execute Python code
-result = shmake.exec(bin='python3', command='print("Hello from Python")')
+result = exec(bin='python3', command='print("Hello from Python")')
 print(result.stdout)  # "Hello from Python"
 
 # Execute shell script
@@ -176,10 +176,10 @@ for file in *.txt; do
     echo "Found: $file"
 done
 '''
-result = shmake.exec(bin='sh', command=shell_script)
+result = exec(bin='sh', command=shell_script)
 
 # Execute with different interpreters
-awk_result = shmake.exec(bin='awk', command='BEGIN { print "Hello from AWK" }')
+awk_result = exec(bin='awk', command='BEGIN { print "Hello from AWK" }')
 
 # Handle multiline Python scripts
 python_code = '''
@@ -193,18 +193,18 @@ def main():
 if __name__ == "__main__":
     main()
 '''
-result = shmake.exec(bin='python3', command=python_code)
+result = exec(bin='python3', command=python_code)
 
 # Use with prefix and no_output
-shmake.exec(bin='sh', command='echo "Building..."', prefix='BUILD', no_output=True)
+exec(bin='sh', command='echo "Building..."', prefix='BUILD', no_output=True)
 ```
 
 ### Dotenv Function
 
-The `shmake.dotenv()` function loads environment variables from .env files into the current process. It uses the `godotenv` library to parse files and can handle multiple files and overloading behavior. The function signature is:
+The `dotenv()` function loads environment variables from .env files into the current process. It uses the `godotenv` library to parse files and can handle multiple files and overloading behavior. The function signature is:
 
 ```python
-shmake.dotenv(files=None, overload=False)
+dotenv(files=None, overload=False)
 ```
 
 **Parameters:**
@@ -223,25 +223,25 @@ shmake.dotenv(files=None, overload=False)
 
 ```python
 # Load default .env file
-shmake.dotenv()
+dotenv()
 
 # Load specific files
-shmake.dotenv(['.env.local', '.env.production'])
+dotenv(['.env.local', '.env.production'])
 
 # Load with overloading (override existing variables)
-shmake.dotenv(overload=True)
+dotenv(overload=True)
 
 # Load multiple files with overloading
-shmake.dotenv(['.env', '.env.local'], overload=True)
+dotenv(['.env', '.env.local'], overload=True)
 
 # Example usage in a command
 def deploy(ctx):
     # Load environment configuration
-    shmake.dotenv(['.env', '.env.production'])
+    dotenv(['.env', '.env.production'])
     
     # Use environment variables in shell commands
-    result = shmake.shell('echo "Deploying to $DEPLOY_ENV"')
-    shmake.shell('docker build -t $IMAGE_NAME:$VERSION .')
+    result = shell('echo "Deploying to $DEPLOY_ENV"')
+    shell('docker build -t $IMAGE_NAME:$VERSION .')
 ```
 
 **Supported .env File Format:**
@@ -264,7 +264,7 @@ CONFIG_JSON={"key":"value","nested":{"setting":"enabled"}}
 
 ## Project Structure
 
-- `cmd/main.go`: Entry point that calls `shmake.Run()`
+- `cmd/main.go`: Entry point that calls `Run()`
 - `internal/run.go`: Main runtime and Starlark integration
 - `internal/command.go`: CLI command building and Starlark integration
 - `internal/shell.go`: Shell execution with async support
@@ -286,7 +286,7 @@ CONFIG_JSON={"key":"value","nested":{"setting":"enabled"}}
 
 ```python
 # Define CLI metadata
-shmake.cli(
+cli(
     name = "shmake",
     usage = "A sample CLI tool"
 )
@@ -294,9 +294,9 @@ shmake.cli(
 # Define a command with arguments and flags
 def build(ctx):
     print("building", ctx.args.target, "with flag", ctx.flags.some_flag)
-    shmake.shell('echo "Building..."')
+    shell('echo "Building..."')
 
-shmake.command(
+command(
     name = "build",
     help = "Build the project", 
     action = build,
@@ -310,7 +310,7 @@ shmake.command(
 )
 
 # Define subcommands using path arrays
-shmake.sub_command(
+sub_command(
     path = ["deploy", "staging"],
     action = lambda ctx: print("Deploying to staging")
 )
@@ -319,7 +319,7 @@ shmake.sub_command(
 def deploy(ctx):
     c = cache()
     def build_task():
-        shmake.shell('go build .')
+        shell('go build .')
         print('Built successfully')
     
     # Only rebuild if version changed
@@ -346,11 +346,11 @@ with open("config.json", "w") as f:
 
 print("Configuration file created")
 '''
-    result = shmake.exec(bin='python3', command=python_setup)
+    result = exec(bin='python3', command=python_setup)
     if result.success:
         print("Setup completed successfully")
 
-shmake.command(
+command(
     name = "setup", 
     help = "Set up project configuration",
     action = setup
@@ -359,16 +359,16 @@ shmake.command(
 # Use dotenv for environment variable management
 def deploy(ctx):
     # Load environment configuration
-    shmake.dotenv(['.env', '.env.production'])
+    dotenv(['.env', '.env.production'])
     
     # Use loaded environment variables
-    result = shmake.shell('echo "Deploying $PROJECT_NAME to $DEPLOY_ENV"')
+    result = shell('echo "Deploying $PROJECT_NAME to $DEPLOY_ENV"')
     if result.success:
-        shmake.shell('docker build -t $IMAGE_NAME:$VERSION .')
-        shmake.shell('docker push $IMAGE_NAME:$VERSION')
+        shell('docker build -t $IMAGE_NAME:$VERSION .')
+        shell('docker push $IMAGE_NAME:$VERSION')
         print("Deployment completed successfully")
 
-shmake.command(
+command(
     name = "deploy",
     help = "Deploy application with environment configuration", 
     action = deploy
@@ -400,12 +400,12 @@ All tests must follow this consistent pattern:
            run := setupStarlarkRuntime(t)
            withMainStar(t, `
    def test_action(ctx):
-       result = shmake.function_name('args')
+       result = function_name('args')
        if result != 'expected':
            fail('expected "expected", got: ' + str(result))
    
-   shmake.cli(name="TestName")
-   shmake.command(name="test", action=test_action)
+   cli(name="TestName")
+   command(name="test", action=test_action)
    `)
            run()
        })
@@ -422,8 +422,8 @@ All tests must follow this consistent pattern:
 
 4. **Starlark test patterns**:
    - Define test functions that use `shmake` module functions
-   - Create CLI with `shmake.cli(name="TestName")`
-   - Add test command with `shmake.command(name="test", action=test_function)`
+   - Create CLI with `cli(name="TestName")`
+   - Add test command with `command(name="test", action=test_function)`
    - Use Starlark `fail()` for test failures with descriptive messages
    - Access context via `ctx` parameter for args and flags
 

@@ -29,13 +29,13 @@ func TestFileTimestamps(t *testing.T) {
 
 		withMainStar(t, `
 def test_action(ctx):
-    result = shmake.newest_ts('test*.txt')
+    result = newest_ts('test*.txt')
     expected = `+strconv.FormatInt(expectedNewest, 10)+`
     if result != expected:
         fail('expected ' + str(expected) + ', got: ' + str(result))
 
-shmake.cli(name="TestNewestTS")
-shmake.command(name="test", action=test_action)
+cli(name="TestNewestTS")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -57,13 +57,13 @@ shmake.command(name="test", action=test_action)
 
 		withMainStar(t, `
 def test_action(ctx):
-    result = shmake.oldest_ts('old*.txt')
+    result = oldest_ts('old*.txt')
     expected = `+strconv.FormatInt(expectedOldest, 10)+`
     if result != expected:
         fail('expected ' + str(expected) + ', got: ' + str(result))
 
-shmake.cli(name="TestOldestTS")
-shmake.command(name="test", action=test_action)
+cli(name="TestOldestTS")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -89,13 +89,13 @@ shmake.command(name="test", action=test_action)
 
 		withMainStar(t, `
 def test_action(ctx):
-    result = shmake.newest_ts(['dir1/*.txt', 'dir2/*.log'])
+    result = newest_ts(['dir1/*.txt', 'dir2/*.log'])
     expected = `+strconv.FormatInt(expectedNewest, 10)+`
     if result != expected:
         fail('expected ' + str(expected) + ', got: ' + str(result))
 
-shmake.cli(name="TestNewestTSList")
-shmake.command(name="test", action=test_action)
+cli(name="TestNewestTSList")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -120,13 +120,13 @@ shmake.command(name="test", action=test_action)
 
 		withMainStar(t, `
 def test_action(ctx):
-    result = shmake.oldest_ts(['src/*.go', 'docs/*.md'])
+    result = oldest_ts(['src/*.go', 'docs/*.md'])
     expected = `+strconv.FormatInt(expectedOldest, 10)+`
     if result != expected:
         fail('expected ' + str(expected) + ', got: ' + str(result))
 
-shmake.cli(name="TestOldestTSList")
-shmake.command(name="test", action=test_action)
+cli(name="TestOldestTSList")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -137,14 +137,14 @@ shmake.command(name="test", action=test_action)
 		withMainStar(t, `
 def test_action(ctx):
     try:
-        result = shmake.newest_ts('nonexistent*.xyz')
+        result = newest_ts('nonexistent*.xyz')
         fail('expected error for non-matching glob')
     except Exception as e:
         if 'no files found' not in str(e):
             fail('expected "no files found" error, got: ' + str(e))
 
-shmake.cli(name="TestNoFilesError")
-shmake.command(name="test", action=test_action)
+cli(name="TestNoFilesError")
+command(name="test", action=test_action)
 `)
 		run(false)
 	})
@@ -163,13 +163,13 @@ shmake.command(name="test", action=test_action)
 
 		withMainStar(t, `
 def test_action(ctx):
-    result = shmake.newest_ts('test*')
+    result = newest_ts('test*')
     expected = `+strconv.FormatInt(expectedTS, 10)+`
     if result != expected:
         fail('expected ' + str(expected) + ', got: ' + str(result))
 
-shmake.cli(name="TestSkipsDirectories")
-shmake.command(name="test", action=test_action)
+cli(name="TestSkipsDirectories")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -186,7 +186,7 @@ func TestGlob(t *testing.T) {
 
 		withMainStar(t, `
 def test_action(ctx):
-    result = shmake.glob('glob*.txt')
+    result = glob('glob*.txt')
     if len(result) != 2:
         fail('expected 2 files, got: ' + str(len(result)))
     
@@ -196,8 +196,8 @@ def test_action(ctx):
     if files != expected:
         fail('expected ' + str(expected) + ', got: ' + str(files))
 
-shmake.cli(name="TestGlob")
-shmake.command(name="test", action=test_action)
+cli(name="TestGlob")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -228,7 +228,7 @@ shmake.command(name="test", action=test_action)
 
 		withMainStar(t, `
 def test_action(ctx):
-    result = shmake.glob(['src/*.go', 'test/*.py'])
+    result = glob(['src/*.go', 'test/*.py'])
     if len(result) != 4:
         fail('expected 4 files, got: ' + str(len(result)))
     
@@ -238,8 +238,8 @@ def test_action(ctx):
     if files != expected:
         fail('expected ' + str(expected) + ', got: ' + str(files))
 
-shmake.cli(name="TestGlobList")
-shmake.command(name="test", action=test_action)
+cli(name="TestGlobList")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -249,12 +249,12 @@ shmake.command(name="test", action=test_action)
 
 		withMainStar(t, `
 def test_action(ctx):
-    result = shmake.glob('nonexistent*.xyz')
+    result = glob('nonexistent*.xyz')
     if len(result) != 0:
         fail('expected empty list, got: ' + str(len(result)) + ' files')
 
-shmake.cli(name="TestGlobEmpty")
-shmake.command(name="test", action=test_action)
+cli(name="TestGlobEmpty")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -268,15 +268,15 @@ shmake.command(name="test", action=test_action)
 
 		withMainStar(t, `
 def test_action(ctx):
-    result = shmake.glob('skip*')
+    result = glob('skip*')
     if len(result) != 1:
         fail('expected 1 file, got: ' + str(len(result)))
     
     if str(result[0]) != 'skipfile.txt':
         fail('expected skipfile.txt, got: ' + str(result[0]))
 
-shmake.cli(name="TestGlobSkipsDirectories")
-shmake.command(name="test", action=test_action)
+cli(name="TestGlobSkipsDirectories")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -291,7 +291,7 @@ shmake.command(name="test", action=test_action)
 		withMainStar(t, `
 def test_action(ctx):
     # Use overlapping patterns that would match the same files
-    result = shmake.glob(['dup*.txt', 'dup1.txt', '*.txt'])
+    result = glob(['dup*.txt', 'dup1.txt', '*.txt'])
     
     # Convert to sorted list for consistent comparison
     files = sorted([str(f) for f in result])
@@ -305,8 +305,8 @@ def test_action(ctx):
     if len(files) != len(unique_files):
         fail('found duplicates in result: ' + str(files))
 
-shmake.cli(name="TestGlobDuplicates")
-shmake.command(name="test", action=test_action)
+cli(name="TestGlobDuplicates")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -317,14 +317,14 @@ shmake.command(name="test", action=test_action)
 		withMainStar(t, `
 def test_action(ctx):
     try:
-        result = shmake.glob(123)
+        result = glob(123)
         fail('expected error for invalid argument type')
     except Exception as e:
         if 'must be a string or list' not in str(e):
             fail('expected "must be a string or list" error, got: ' + str(e))
 
-shmake.cli(name="TestGlobInvalidArg")
-shmake.command(name="test", action=test_action)
+cli(name="TestGlobInvalidArg")
+command(name="test", action=test_action)
 `)
 		run(false)
 	})

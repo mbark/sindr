@@ -9,12 +9,12 @@ func TestTemplateString(t *testing.T) {
 		run := setupStarlarkRuntime(t)
 		withMainStar(t, `
 def test_action(ctx):
-    result = shmake.string('Hello {{.name}}!', name='World')
+    result = string('Hello {{.name}}!', name='World')
     if result != 'Hello World!':
         fail('expected "Hello World!", got: ' + str(result))
 
-shmake.cli(name="TestTemplateString", usage="Test string templating")
-shmake.command(name="test", action=test_action)
+cli(name="TestTemplateString", usage="Test string templating")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -27,12 +27,12 @@ num_var = 42
 bool_var = True
 
 def test_action(ctx):
-    result = shmake.string('{{.str_var}} {{.num_var}} {{.bool_var}}')
+    result = string('{{.str_var}} {{.num_var}} {{.bool_var}}')
     if result != 'text 42 true':
         fail('expected "text 42 true", got: ' + str(result))
 
-shmake.cli(name="TestTemplateString", usage="Test string templating")
-shmake.command(name="test", action=test_action)
+cli(name="TestTemplateString", usage="Test string templating")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -44,12 +44,12 @@ greeting = "Hello"
 target = "World"
 
 def test_action(ctx):
-    result = shmake.string('{{.greeting}} {{.target}}!')
+    result = string('{{.greeting}} {{.target}}!')
     if result != 'Hello World!':
         fail('expected "Hello World!", got: ' + str(result))
 
-shmake.cli(name="TestTemplateString", usage="Test string templating")
-shmake.command(name="test", action=test_action)
+cli(name="TestTemplateString", usage="Test string templating")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -60,12 +60,12 @@ shmake.command(name="test", action=test_action)
 debug = True
 
 def test_action(ctx):
-    result = shmake.string('{{if .debug}}DEBUG: {{end}}message', message='test')
+    result = string('{{if .debug}}DEBUG: {{end}}message', message='test')
     if result != 'DEBUG: message':
         fail('expected "DEBUG: message", got: ' + str(result))
 
-shmake.cli(name="TestTemplateString", usage="Test string templating")
-shmake.command(name="test", action=test_action)
+cli(name="TestTemplateString", usage="Test string templating")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -75,12 +75,12 @@ shmake.command(name="test", action=test_action)
 		withMainStar(t, `
 def test_action(ctx):
     items = ['apple', 'banana', 'cherry']
-    result = shmake.string('{{range .items}}{{.}} {{end}}', items=items)
+    result = string('{{range .items}}{{.}} {{end}}', items=items)
     if result != 'apple banana cherry ':
         fail('expected "apple banana cherry ", got: ' + str(result))
 
-shmake.cli(name="TestTemplateString", usage="Test string templating")
-shmake.command(name="test", action=test_action)
+cli(name="TestTemplateString", usage="Test string templating")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -105,7 +105,7 @@ Port: {{.config.port}}
 Features:{{range .config.features}} {{.}}{{end}}
 """
     
-    result = shmake.string(template, config=config)
+    result = string(template, config=config)
     expected = """
 myapp v1.0.0
 Environment: production
@@ -116,8 +116,8 @@ Features: auth logging metrics
     if result != expected:
         fail('template did not render correctly')
 
-shmake.cli(name="TestTemplateString", usage="Test string templating")
-shmake.command(name="test", action=test_action)
+cli(name="TestTemplateString", usage="Test string templating")
+command(name="test", action=test_action)
 `)
 		run()
 	})

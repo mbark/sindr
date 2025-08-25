@@ -11,8 +11,8 @@ func TestShmakeCLI(t *testing.T) {
 def test_action(ctx):
     print("CLI configured")
 
-shmake.cli(name="test-cli", usage="A test CLI")
-shmake.command(name="test", action=test_action)
+cli(name="test-cli", usage="A test CLI")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -23,8 +23,8 @@ shmake.command(name="test", action=test_action)
 def test_action(ctx):
     print("CLI with name only")
 
-shmake.cli(name="minimal-cli")
-shmake.command(name="test", action=test_action)
+cli(name="minimal-cli")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -37,13 +37,13 @@ func TestShmakeCommand(t *testing.T) {
 def build_action(ctx):
     print("Building project")
 
-shmake.cli(name="TestShmakeCommand")
-shmake.command(
+cli(name="TestShmakeCommand")
+command(
     name="build",
     help="Build the project",
     action=build_action
 )
-shmake.command(name="test", action=lambda ctx: print("test executed"))
+command(name="test", action=lambda ctx: print("test executed"))
 `)
 		run()
 	})
@@ -56,14 +56,14 @@ def deploy_action(ctx):
     environment = ctx.args.environment
     print("Deploying", target, "to", environment)
 
-shmake.cli(name="TestShmakeCommand")
-shmake.command(
+cli(name="TestShmakeCommand")
+command(
     name="deploy",
     help="Deploy the application",
     action=deploy_action,
     args=["target", "environment"]
 )
-shmake.command(name="test", action=lambda ctx: print("test executed"))
+command(name="test", action=lambda ctx: print("test executed"))
 `)
 		run()
 	})
@@ -77,8 +77,8 @@ def test_action(ctx):
     name = ctx.flags.name
     print("verbose:", verbose, "count:", count, "name:", name)
 
-shmake.cli(name="TestShmakeCommand")
-shmake.command(
+cli(name="TestShmakeCommand")
+command(
     name="run",
     help="Run with flags",
     action=test_action,
@@ -100,7 +100,7 @@ shmake.command(
         }
     }
 )
-shmake.command(name="test", action=lambda ctx: print("test executed"))
+command(name="test", action=lambda ctx: print("test executed"))
 `)
 		run()
 	})
@@ -118,8 +118,8 @@ def test_action(ctx):
         fail("Expected default strings ['default1', 'default2'], got: " + str(strings_list))
     print("strings flag test passed:", strings_list)
 
-shmake.cli(name="TestShmakeCommand")
-shmake.command(
+cli(name="TestShmakeCommand")
+command(
     name="strings-test",
     help="Test strings flag type",
     action=test_action,
@@ -131,7 +131,7 @@ shmake.command(
         }
     }
 )
-shmake.command(name="test", action=lambda ctx: print("test executed"))
+command(name="test", action=lambda ctx: print("test executed"))
 `)
 		run()
 	})
@@ -149,8 +149,8 @@ def test_action(ctx):
         fail("Expected default ints [10, 20, 30], got: " + str(ints_list))
     print("ints flag test passed:", ints_list)
 
-shmake.cli(name="TestShmakeCommand")
-shmake.command(
+cli(name="TestShmakeCommand")
+command(
     name="ints-test",
     help="Test ints flag type",
     action=test_action,
@@ -162,7 +162,7 @@ shmake.command(
         }
     }
 )
-shmake.command(name="test", action=lambda ctx: print("test executed"))
+command(name="test", action=lambda ctx: print("test executed"))
 `)
 		run()
 	})
@@ -173,14 +173,14 @@ shmake.command(name="test", action=lambda ctx: print("test executed"))
 def test_action(ctx):
     print("Running categorized command")
 
-shmake.cli(name="TestShmakeCommand")
-shmake.command(
+cli(name="TestShmakeCommand")
+command(
     name="lint",
     help="Run linting",
     action=test_action,
     category="development"
 )
-shmake.command(name="test", action=lambda ctx: print("test executed"))
+command(name="test", action=lambda ctx: print("test executed"))
 `)
 		run()
 	})
@@ -196,8 +196,8 @@ def test_action(ctx):
         fail("Expected dash-case and snake_case to return same value")
     print("dry-run flag:", value1)
 
-shmake.cli(name="TestShmakeCommand")
-shmake.command(
+cli(name="TestShmakeCommand")
+command(
     name="deploy",
     help="Deploy with dash-case flag",
     action=test_action,
@@ -208,7 +208,7 @@ shmake.command(
         }
     }
 )
-shmake.command(name="test", action=lambda ctx: print("test executed"))
+command(name="test", action=lambda ctx: print("test executed"))
 `)
 		run()
 	})
@@ -224,28 +224,28 @@ def deploy_staging_action(ctx):
 def deploy_production_action(ctx):
     print("Deploying to production")
 
-shmake.cli(name="TestShmakeSubCommand")
+cli(name="TestShmakeSubCommand")
 
 # Create parent deploy command first
-shmake.command(
+command(
     name="deploy",
     help="Deployment commands",
     action=lambda ctx: print("Use subcommands")
 )
 
-shmake.sub_command(
+sub_command(
     path=["deploy", "staging"],
     help="Deploy to staging",
     action=deploy_staging_action
 )
 
-shmake.sub_command(
+sub_command(
     path=["deploy", "production"], 
     help="Deploy to production",
     action=deploy_production_action
 )
 
-shmake.command(name="test", action=lambda ctx: print("test executed"))
+command(name="test", action=lambda ctx: print("test executed"))
 `)
 		run()
 	})
@@ -256,24 +256,24 @@ shmake.command(name="test", action=lambda ctx: print("test executed"))
 def action(ctx):
     print("Deep nested command executed")
 
-shmake.cli(name="TestShmakeSubCommand")
+cli(name="TestShmakeSubCommand")
 
 # Create parent commands
-shmake.command(name="cloud", help="Cloud commands", action=lambda ctx: print("Use subcommands"))
+command(name="cloud", help="Cloud commands", action=lambda ctx: print("Use subcommands"))
 
-shmake.sub_command(
+sub_command(
     path=["cloud", "aws"],
     help="AWS commands", 
     action=lambda ctx: print("Use AWS subcommands")
 )
 
-shmake.sub_command(
+sub_command(
     path=["cloud", "aws", "deploy"],
     help="Deploy to AWS",
     action=action
 )
 
-shmake.command(name="test", action=lambda ctx: print("test executed"))
+command(name="test", action=lambda ctx: print("test executed"))
 `)
 		run()
 	})
@@ -286,11 +286,11 @@ def deploy_action(ctx):
     force = ctx.flags.force
     print("Deploying service:", service, "force:", force)
 
-shmake.cli(name="TestShmakeSubCommand")
+cli(name="TestShmakeSubCommand")
 
-shmake.command(name="k8s", help="Kubernetes commands", action=lambda ctx: print("Use subcommands"))
+command(name="k8s", help="Kubernetes commands", action=lambda ctx: print("Use subcommands"))
 
-shmake.sub_command(
+sub_command(
     path=["k8s", "deploy"],
     help="Deploy to Kubernetes",
     action=deploy_action,
@@ -304,7 +304,7 @@ shmake.sub_command(
     }
 )
 
-shmake.command(name="test", action=lambda ctx: print("test executed"))
+command(name="test", action=lambda ctx: print("test executed"))
 `)
 		run()
 	})
@@ -330,8 +330,8 @@ def test_action(ctx):
         
     print("Flag access works correctly")
 
-shmake.cli(name="TestContextFlagAccess")
-shmake.command(
+cli(name="TestContextFlagAccess")
+command(
     name="check",
     action=test_action,
     flags={
@@ -339,7 +339,7 @@ shmake.command(
         "dry-run": {"default": False, "type": "bool"}
     }
 )
-shmake.command(name="test", action=lambda ctx: print("test executed"))
+command(name="test", action=lambda ctx: print("test executed"))
 `)
 		run()
 	})
@@ -352,13 +352,13 @@ def test_action(ctx):
     environment = ctx.args.environment
     print("target:", target, "environment:", environment)
 
-shmake.cli(name="TestContextFlagAccess")
-shmake.command(
+cli(name="TestContextFlagAccess")
+command(
     name="deploy",
     action=test_action,
     args=["target", "environment"]
 )
-shmake.command(name="test", action=lambda ctx: print("test executed"))
+command(name="test", action=lambda ctx: print("test executed"))
 `)
 		run()
 	})
@@ -372,12 +372,12 @@ def test_action(ctx):
     for i in range(len(args_list)):
         print("arg", i, ":", args_list[i])
 
-shmake.cli(name="TestContextFlagAccess")
-shmake.command(
+cli(name="TestContextFlagAccess")
+command(
     name="process",
     action=test_action
 )
-shmake.command(name="test", action=lambda ctx: print("test executed"))
+command(name="test", action=lambda ctx: print("test executed"))
 `)
 		run()
 	})
@@ -390,8 +390,8 @@ func TestInvalidConfigurations(t *testing.T) {
 def test_action(ctx):
     fail("Should not reach here")
 
-shmake.cli(name="TestInvalidConfigurations")
-shmake.command(
+cli(name="TestInvalidConfigurations")
+command(
     name="fail",
     action=test_action,
     flags={
@@ -401,7 +401,7 @@ shmake.command(
         }
     }
 )
-shmake.command(name="test", action=lambda ctx: print("test executed"))
+command(name="test", action=lambda ctx: print("test executed"))
 `)
 
 		run(false)
@@ -413,13 +413,13 @@ shmake.command(name="test", action=lambda ctx: print("test executed"))
 def test_action(ctx):
     fail("Should not reach here")
 
-shmake.cli(name="TestInvalidConfigurations")
-shmake.command(
+cli(name="TestInvalidConfigurations")
+command(
     name="fail",
     action=test_action,
     args=[123, "valid"]
 )
-shmake.command(name="test", action=lambda ctx: print("test executed"))
+command(name="test", action=lambda ctx: print("test executed"))
 `)
 
 		run(false)
@@ -431,13 +431,13 @@ shmake.command(name="test", action=lambda ctx: print("test executed"))
 def test_action(ctx):
     fail("Should not reach here")
 
-shmake.cli(name="TestInvalidConfigurations") 
+cli(name="TestInvalidConfigurations") 
 
-shmake.sub_command(
+sub_command(
     path=["nonexistent", "command"],
     action=test_action
 )
-shmake.command(name="test", action=lambda ctx: print("test executed"))
+command(name="test", action=lambda ctx: print("test executed"))
 `)
 
 		run(false)

@@ -3,10 +3,10 @@ project_name = "shmake-demo"
 version = "1.0.0"
 build_dir = "./build"
 
-shmake.load_package_json('package.json')
+load_package_json('package.json')
 
 # Configure CLI metadata
-shmake.cli(
+cli(
     name = "shmake",
     usage = "Comprehensive demo of shmake features and functions"
 )
@@ -15,22 +15,22 @@ shmake.cli(
 # BASIC SHELL COMMAND EXAMPLE
 # ============================================================================
 def demo_shell(ctx):
-    """Demonstrates shmake.shell() with different options"""
+    """Demonstrates shell() with different options"""
     print("=== Shell Command Demo ===")
     
     # Basic shell command
-    result = shmake.shell('echo "Hello from shmake!"')
+    result = shell('echo "Hello from shmake!"')
     print("Shell output:", result.stdout)
     print("Command success:", result.success)
     print("Exit code:", result.exit_code)
     
     # Shell command with prefix
-    shmake.shell('echo "This has a prefix"', prefix='[DEMO]')
+    shell('echo "This has a prefix"', prefix='[DEMO]')
     
     # Multiple commands
-    shmake.shell('echo "Command 1" && echo "Command 2"')
+    shell('echo "Command 1" && echo "Command 2"')
 
-shmake.command(
+command(
     name = "shell",
     help = "Demonstrate shell command execution",
     action = demo_shell
@@ -40,19 +40,19 @@ shmake.command(
 # ASYNC OPERATIONS EXAMPLE
 # ============================================================================
 def demo_async(ctx):
-    """Demonstrates async operations with shmake.start() and shmake.wait()"""
+    """Demonstrates async operations with start() and wait()"""
     print("=== Async Operations Demo ===")
     
     # Start multiple operations concurrently
-    shmake.start(lambda: shmake.shell('sleep 1 && echo "Task 1 completed"', prefix='[TASK1]'))
-    shmake.start(lambda: shmake.shell('sleep 2 && echo "Task 2 completed"', prefix='[TASK2]'))
-    shmake.start(lambda: shmake.shell('sleep 1.5 && echo "Task 3 completed"', prefix='[TASK3]'))
+    start(lambda: shell('sleep 1 && echo "Task 1 completed"', prefix='[TASK1]'))
+    start(lambda: shell('sleep 2 && echo "Task 2 completed"', prefix='[TASK2]'))
+    start(lambda: shell('sleep 1.5 && echo "Task 3 completed"', prefix='[TASK3]'))
     
     print("Started 3 async tasks, waiting for completion...")
-    shmake.wait()
+    wait()
     print("All async tasks completed!")
 
-shmake.command(
+command(
     name = "async",
     help = "Demonstrate async operations with start/wait",
     action = demo_async
@@ -65,18 +65,18 @@ def demo_pool(ctx):
     """Demonstrates pool-based concurrent operations"""
     print("=== Pool Operations Demo ===")
     
-    pool = shmake.pool()
+    pool = pool()
     
     # Add tasks to the pool
-    pool.run(lambda: shmake.shell('echo "Pool task 1" && sleep 1', prefix='[POOL1]'))
-    pool.run(lambda: shmake.shell('echo "Pool task 2" && sleep 1', prefix='[POOL2]'))
-    pool.run(lambda: shmake.shell('echo "Pool task 3" && sleep 1', prefix='[POOL3]'))
+    pool.run(lambda: shell('echo "Pool task 1" && sleep 1', prefix='[POOL1]'))
+    pool.run(lambda: shell('echo "Pool task 2" && sleep 1', prefix='[POOL2]'))
+    pool.run(lambda: shell('echo "Pool task 3" && sleep 1', prefix='[POOL3]'))
     
     print("Pool tasks started, waiting...")
     pool.wait()
     print("Pool tasks completed!")
 
-shmake.command(
+command(
     name = "pool",
     help = "Demonstrate pool-based concurrent operations",
     action = demo_pool
@@ -90,7 +90,7 @@ def demo_templates(ctx):
     print("=== String Templating Demo ===")
     
     # Using global variables in template
-    template1 = shmake.string('''
+    template1 = string('''
 Project: {{.project_name}}
 Version: {{.version}}
 Build Directory: {{.build_dir}}
@@ -99,7 +99,7 @@ Build Directory: {{.build_dir}}
     print(template1)
     
     # Using local variables in template
-    template2 = shmake.string('''
+    template2 = string('''
 Environment: {{.env}}
 Database: {{.db_host}}:{{.db_port}}
 Debug Mode: {{.debug}}
@@ -109,7 +109,7 @@ Debug Mode: {{.debug}}
     print(template2)
     
     # Complex template with conditionals and loops
-    template3 = shmake.string('''
+    template3 = string('''
 {{if .enable_feature}}Feature is enabled!{{else}}Feature is disabled{{end}}
 Services: {{range .services}}
   - {{.}}{{end}}
@@ -118,7 +118,7 @@ Services: {{range .services}}
     print("Complex template:")
     print(template3)
 
-shmake.command(
+command(
     name = "templates",
     help = "Demonstrate string templating features",
     action = demo_templates
@@ -142,7 +142,7 @@ def demo_versioning(ctx):
     # Use with_version for expensive operations
     def expensive_operation():
         print("Running expensive build operation...")
-        shmake.shell('sleep 2 && echo "Build completed!"')
+        shell('sleep 2 && echo "Build completed!"')
         return "build-artifacts.tar.gz"
     
     # This will run the function only if version differs
@@ -168,7 +168,7 @@ def demo_versioning(ctx):
     else:
         print("Build skipped")
 
-shmake.command(
+command(
     name = "versioning",
     help = "Demonstrate versioning and caching with cache instances",
     action = demo_versioning
@@ -206,7 +206,7 @@ def demo_diff(ctx):
     has_diff4 = c.diff(name="build_number", version=build_num)
     print("Build number differs:", has_diff4)
 
-shmake.command(
+command(
     name = "diff",
     help = "Demonstrate version comparison with cache.diff()",
     action = demo_diff
@@ -230,12 +230,12 @@ def comprehensive_build(ctx):
     
     # Create cache instance and set build version using shell command to get timestamp
     c = cache()
-    timestamp_result = shmake.shell('date +%s')
+    timestamp_result = shell('date +%s')
     build_version = "build-" + timestamp_result.stdout.strip()
     c.set_version(name="current_build", version=build_version)
     
     # Create build script using templates
-    build_script = shmake.string('''#!/bin/bash
+    build_script = string('''#!/bin/bash
 echo "Building {{.project_name}} v{{.version}}"
 echo "Target: {{.target}}"
 echo "Build ID: {{.build_id}}"
@@ -250,21 +250,21 @@ echo "Build completed at $(date)" > {{.build_dir}}/build.log
     # Execute build based on flags
     if parallel:
         print("Running parallel build...")
-        pool = shmake.pool()
-        pool.run(lambda: shmake.shell('echo "Compiling frontend..." && sleep 1', prefix='[FRONTEND]'))
-        pool.run(lambda: shmake.shell('echo "Compiling backend..." && sleep 2', prefix='[BACKEND]'))
-        pool.run(lambda: shmake.shell('echo "Running tests..." && sleep 1.5', prefix='[TESTS]'))
+        pool = pool()
+        pool.run(lambda: shell('echo "Compiling frontend..." && sleep 1', prefix='[FRONTEND]'))
+        pool.run(lambda: shell('echo "Compiling backend..." && sleep 2', prefix='[BACKEND]'))
+        pool.run(lambda: shell('echo "Running tests..." && sleep 1.5', prefix='[TESTS]'))
         pool.wait()
     else:
         print("Running sequential build...")
-        shmake.shell('echo "Compiling frontend..."', prefix='[BUILD]')
-        shmake.shell('echo "Compiling backend..."', prefix='[BUILD]')
-        shmake.shell('echo "Running tests..."', prefix='[BUILD]')
+        shell('echo "Compiling frontend..."', prefix='[BUILD]')
+        shell('echo "Compiling backend..."', prefix='[BUILD]')
+        shell('echo "Running tests..."', prefix='[BUILD]')
     
     # Final status
-    shmake.shell(shmake.string('echo "Build {{.build_id}} completed successfully!"', build_id=build_version))
+    shell(string('echo "Build {{.build_id}} completed successfully!"', build_id=build_version))
 
-shmake.command(
+command(
     name = "build",
     help = "Comprehensive build example with args and flags",
     action = comprehensive_build,
@@ -287,7 +287,7 @@ def string_slice_flag(ctx):
     print('strings:', ctx.flags.strings)
     print('ints:', ctx.flags.ints)
 
-shmake.command(
+command(
     name = 'slice_flag',
     action=string_slice_flag,
     flags = {
@@ -303,28 +303,28 @@ shmake.command(
 )
 
 def exec(ctx):
-    res = shmake.exec('python3', '''
+    res = exec('python3', '''
 print('Hello from python!')
 ''')
     print('output:', res.stdout)
 
-shmake.command(
+command(
     name='exec',
     action=exec,
 )
 
 def dotenv(ctx):
-    shmake.dotenv()
-    res = shmake.shell('echo $FOO')
+    dotenv()
+    res = shell('echo $FOO')
     print('FOO is', res.stdout)
-    res = shmake.shell('echo $EDITOR')
+    res = shell('echo $EDITOR')
     print('EDITOR is', res.stdout)
 
-    shmake.dotenv(overload=True)
-    res = shmake.shell('echo $EDITOR')
+    dotenv(overload=True)
+    res = shell('echo $EDITOR')
     print('EDITOR is', res.stdout)
 
-shmake.command(
+command(
     name='dotenv',
     action=dotenv,
 )
@@ -334,26 +334,26 @@ shmake.command(
 # ============================================================================
 def deploy_staging(ctx):
     print("Deploying to staging environment...")
-    shmake.shell('echo "Staging deployment started"', prefix='[STAGING]')
+    shell('echo "Staging deployment started"', prefix='[STAGING]')
 
 def deploy_production(ctx):
     print("Deploying to production environment...")
-    shmake.shell('echo "Production deployment started"', prefix='[PROD]')
+    shell('echo "Production deployment started"', prefix='[PROD]')
 
 # Parent deploy command
-shmake.command(
+command(
     name = "deploy",
     help = "Deploy to different environments"
 )
 
 # Sub-commands for deployment
-shmake.sub_command(
+sub_command(
     path = ["deploy", "staging"],
     help = "Deploy to staging environment",
     action = deploy_staging
 )
 
-shmake.sub_command(
+sub_command(
     path = ["deploy", "production"],
     help = "Deploy to production environment", 
     action = deploy_production
@@ -367,26 +367,26 @@ def demo_file_timestamps(ctx):
     print("=== File Timestamp Demo ===")
     
     # Create some test files for demonstration
-    shmake.shell('echo "File 1" > demo1.txt && sleep 1')
-    shmake.shell('echo "File 2" > demo2.txt && sleep 1') 
-    shmake.shell('echo "File 3" > demo3.txt')
+    shell('echo "File 1" > demo1.txt && sleep 1')
+    shell('echo "File 2" > demo2.txt && sleep 1')
+    shell('echo "File 3" > demo3.txt')
     
     # Example 1: Get newest timestamp from a single glob pattern
-    newest = shmake.newest_ts('demo*.txt')
+    newest = newest_ts('demo*.txt')
     print("Newest file timestamp:", newest)
     
     # Example 2: Get oldest timestamp from a single glob pattern  
-    oldest = shmake.oldest_ts('demo*.txt')
+    oldest = oldest_ts('demo*.txt')
     print("Oldest file timestamp:", oldest)
     
     # Create files in different directories for list example
-    shmake.shell('mkdir -p src logs')
-    shmake.shell('echo "Source code" > src/main.go && sleep 1')
-    shmake.shell('echo "Log entry" > logs/app.log')
+    shell('mkdir -p src logs')
+    shell('echo "Source code" > src/main.go && sleep 1')
+    shell('echo "Log entry" > logs/app.log')
     
     # Example 3: Use list of globs to check multiple patterns
-    newest_multi = shmake.newest_ts(['demo*.txt', 'src/*.go', 'logs/*.log'])
-    oldest_multi = shmake.oldest_ts(['demo*.txt', 'src/*.go', 'logs/*.log'])
+    newest_multi = newest_ts(['demo*.txt', 'src/*.go', 'logs/*.log'])
+    oldest_multi = oldest_ts(['demo*.txt', 'src/*.go', 'logs/*.log'])
     
     print("Newest across all patterns:", newest_multi)
     print("Oldest across all patterns:", oldest_multi)
@@ -396,10 +396,10 @@ def demo_file_timestamps(ctx):
     print("Time difference:", diff_seconds, "seconds")
     
     # Clean up demo files
-    shmake.shell('rm -f demo*.txt && rm -rf src logs')
+    shell('rm -f demo*.txt && rm -rf src logs')
     print("Demo files cleaned up")
 
-shmake.command(
+command(
     name = "timestamps",
     help = "Demonstrate file timestamp functions newest_ts and oldest_ts",
     action = demo_file_timestamps
@@ -410,23 +410,23 @@ def demo_build_cache(ctx):
     print("=== Build Cache with File Timestamps ===")
     
     # Create source files
-    shmake.shell('mkdir -p src')
-    shmake.shell('echo "package main" > src/main.go')
-    shmake.shell('echo "// helper functions" > src/utils.go')
+    shell('mkdir -p src')
+    shell('echo "package main" > src/main.go')
+    shell('echo "// helper functions" > src/utils.go')
     
     # Simulate build output
-    shmake.shell('mkdir -p bin')
-    shmake.shell('echo "fake binary" > bin/app')
+    shell('mkdir -p bin')
+    shell('echo "fake binary" > bin/app')
     
     # Get timestamps
-    source_newest = shmake.newest_ts('src/*.go')
+    source_newest = newest_ts('src/*.go')
     
     # Check if binary exists and get its timestamp
-    check_result = shmake.shell('test -f bin/app && echo "exists"')
+    check_result = shell('test -f bin/app && echo "exists"')
     binary_exists = check_result.stdout.strip() == "exists"
     
     if binary_exists:
-        binary_ts = shmake.oldest_ts('bin/app')
+        binary_ts = oldest_ts('bin/app')
     else:
         binary_ts = 0
     
@@ -438,16 +438,16 @@ def demo_build_cache(ctx):
     
     if needs_rebuild:
         print("Rebuild needed - sources are newer than binary")
-        shmake.shell('echo "Rebuilding..." && sleep 1 && echo "fake binary $(date)" > bin/app', prefix='[BUILD]')
+        shell('echo "Rebuilding..." && sleep 1 && echo "fake binary $(date)" > bin/app', prefix='[BUILD]')
         print("Build completed!")
     else:
         print("Build up-to-date - no rebuild necessary")
     
     # Clean up
-    shmake.shell('rm -rf src bin')
+    shell('rm -rf src bin')
     print("Demo files cleaned up")
 
-shmake.command(
+command(
     name = "build-cache",
     help = "Advanced example using timestamps for intelligent build caching",
     action = demo_build_cache
@@ -461,48 +461,48 @@ def demo_glob(ctx):
     print("=== Glob Function Demo ===")
     
     # Create some test files for demonstration
-    shmake.shell('mkdir -p src test docs')
-    shmake.shell('echo "package main" > src/main.go')
-    shmake.shell('echo "package utils" > src/utils.go')
-    shmake.shell('echo "import unittest" > test/test_main.py')
-    shmake.shell('echo "import pytest" > test/test_utils.py')
-    shmake.shell('echo "# README" > docs/README.md')
-    shmake.shell('echo "# API Guide" > docs/api.md')
-    shmake.shell('echo "config data" > config.json')
-    shmake.shell('echo "more config" > settings.yml')
+    shell('mkdir -p src test docs')
+    shell('echo "package main" > src/main.go')
+    shell('echo "package utils" > src/utils.go')
+    shell('echo "import unittest" > test/test_main.py')
+    shell('echo "import pytest" > test/test_utils.py')
+    shell('echo "# README" > docs/README.md')
+    shell('echo "# API Guide" > docs/api.md')
+    shell('echo "config data" > config.json')
+    shell('echo "more config" > settings.yml')
     
     # Example 1: Single glob pattern
     print("\n1. Finding all Go files:")
-    go_files = shmake.glob('src/*.go')
+    go_files = glob('src/*.go')
     for file in go_files:
         print("  -", file)
     
     # Example 2: Multiple patterns using a list
     print("\n2. Finding Python and Markdown files:")
-    script_files = shmake.glob(['test/*.py', 'docs/*.md'])
+    script_files = glob(['test/*.py', 'docs/*.md'])
     for file in script_files:
         print("  -", file)
     
     # Example 3: Complex patterns with multiple extensions
     print("\n3. Finding all configuration files:")
-    config_files = shmake.glob(['*.json', '*.yml', '*.yaml'])
+    config_files = glob(['*.json', '*.yml', '*.yaml'])
     for file in config_files:
         print("  -", file)
     
     # Example 4: Using glob results in other operations
     print("\n4. Processing Go files individually:")
-    for go_file in shmake.glob('src/*.go'):
+    for go_file in glob('src/*.go'):
         # Get file size instead of line count for simpler demo
-        size_result = shmake.shell('stat -c %s ' + go_file + ' 2>/dev/null || stat -f %z ' + go_file)
+        size_result = shell('stat -c %s ' + go_file + ' 2>/dev/null || stat -f %z ' + go_file)
         size = size_result.stdout.strip()
         print("  ", go_file, "is", size, "bytes")
     
     # Example 5: Combining glob with newest_ts/oldest_ts
     print("\n5. File age analysis:")
-    all_source_files = shmake.glob(['src/*.go', 'test/*.py'])
+    all_source_files = glob(['src/*.go', 'test/*.py'])
     if all_source_files:
-        newest_ts = shmake.newest_ts(['src/*.go', 'test/*.py'])
-        oldest_ts = shmake.oldest_ts(['src/*.go', 'test/*.py'])
+        newest_ts = newest_ts(['src/*.go', 'test/*.py'])
+        oldest_ts = oldest_ts(['src/*.go', 'test/*.py'])
         print("  Found", len(all_source_files), "source files")
         print("  Newest file timestamp:", newest_ts)
         print("  Oldest file timestamp:", oldest_ts)
@@ -510,7 +510,7 @@ def demo_glob(ctx):
     
     # Example 6: Conditional processing based on file existence
     print("\n6. Conditional operations:")
-    makefile_candidates = shmake.glob(['Makefile', 'makefile', '*.mk'])
+    makefile_candidates = glob(['Makefile', 'makefile', '*.mk'])
     if makefile_candidates:
         print("  Found build files:", makefile_candidates)
     else:
@@ -518,7 +518,7 @@ def demo_glob(ctx):
     
     # Example 7: File counting and statistics
     print("\n7. File statistics:")
-    all_files = shmake.glob(['*', 'src/*', 'test/*', 'docs/*'])
+    all_files = glob(['*', 'src/*', 'test/*', 'docs/*'])
     extensions = {}
     for file in all_files:
         if '.' in file:
@@ -531,10 +531,10 @@ def demo_glob(ctx):
         print("    ." + ext + ":", count)
     
     # Clean up demo files
-    shmake.shell('rm -rf src test docs config.json settings.yml')
+    shell('rm -rf src test docs config.json settings.yml')
     print("\nDemo files cleaned up")
 
-shmake.command(
+command(
     name = "glob",
     help = "Demonstrate glob function for file pattern matching",
     action = demo_glob
@@ -568,7 +568,7 @@ Advanced Examples:
 Try running any of these commands to see shmake features in action!
 """)
 
-shmake.command(
+command(
     name = "examples",
     help = "Show all available feature demonstrations",
     action = show_examples

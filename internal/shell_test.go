@@ -9,12 +9,12 @@ func TestShell(t *testing.T) {
 		run := setupStarlarkRuntime(t)
 		withMainStar(t, `
 def test_action(ctx):
-    result = shmake.shell('echo "hello world"')
+    result = shell('echo "hello world"')
     if result.stdout != 'hello world':
         fail('expected "hello world", got: ' + str(result.stdout))
 
-shmake.cli(name="TestShell", usage="Test shell functionality")
-shmake.command(name="test", action=test_action)
+cli(name="TestShell", usage="Test shell functionality")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -23,13 +23,13 @@ shmake.command(name="test", action=test_action)
 		run := setupStarlarkRuntime(t)
 		withMainStar(t, `
 def test_action(ctx):
-    result = shmake.shell('printf "line1\\nline2\\nline3"')
+    result = shell('printf "line1\\nline2\\nline3"')
     expected = 'line1\\nline2\\nline3'
     if result.stdout != expected:
         fail('expected: ' + expected + ', got: ' + str(result.stdout))
 
-shmake.cli(name="TestShell", usage="Test shell functionality")
-shmake.command(name="test", action=test_action)
+cli(name="TestShell", usage="Test shell functionality")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -38,12 +38,12 @@ shmake.command(name="test", action=test_action)
 		run := setupStarlarkRuntime(t)
 		withMainStar(t, `
 def test_action(ctx):
-    result = shmake.shell('VAR="test value" && echo $VAR')
+    result = shell('VAR="test value" && echo $VAR')
     if result.stdout != 'test value':
         fail('expected "test value", got: ' + str(result.stdout))
 
-shmake.cli(name="TestShell", usage="Test shell functionality")
-shmake.command(name="test", action=test_action)
+cli(name="TestShell", usage="Test shell functionality")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -52,12 +52,12 @@ shmake.command(name="test", action=test_action)
 		run := setupStarlarkRuntime(t)
 		withMainStar(t, `
 def test_action(ctx):
-    result = shmake.shell('echo "prefixed output"', prefix='TEST')
+    result = shell('echo "prefixed output"', prefix='TEST')
     if result.stdout != 'prefixed output':
         fail('expected "prefixed output", got: ' + str(result.stdout))
 
-shmake.cli(name="TestShell", usage="Test shell functionality")
-shmake.command(name="test", action=test_action)
+cli(name="TestShell", usage="Test shell functionality")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -66,17 +66,17 @@ shmake.command(name="test", action=test_action)
 		run := setupStarlarkRuntime(t)
 		withMainStar(t, `
 def test_action(ctx):
-    result = shmake.shell('echo "  content with spaces  "')
+    result = shell('echo "  content with spaces  "')
     if result.stdout != 'content with spaces':
         fail('expected "content with spaces", got: ' + str(result.stdout))
     
     # Test trailing newline is trimmed
-    result2 = shmake.shell('printf "no newline here"')
+    result2 = shell('printf "no newline here"')
     if result2.stdout != 'no newline here':
         fail('expected "no newline here", got: ' + str(result2.stdout))
 
-shmake.cli(name="TestShell", usage="Test shell functionality")
-shmake.command(name="test", action=test_action)
+cli(name="TestShell", usage="Test shell functionality")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -85,12 +85,12 @@ shmake.command(name="test", action=test_action)
 		run := setupStarlarkRuntime(t)
 		withMainStar(t, `
 def test_action(ctx):
-    result = shmake.shell('true')  # command that produces no output
+    result = shell('true')  # command that produces no output
     if result.stdout != '':
         fail('expected empty string, got: ' + str(result.stdout))
 
-shmake.cli(name="TestShell", usage="Test shell functionality")
-shmake.command(name="test", action=test_action)
+cli(name="TestShell", usage="Test shell functionality")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -100,16 +100,16 @@ shmake.command(name="test", action=test_action)
 		withMainStar(t, `
 def test_action(ctx):
     # Create a test file and read it back
-    shmake.shell('echo "test content" > test.txt')
-    result = shmake.shell('cat test.txt')
+    shell('echo "test content" > test.txt')
+    result = shell('cat test.txt')
     if result.stdout != 'test content':
         fail('expected "test content", got: ' + str(result.stdout))
     
     # Clean up
-    shmake.shell('rm test.txt')
+    shell('rm test.txt')
 
-shmake.cli(name="TestShell", usage="Test shell functionality")
-shmake.command(name="test", action=test_action)
+cli(name="TestShell", usage="Test shell functionality")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -118,14 +118,14 @@ shmake.command(name="test", action=test_action)
 		run := setupStarlarkRuntime(t)
 		withMainStar(t, `
 def test_action(ctx):
-    result = shmake.shell('echo "error message" >&2')
+    result = shell('echo "error message" >&2')
     if result.stderr != 'error message':
         fail('expected "error message" in stderr, got: ' + str(result.stderr))
     if result.stdout != '':
         fail('expected empty stdout, got: ' + str(result.stdout))
 
-shmake.cli(name="TestShell", usage="Test shell functionality")
-shmake.command(name="test", action=test_action)
+cli(name="TestShell", usage="Test shell functionality")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -134,14 +134,14 @@ shmake.command(name="test", action=test_action)
 		run := setupStarlarkRuntime(t)
 		withMainStar(t, `
 def test_action(ctx):
-    result = shmake.shell('exit 0')
+    result = shell('exit 0')
     if result.exit_code != 0:
         fail('expected exit code 0, got: ' + str(result.exit_code))
     if not result.success:
         fail('expected success to be True')
 
-shmake.cli(name="TestShell", usage="Test shell functionality")
-shmake.command(name="test", action=test_action)
+cli(name="TestShell", usage="Test shell functionality")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -150,14 +150,14 @@ shmake.command(name="test", action=test_action)
 		run := setupStarlarkRuntime(t)
 		withMainStar(t, `
 def test_action(ctx):
-    result = shmake.shell('exit 1')
+    result = shell('exit 1')
     if result.exit_code != 1:
         fail('expected exit code 1, got: ' + str(result.exit_code))
     if result.success:
         fail('expected success to be False')
 
-shmake.cli(name="TestShell", usage="Test shell functionality")
-shmake.command(name="test", action=test_action)
+cli(name="TestShell", usage="Test shell functionality")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -166,7 +166,7 @@ shmake.command(name="test", action=test_action)
 		run := setupStarlarkRuntime(t)
 		withMainStar(t, `
 def test_action(ctx):
-    result = shmake.shell('echo "stdout message" && echo "stderr message" >&2')
+    result = shell('echo "stdout message" && echo "stderr message" >&2')
     if result.stdout != 'stdout message':
         fail('expected "stdout message", got: ' + str(result.stdout))
     if result.stderr != 'stderr message':
@@ -174,8 +174,8 @@ def test_action(ctx):
     if not result.success:
         fail('expected success to be True')
 
-shmake.cli(name="TestShell", usage="Test shell functionality")
-shmake.command(name="test", action=test_action)
+cli(name="TestShell", usage="Test shell functionality")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -184,16 +184,16 @@ shmake.command(name="test", action=test_action)
 		run := setupStarlarkRuntime(t)
 		withMainStar(t, `
 def test_action(ctx):
-    success_result = shmake.shell('exit 0')
+    success_result = shell('exit 0')
     if not success_result:
         fail('successful result should be truthy')
     
-    fail_result = shmake.shell('exit 1')
+    fail_result = shell('exit 1')
     if fail_result:
         fail('failed result should be falsy')
 
-shmake.cli(name="TestShell", usage="Test shell functionality")
-shmake.command(name="test", action=test_action)
+cli(name="TestShell", usage="Test shell functionality")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -202,13 +202,13 @@ shmake.command(name="test", action=test_action)
 		run := setupStarlarkRuntime(t)
 		withMainStar(t, `
 def test_action(ctx):
-    result = shmake.shell('echo "test output"')
+    result = shell('echo "test output"')
     str_result = str(result)
     if str_result != 'test output':
         fail('expected string representation to be "test output", got: ' + str_result)
 
-shmake.cli(name="TestShell", usage="Test shell functionality")
-shmake.command(name="test", action=test_action)
+cli(name="TestShell", usage="Test shell functionality")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -217,7 +217,7 @@ shmake.command(name="test", action=test_action)
 		run := setupStarlarkRuntime(t)
 		withMainStar(t, `
 def test_action(ctx):
-    result = shmake.shell('echo "should not be captured" && echo "error output" >&2', no_output=True)
+    result = shell('echo "should not be captured" && echo "error output" >&2', no_output=True)
     print('DEBUG: stdout=' + repr(result.stdout))
     print('DEBUG: stderr=' + repr(result.stderr))
     if result.stdout != '':
@@ -230,8 +230,8 @@ def test_action(ctx):
     if not result.success:
         fail('success should be True')
 
-shmake.cli(name="TestShell", usage="Test shell functionality")
-shmake.command(name="test", action=test_action)
+cli(name="TestShell", usage="Test shell functionality")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -241,30 +241,30 @@ shmake.command(name="test", action=test_action)
 		withMainStar(t, `
 def test_action(ctx):
     # Test stdout capture
-    stdout_result = shmake.shell('echo "stdout test"')
+    stdout_result = shell('echo "stdout test"')
     if stdout_result.stdout != 'stdout test':
         fail('REGRESSION: stdout not captured correctly - expected "stdout test", got "' + str(stdout_result.stdout) + '"')
     
     # Test stderr capture
-    stderr_result = shmake.shell('echo "stderr test" >&2')
+    stderr_result = shell('echo "stderr test" >&2')
     if stderr_result.stderr != 'stderr test':
         fail('REGRESSION: stderr not captured correctly - expected "stderr test", got "' + str(stderr_result.stderr) + '"')
     
     # Test both stdout and stderr capture
-    both_result = shmake.shell('echo "out" && echo "err" >&2')
+    both_result = shell('echo "out" && echo "err" >&2')
     if both_result.stdout != 'out':
         fail('REGRESSION: stdout not captured when both present - expected "out", got "' + str(both_result.stdout) + '"')
     if both_result.stderr != 'err':
         fail('REGRESSION: stderr not captured when both present - expected "err", got "' + str(both_result.stderr) + '"')
     
     # Test multiline output capture
-    multiline_result = shmake.shell('printf "line1\\nline2\\nline3"')
+    multiline_result = shell('printf "line1\\nline2\\nline3"')
     expected_multiline = 'line1\\nline2\\nline3'
     if multiline_result.stdout != expected_multiline:
         fail('REGRESSION: multiline stdout not captured - expected "' + expected_multiline + '", got "' + str(multiline_result.stdout) + '"')
 
-shmake.cli(name="TestShellRegression", usage="Test shell capture regression")
-shmake.command(name="test", action=test_action)
+cli(name="TestShellRegression", usage="Test shell capture regression")
+command(name="test", action=test_action)
 `)
 		run()
 	})

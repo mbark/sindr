@@ -1,6 +1,6 @@
 
 # Configure CLI metadata
-shmake.cli(
+cli(
     name = "shmake example",
     usage = "show how shmake can be used as a library"
 )
@@ -8,7 +8,7 @@ shmake.cli(
 def useCustomFunction(ctx):
     print(custom_function())
 
-shmake.command(
+command(
     name = 'custom',
     help = 'use the custom function',
     action = useCustomFunction,

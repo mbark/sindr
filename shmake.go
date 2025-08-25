@@ -6,7 +6,6 @@ import (
 
 	"github.com/urfave/cli/v3"
 	"go.starlark.net/starlark"
-	"go.starlark.net/starlarkstruct"
 	"go.starlark.net/syntax"
 
 	"github.com/mbark/shmake/cache"
@@ -141,31 +140,29 @@ func runCLI(ctx context.Context, args []string) error {
 // createPredeclaredDict creates the predeclared dictionary for Starlark execution.
 func createPredeclaredDict(dir string) starlark.StringDict {
 	return starlark.StringDict{
-		"shmake": starlarkstruct.FromStringDict(starlark.String("shmake"), starlark.StringDict{
-			"cli":         starlark.NewBuiltin("cli", internal.ShmakeCLI),
-			"command":     starlark.NewBuiltin("command", internal.ShmakeCommand),
-			"sub_command": starlark.NewBuiltin("sub_command", internal.ShmakeSubCommand),
+		"cli":         starlark.NewBuiltin("cli", internal.ShmakeCLI),
+		"command":     starlark.NewBuiltin("command", internal.ShmakeCommand),
+		"sub_command": starlark.NewBuiltin("sub_command", internal.ShmakeSubCommand),
 
-			"dotenv": starlark.NewBuiltin("dotenv", internal.ShmakeDotenv),
+		"dotenv": starlark.NewBuiltin("dotenv", internal.ShmakeDotenv),
 
-			"shell": starlark.NewBuiltin("shell", internal.ShmakeShell),
-			"exec":  starlark.NewBuiltin("exec", internal.ShmakeExec),
+		"shell": starlark.NewBuiltin("shell", internal.ShmakeShell),
+		"exec":  starlark.NewBuiltin("exec", internal.ShmakeExec),
 
-			"string": starlark.NewBuiltin("string", internal.ShmakeString),
+		"string": starlark.NewBuiltin("string", internal.ShmakeString),
 
-			"start": starlark.NewBuiltin("start", internal.ShmakeStart),
-			"wait":  starlark.NewBuiltin("wait", internal.ShmakeWait),
-			"pool":  starlark.NewBuiltin("pool", internal.ShmakePool),
+		"start": starlark.NewBuiltin("start", internal.ShmakeStart),
+		"wait":  starlark.NewBuiltin("wait", internal.ShmakeWait),
+		"pool":  starlark.NewBuiltin("pool", internal.ShmakePool),
 
-			"newest_ts": starlark.NewBuiltin("newest_ts", internal.ShmakeNewestTS),
-			"oldest_ts": starlark.NewBuiltin("oldest_ts", internal.ShmakeOldestTS),
-			"glob":      starlark.NewBuiltin("glob", internal.ShmakeGlob),
+		"newest_ts": starlark.NewBuiltin("newest_ts", internal.ShmakeNewestTS),
+		"oldest_ts": starlark.NewBuiltin("oldest_ts", internal.ShmakeOldestTS),
+		"glob":      starlark.NewBuiltin("glob", internal.ShmakeGlob),
 
-			"load_package_json": starlark.NewBuiltin(
-				"load_package_json",
-				internal.ShmakeLoadPackageJson,
-			),
-		}),
+		"load_package_json": starlark.NewBuiltin(
+			"load_package_json",
+			internal.ShmakeLoadPackageJson,
+		),
 		"cache":       starlark.NewBuiltin("cache", cache.NewCacheValue),
 		"current_dir": starlark.String("current_dir"),
 	}

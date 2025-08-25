@@ -27,9 +27,9 @@ func TestShmakeLoadPackageJson(t *testing.T) {
 def test_action(ctx):
     print("Package.json loaded successfully")
 
-shmake.cli(name="TestShmakeLoadPackageJson")
-shmake.load_package_json(file="package.json")
-shmake.command(name="test", action=test_action)
+cli(name="TestShmakeLoadPackageJson")
+load_package_json(file="package.json")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -49,9 +49,9 @@ shmake.command(name="test", action=test_action)
 def test_action(ctx):
     print("Package.json loaded with yarn")
 
-shmake.cli(name="TestShmakeLoadPackageJson")
-shmake.load_package_json(file="package.json", bin="yarn")
-shmake.command(name="test", action=test_action)
+cli(name="TestShmakeLoadPackageJson")
+load_package_json(file="package.json", bin="yarn")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -68,9 +68,9 @@ shmake.command(name="test", action=test_action)
 def test_action(ctx):
     print("Empty scripts package.json loaded")
 
-shmake.cli(name="TestShmakeLoadPackageJson")
-shmake.load_package_json(file="package.json")
-shmake.command(name="test", action=test_action)
+cli(name="TestShmakeLoadPackageJson")
+load_package_json(file="package.json")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -89,9 +89,9 @@ shmake.command(name="test", action=test_action)
 def test_action(ctx):
     print("No scripts package.json loaded")
 
-shmake.cli(name="TestShmakeLoadPackageJson")
-shmake.load_package_json(file="package.json")
-shmake.command(name="test", action=test_action)
+cli(name="TestShmakeLoadPackageJson")
+load_package_json(file="package.json")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -114,9 +114,9 @@ shmake.command(name="test", action=test_action)
 def test_action(ctx):
     print("Complex scripts package.json loaded")
 
-shmake.cli(name="TestShmakeLoadPackageJson")
-shmake.load_package_json(file="package.json")
-shmake.command(name="test", action=test_action)
+cli(name="TestShmakeLoadPackageJson")
+load_package_json(file="package.json")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -130,9 +130,9 @@ func TestShmakeLoadPackageJsonErrors(t *testing.T) {
 def test_action(ctx):
     print("Should not reach here but errors are logged")
 
-shmake.cli(name="TestShmakeLoadPackageJsonErrors")
-shmake.load_package_json(file="nonexistent.json")
-shmake.command(name="test", action=test_action)
+cli(name="TestShmakeLoadPackageJsonErrors")
+load_package_json(file="nonexistent.json")
+command(name="test", action=test_action)
 `)
 
 		run(false)
@@ -153,9 +153,9 @@ shmake.command(name="test", action=test_action)
 def test_action(ctx):
     print("Should not reach here but errors are logged")
 
-shmake.cli(name="TestShmakeLoadPackageJsonErrors")
-shmake.load_package_json(file="invalid.json")
-shmake.command(name="test", action=test_action)
+cli(name="TestShmakeLoadPackageJsonErrors")
+load_package_json(file="invalid.json")
+command(name="test", action=test_action)
 `)
 
 		run(false)
@@ -184,9 +184,9 @@ func TestPackageJsonStruct(t *testing.T) {
 def test_action(ctx):
     print("PackageJson struct test completed")
 
-shmake.cli(name="TestPackageJsonStruct")
-shmake.load_package_json(file="package.json")
-shmake.command(name="test", action=test_action)
+cli(name="TestPackageJsonStruct")
+load_package_json(file="package.json")
+command(name="test", action=test_action)
 `)
 		run()
 	})

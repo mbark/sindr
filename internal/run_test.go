@@ -9,29 +9,29 @@ func TestPool(t *testing.T) {
 		run := setupStarlarkRuntime(t)
 		withMainStar(t, `
 def test_action(ctx):
-    pool = shmake.pool()
+    pool = pool()
     
     def task1():
-        shmake.shell('echo "task1 done" > task1.txt')
+        shell('echo "task1 done" > task1.txt')
     
     def task2():
-        shmake.shell('echo "task2 done" > task2.txt')
+        shell('echo "task2 done" > task2.txt')
     
     pool.run(task1)
     pool.run(task2)
     pool.wait()
     
     # Check files were created
-    task1_result = shmake.shell('cat task1.txt')
-    task2_result = shmake.shell('cat task2.txt')
+    task1_result = shell('cat task1.txt')
+    task2_result = shell('cat task2.txt')
     
     if str(task1_result) != 'task1 done':
         fail('expected "task1 done", got: ' + str(task1_result))
     if str(task2_result) != 'task2 done':
         fail('expected "task2 done", got: ' + str(task2_result))
 
-shmake.cli(name="TestPool", usage="Test pool functionality")
-shmake.command(name="test", action=test_action)
+cli(name="TestPool", usage="Test pool functionality")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -40,22 +40,22 @@ shmake.command(name="test", action=test_action)
 		run := setupStarlarkRuntime(t)
 		withMainStar(t, `
 def test_action(ctx):
-    pool = shmake.pool()
+    pool = pool()
     
     def delayed_task():
         # Simulate some work with shell command
-        shmake.shell('sleep 0.1')
-        shmake.shell('echo "delayed task done" > delayed.txt')
+        shell('sleep 0.1')
+        shell('echo "delayed task done" > delayed.txt')
     
     pool.run(delayed_task)
     pool.wait()  # This should wait for the delayed task
     
-    result = shmake.shell('cat delayed.txt')
+    result = shell('cat delayed.txt')
     if str(result) != 'delayed task done':
         fail('expected "delayed task done", got: ' + str(result))
 
-shmake.cli(name="TestPool", usage="Test pool functionality")
-shmake.command(name="test", action=test_action)
+cli(name="TestPool", usage="Test pool functionality")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -64,14 +64,14 @@ shmake.command(name="test", action=test_action)
 		run := setupStarlarkRuntime(t)
 		withMainStar(t, `
 def test_action(ctx):
-    pool1 = shmake.pool()
-    pool2 = shmake.pool()
+    pool1 = pool()
+    pool2 = pool()
     
     def pool1_task():
-        shmake.shell('echo "pool1 task" > pool1.txt')
+        shell('echo "pool1 task" > pool1.txt')
     
     def pool2_task():
-        shmake.shell('echo "pool2 task" > pool2.txt')
+        shell('echo "pool2 task" > pool2.txt')
     
     pool1.run(pool1_task)
     pool2.run(pool2_task)
@@ -79,16 +79,16 @@ def test_action(ctx):
     pool1.wait()
     pool2.wait()
     
-    result1 = shmake.shell('cat pool1.txt')
-    result2 = shmake.shell('cat pool2.txt')
+    result1 = shell('cat pool1.txt')
+    result2 = shell('cat pool2.txt')
     
     if str(result1) != 'pool1 task':
         fail('expected "pool1 task", got: ' + str(result1))
     if str(result2) != 'pool2 task':
         fail('expected "pool2 task", got: ' + str(result2))
 
-shmake.cli(name="TestPool", usage="Test pool functionality")
-shmake.command(name="test", action=test_action)
+cli(name="TestPool", usage="Test pool functionality")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -100,17 +100,17 @@ func TestAsync(t *testing.T) {
 		withMainStar(t, `
 def test_action(ctx):
     def async_task():
-        shmake.shell('echo "async task done" > async.txt')
+        shell('echo "async task done" > async.txt')
     
-    shmake.start(async_task)
-    shmake.wait()  # Wait for async task to complete
+    start(async_task)
+    wait()  # Wait for async task to complete
     
-    result = shmake.shell('cat async.txt')
+    result = shell('cat async.txt')
     if str(result) != 'async task done':
         fail('expected "async task done", got: ' + str(result))
 
-shmake.cli(name="TestAsync", usage="Test async functionality")
-shmake.command(name="test", action=test_action)
+cli(name="TestAsync", usage="Test async functionality")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -120,25 +120,25 @@ shmake.command(name="test", action=test_action)
 		withMainStar(t, `
 def test_action(ctx):
     def async1():
-        shmake.shell('echo "async1 done" > async1.txt')
+        shell('echo "async1 done" > async1.txt')
     
     def async2():
-        shmake.shell('echo "async2 done" > async2.txt')
+        shell('echo "async2 done" > async2.txt')
     
-    shmake.start(async1)
-    shmake.start(async2)
-    shmake.wait()  # Wait for all async tasks
+    start(async1)
+    start(async2)
+    wait()  # Wait for all async tasks
     
-    result1 = shmake.shell('cat async1.txt')
-    result2 = shmake.shell('cat async2.txt')
+    result1 = shell('cat async1.txt')
+    result2 = shell('cat async2.txt')
     
     if str(result1) != 'async1 done':
         fail('expected "async1 done", got: ' + str(result1))
     if str(result2) != 'async2 done':
         fail('expected "async2 done", got: ' + str(result2))
 
-shmake.cli(name="TestAsync", usage="Test async functionality")
-shmake.command(name="test", action=test_action)
+cli(name="TestAsync", usage="Test async functionality")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -151,21 +151,21 @@ func TestWait(t *testing.T) {
 def test_action(ctx):
     def delayed_task():
         # Simulate work with shell command
-        shmake.shell('sleep 0.1')
-        shmake.shell('echo "completed" > wait_test.txt')
+        shell('sleep 0.1')
+        shell('echo "completed" > wait_test.txt')
     
-    shmake.start(delayed_task)
+    start(delayed_task)
     
     # Before wait, task shouldn't be completed yet due to sleep
-    shmake.wait()
+    wait()
     
     # After wait, task should be completed
-    result = shmake.shell('cat wait_test.txt')
+    result = shell('cat wait_test.txt')
     if str(result) != 'completed':
         fail('expected "completed", got: ' + str(result))
 
-shmake.cli(name="TestWait", usage="Test wait functionality")
-shmake.command(name="test", action=test_action)
+cli(name="TestWait", usage="Test wait functionality")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -176,7 +176,7 @@ func TestRunTypeCreation(t *testing.T) {
 		run := setupStarlarkRuntime(t)
 		withMainStar(t, `
 def test_action(ctx):
-    pool = shmake.pool()
+    pool = pool()
     
     # Verify pool has expected methods - in Starlark we can check attributes exist
     if not hasattr(pool, 'run'):
@@ -184,8 +184,8 @@ def test_action(ctx):
     if not hasattr(pool, 'wait'):
         fail('expected pool to have wait method')
 
-shmake.cli(name="TestRunTypeCreation", usage="Test pool type creation")
-shmake.command(name="test", action=test_action)
+cli(name="TestRunTypeCreation", usage="Test pool type creation")
+command(name="test", action=test_action)
 `)
 		run()
 	})

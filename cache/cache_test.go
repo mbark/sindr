@@ -59,8 +59,8 @@ def test_action(ctx):
 	if not c.diff(name='version', version='1'):
 		fail('unexpected diff')
 
-shmake.cli(name="TestDiff", usage="Test diff functionality")
-shmake.command(name="test", action=test_action)
+cli(name="TestDiff", usage="Test diff functionality")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -74,8 +74,8 @@ def test_action(ctx):
 	if c.diff(name='version', version='1'):
 		fail('expected no diff')
 
-shmake.cli(name="TestDiff", usage="Test diff functionality")
-shmake.command(name="test", action=test_action)
+cli(name="TestDiff", usage="Test diff functionality")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -94,8 +94,8 @@ def test_action(ctx):
 	if stored != 'v1.0.0':
 		fail('expected stored version to be v1.0.0, got: ' + str(stored))
 
-shmake.cli(name="TestStore", usage="Test set_version functionality")
-shmake.command(name="test", action=test_action)
+cli(name="TestStore", usage="Test set_version functionality")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -112,8 +112,8 @@ def test_action(ctx):
 	if stored != '42':
 		fail('expected stored version to be 42, got: ' + str(stored))
 
-shmake.cli(name="TestStore", usage="Test set_version functionality")
-shmake.command(name="test", action=test_action)
+cli(name="TestStore", usage="Test set_version functionality")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -136,8 +136,8 @@ def test_action(ctx):
 	
 	print('Function executed successfully')
 
-shmake.cli(name="TestWithVersion", usage="Test with_version functionality")
-shmake.command(name="test", action=test_action)
+cli(name="TestWithVersion", usage="Test with_version functionality")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -161,8 +161,8 @@ def test_action(ctx):
 	
 	print('Version matching test passed - function was correctly skipped')
 	
-shmake.cli(name="TestWithVersion", usage="Test with_version functionality")
-shmake.command(name="test", action=test_action)
+cli(name="TestWithVersion", usage="Test with_version functionality")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -188,8 +188,8 @@ def test_action(ctx):
 	if stored != '123':
 		fail('expected stored version to be 123, got: ' + str(stored))
 
-shmake.cli(name="TestWithVersion", usage="Test with_version functionality")
-shmake.command(name="test", action=test_action)
+cli(name="TestWithVersion", usage="Test with_version functionality")
+command(name="test", action=test_action)
 `)
 		run()
 	})
@@ -208,8 +208,8 @@ def test_action(ctx):
 	if stored != 'v1.0.0':
 		fail('expected stored version to be v1.0.0, got: ' + str(stored))
 
-shmake.cli(name="TestCacheWithCustomDir", usage="Test cache with custom directory")
-shmake.command(name="test", action=test_action)
+cli(name="TestCacheWithCustomDir", usage="Test cache with custom directory")
+command(name="test", action=test_action)
 `)
 		run()
 	})

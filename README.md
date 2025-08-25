@@ -2,7 +2,8 @@
 
 [![Test](https://github.com/mbark/sindr/actions/workflows/lint.yml/badge.svg)](https://github.com/mbark/sindr/actions/workflows/lint.yml)
 
-`sindr` is a simple way to create a CLI to save and run project-specific commands.
+`sindr` (from the Old Norse sindr: "spark") is a simple way to create a CLI to save and run project-specific
+commands.
 
 Using [Starlark](https://github.com/bazelbuild/starlark), a Python-subset, you can create a CLI with flags, arguments
 and autocompletion to save and run project-specific commands.

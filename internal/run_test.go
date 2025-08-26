@@ -8,8 +8,7 @@ import (
 
 func TestPool(t *testing.T) {
 	t.Run("creates pool and runs tasks concurrently", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     pool = pool()
     
@@ -35,12 +34,10 @@ def test_action(ctx):
 cli(name="TestPool", usage="Test pool functionality")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 
 	t.Run("pool waits for all tasks to complete", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     pool = pool()
     
@@ -59,12 +56,10 @@ def test_action(ctx):
 cli(name="TestPool", usage="Test pool functionality")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 
 	t.Run("multiple pools work independently", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     pool1 = pool()
     pool2 = pool()
@@ -92,14 +87,12 @@ def test_action(ctx):
 cli(name="TestPool", usage="Test pool functionality")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 }
 
 func TestAsync(t *testing.T) {
 	t.Run("executes function asynchronously", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     def async_task():
         shell('echo "async task done" > async.txt')
@@ -114,12 +107,10 @@ def test_action(ctx):
 cli(name="TestAsync", usage="Test async functionality")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 
 	t.Run("multiple async tasks execute concurrently", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     def async1():
         shell('echo "async1 done" > async1.txt')
@@ -142,14 +133,12 @@ def test_action(ctx):
 cli(name="TestAsync", usage="Test async functionality")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 }
 
 func TestWait(t *testing.T) {
 	t.Run("waits for async tasks to complete", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     def delayed_task():
         # Simulate work with shell command
@@ -169,14 +158,12 @@ def test_action(ctx):
 cli(name="TestWait", usage="Test wait functionality")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 }
 
 func TestRunTypeCreation(t *testing.T) {
 	t.Run("pool function creates pool userdata", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     pool = pool()
     
@@ -189,6 +176,5 @@ def test_action(ctx):
 cli(name="TestRunTypeCreation", usage="Test pool type creation")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 }

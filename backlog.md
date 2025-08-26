@@ -13,7 +13,8 @@
 - [x] Move all the commands in the `sindr` "namespace" to be global functions
 - [x] Generate some logo for this.
 - [x] Rename everything `shmake` to `sindr`
-- [ ] Allow both flags and args to be added as simple strings.
+- [x] Allow both flags and args to be added as simple strings.
+- [ ] Check why individual unit tests are failing when all pass
 - [ ] Update the `README` with more context, comparisons to `just`, `mise`, `Makefile` etc.
 - [ ] Allow configuring things like name of file and color via a config file (or global flag).
 - [ ] Tag a version 0.0.2 to build a binary to test `goreleaser` stuff.

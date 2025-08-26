@@ -72,6 +72,7 @@ func fromList[T any](l *starlark.List, fn func(value starlark.Value) (T, error))
 		if err != nil {
 			merr = errors.Join(merr, fmt.Errorf("element %d: %w", idx, err))
 		}
+		idx++
 	}
 
 	return list, merr

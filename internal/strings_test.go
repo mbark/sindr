@@ -8,8 +8,7 @@ import (
 
 func TestTemplateString(t *testing.T) {
 	t.Run("renders simple template", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     result = string('Hello {{.name}}!', name='World')
     if result != 'Hello World!':
@@ -18,30 +17,27 @@ def test_action(ctx):
 cli(name="TestTemplateString", usage="Test string templating")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 
 	t.Run("handles different variable types", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 str_var = "text"
 num_var = 42
 bool_var = True
 
 def test_action(ctx):
     result = string('{{.str_var}} {{.num_var}} {{.bool_var}}')
+    print('result is', result)
     if result != 'text 42 true':
         fail('expected "text 42 true", got: ' + str(result))
 
 cli(name="TestTemplateString", usage="Test string templating")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 
 	t.Run("renders template without additional context", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 greeting = "Hello"
 target = "World"
 
@@ -53,12 +49,10 @@ def test_action(ctx):
 cli(name="TestTemplateString", usage="Test string templating")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 
 	t.Run("handles template with conditional logic", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 debug = True
 
 def test_action(ctx):
@@ -69,12 +63,10 @@ def test_action(ctx):
 cli(name="TestTemplateString", usage="Test string templating")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 
 	t.Run("handles template with range", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     items = ['apple', 'banana', 'cherry']
     result = string('{{range .items}}{{.}} {{end}}', items=items)
@@ -84,12 +76,10 @@ def test_action(ctx):
 cli(name="TestTemplateString", usage="Test string templating")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 
 	t.Run("handles complex nested templates", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 app_name = "myapp"
 version = "1.0.0"
 
@@ -121,6 +111,5 @@ Features: auth logging metrics
 cli(name="TestTemplateString", usage="Test string templating")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 }

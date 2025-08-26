@@ -8,8 +8,7 @@ import (
 
 func TestExec(t *testing.T) {
 	t.Run("executes basic command with python3", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     result = exec(bin='python3', command='print("hello from python")')
     if result.stdout != 'hello from python':
@@ -18,12 +17,10 @@ def test_action(ctx):
 cli(name="TestExec", usage="Test exec functionality")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 
 	t.Run("executes command with shell interpreter", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     result = exec(bin='sh', command='echo "shell output"')
     if result.stdout != 'shell output':
@@ -32,12 +29,10 @@ def test_action(ctx):
 cli(name="TestExec", usage="Test exec functionality")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 
 	t.Run("handles multiline commands", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     command = '''echo "line1"
 echo "line2"
@@ -50,12 +45,10 @@ echo "line3"'''
 cli(name="TestExec", usage="Test exec functionality")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 
 	t.Run("captures stderr output", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     result = exec(bin='sh', command='echo "error message" >&2')
     if result.stderr != 'error message':
@@ -66,12 +59,10 @@ def test_action(ctx):
 cli(name="TestExec", usage="Test exec functionality")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 
 	t.Run("handles successful command exit code", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     result = exec(bin='sh', command='exit 0')
     if result.exit_code != 0:
@@ -82,12 +73,10 @@ def test_action(ctx):
 cli(name="TestExec", usage="Test exec functionality")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 
 	t.Run("handles failed command exit code", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     result = exec(bin='sh', command='exit 1')
     if result.exit_code != 1:
@@ -98,12 +87,10 @@ def test_action(ctx):
 cli(name="TestExec", usage="Test exec functionality")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 
 	t.Run("handles command with both stdout and stderr", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     result = exec(bin='sh', command='echo "stdout message" && echo "stderr message" >&2')
     if result.stdout != 'stdout message':
@@ -116,12 +103,10 @@ def test_action(ctx):
 cli(name="TestExec", usage="Test exec functionality")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 
 	t.Run("handles command with prefix", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     result = exec(bin='sh', command='echo "prefixed output"', prefix='EXEC')
     if result.stdout != 'prefixed output':
@@ -130,12 +115,10 @@ def test_action(ctx):
 cli(name="TestExec", usage="Test exec functionality")  
 command(name="test", action=test_action)
 `)
-		run()
 	})
 
 	t.Run("no_output parameter prevents capturing output", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     result = exec(bin='sh', command='echo "should not be captured" && echo "error output" >&2', no_output=True)
     if result.stdout != '':
@@ -151,12 +134,10 @@ def test_action(ctx):
 cli(name="TestExec", usage="Test exec functionality")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 
 	t.Run("trims whitespace from output", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     result = exec(bin='sh', command='echo "  content with spaces  "')
     if result.stdout != 'content with spaces':
@@ -165,12 +146,10 @@ def test_action(ctx):
 cli(name="TestExec", usage="Test exec functionality")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 
 	t.Run("handles empty command output", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     result = exec(bin='sh', command='true')  # command that produces no output
     if result.stdout != '':
@@ -179,12 +158,10 @@ def test_action(ctx):
 cli(name="TestExec", usage="Test exec functionality")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 
 	t.Run("result truthiness matches success status", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     success_result = exec(bin='sh', command='exit 0')
     if not success_result:
@@ -197,12 +174,10 @@ def test_action(ctx):
 cli(name="TestExec", usage="Test exec functionality")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 
 	t.Run("string representation returns stdout", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     result = exec(bin='sh', command='echo "test output"')
     str_result = str(result)
@@ -212,12 +187,10 @@ def test_action(ctx):
 cli(name="TestExec", usage="Test exec functionality")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 
 	t.Run("executes python script with variables", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     python_code = '''
 name = "sindr"
@@ -231,12 +204,10 @@ print(f"Project {name} version {version}")
 cli(name="TestExec", usage="Test exec functionality")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 
 	t.Run("works with complex shell commands", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     shell_script = '''#!/bin/sh
 # Create a test file and read it back
@@ -252,12 +223,10 @@ rm test_exec.txt
 cli(name="TestExec", usage="Test exec functionality")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 
 	t.Run("handles different interpreters", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     # Test with awk
     awk_command = 'BEGIN { print "Hello from awk" }'
@@ -268,12 +237,10 @@ def test_action(ctx):
 cli(name="TestExec", usage="Test exec functionality")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 
 	t.Run("handles command execution failure", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     python_code = '''
 import sys
@@ -291,12 +258,10 @@ sys.exit(42)
 cli(name="TestExec", usage="Test exec functionality")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 
 	t.Run("captures syntax errors from interpreter", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     python_code = '''
 # Invalid Python syntax
@@ -314,12 +279,10 @@ print("unclosed string
 cli(name="TestExec", usage="Test exec functionality")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 
 	t.Run("works with valid parameters", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     # Test that exec works when all required parameters are provided
     result = exec(bin='sh', command='echo "validation test"')
@@ -331,6 +294,5 @@ def test_action(ctx):
 cli(name="TestExec", usage="Test exec functionality")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 }

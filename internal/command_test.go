@@ -8,34 +8,29 @@ import (
 
 func TestSindrCLI(t *testing.T) {
 	t.Run("sets CLI name and usage", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     print("CLI configured")
 
 cli(name="test-cli", usage="A test CLI")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 
 	t.Run("handles optional usage parameter", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     print("CLI with name only")
 
 cli(name="minimal-cli")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 }
 
 func TestSindrCommand(t *testing.T) {
 	t.Run("creates basic command", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def build_action(ctx):
     print("Building project")
 
@@ -47,12 +42,10 @@ command(
 )
 command(name="test", action=lambda ctx: print("test executed"))
 `)
-		run()
 	})
 
 	t.Run("handles command with arguments", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def deploy_action(ctx):
     target = ctx.args.target
     environment = ctx.args.environment
@@ -67,12 +60,10 @@ command(
 )
 command(name="test", action=lambda ctx: print("test executed"))
 `)
-		run()
 	})
 
 	t.Run("handles command with flags", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     verbose = ctx.flags.verbose
     count = ctx.flags.count
@@ -84,32 +75,33 @@ command(
     name="run",
     help="Run with flags",
     action=test_action,
-    flags={
-        "verbose": {
+    flags=[
+        {
+            "name": "verbose",
             "default": False,
             "type": "bool",
             "help": "Enable verbose output"
         },
-        "count": {
+        {
+            "name": "count",
             "default": 1,
             "type": "int", 
             "help": "Number of iterations"
         },
-        "name": {
+        {
+            "name": "name",
             "default": "default",
             "type": "string",
             "help": "Name parameter"
         }
-    }
+    ]
 )
 command(name="test", action=lambda ctx: print("test executed"))
 `)
-		run()
 	})
 
 	t.Run("handles command with strings flag type", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     strings_list = ctx.flags.strings
     if type(strings_list) != "list":
@@ -125,22 +117,21 @@ command(
     name="strings-test",
     help="Test strings flag type",
     action=test_action,
-    flags={
-        "strings": {
+    flags=[
+        {
+            "name": "strings",
             "default": ["default1", "default2"],
             "type": "strings",
             "help": "List of strings"
         }
-    }
+    ]
 )
 command(name="test", action=lambda ctx: print("test executed"))
 `)
-		run()
 	})
 
 	t.Run("handles command with ints flag type", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     ints_list = ctx.flags.ints
     if type(ints_list) != "list":
@@ -156,22 +147,21 @@ command(
     name="ints-test",
     help="Test ints flag type",
     action=test_action,
-    flags={
-        "ints": {
+    flags=[
+        {
+            "name": "ints",
             "default": [10, 20, 30],
             "type": "ints",
             "help": "List of integers"
         }
-    }
+    ]
 )
 command(name="test", action=lambda ctx: print("test executed"))
 `)
-		run()
 	})
 
 	t.Run("handles command with category", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     print("Running categorized command")
 
@@ -184,12 +174,10 @@ command(
 )
 command(name="test", action=lambda ctx: print("test executed"))
 `)
-		run()
 	})
 
 	t.Run("handles dash-case flag names", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     # Test both dash-case and snake_case access
     value1 = ctx.flags["dry-run"]
@@ -203,23 +191,22 @@ command(
     name="deploy",
     help="Deploy with dash-case flag",
     action=test_action,
-    flags={
-        "dry-run": {
+    flags=[
+        {
+            "name": "dry-run",
             "default": True,
             "type": "bool"
         }
-    }
+    ]
 )
 command(name="test", action=lambda ctx: print("test executed"))
 `)
-		run()
 	})
 }
 
 func TestSindrSubCommand(t *testing.T) {
 	t.Run("creates nested subcommand", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def deploy_staging_action(ctx):
     print("Deploying to staging")
 
@@ -249,12 +236,10 @@ sub_command(
 
 command(name="test", action=lambda ctx: print("test executed"))
 `)
-		run()
 	})
 
 	t.Run("creates deeply nested subcommands", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def action(ctx):
     print("Deep nested command executed")
 
@@ -277,12 +262,10 @@ sub_command(
 
 command(name="test", action=lambda ctx: print("test executed"))
 `)
-		run()
 	})
 
 	t.Run("subcommand with arguments and flags", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def deploy_action(ctx):
     service = ctx.args.service
     force = ctx.flags.force
@@ -297,25 +280,24 @@ sub_command(
     help="Deploy to Kubernetes",
     action=deploy_action,
     args=["service"],
-    flags={
-        "force": {
+    flags=[
+        {
+            "name": "force",
             "default": False,
             "type": "bool",
             "help": "Force deployment"
         }
-    }
+    ]
 )
 
 command(name="test", action=lambda ctx: print("test executed"))
 `)
-		run()
 	})
 }
 
 func TestContextFlagAccess(t *testing.T) {
 	t.Run("flag map supports both index and attr access", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     # Test index access
     verbose_index = ctx.flags["verbose"]
@@ -336,19 +318,17 @@ cli(name="TestContextFlagAccess")
 command(
     name="check",
     action=test_action,
-    flags={
-        "verbose": {"default": True, "type": "bool"},
-        "dry-run": {"default": False, "type": "bool"}
-    }
+    flags=[
+        {"name": "verbose", "default": True, "type": "bool"},
+        {"name": "dry-run", "default": False, "type": "bool"}
+    ]
 )
 command(name="test", action=lambda ctx: print("test executed"))
 `)
-		run()
 	})
 
 	t.Run("context provides args access", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     target = ctx.args.target
     environment = ctx.args.environment
@@ -362,12 +342,10 @@ command(
 )
 command(name="test", action=lambda ctx: print("test executed"))
 `)
-		run()
 	})
 
 	t.Run("context provides args_list access", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     args_list = ctx.args_list
     print("args_list length:", len(args_list))
@@ -381,14 +359,12 @@ command(
 )
 command(name="test", action=lambda ctx: print("test executed"))
 `)
-		run()
 	})
 }
 
 func TestInvalidConfigurations(t *testing.T) {
 	t.Run("invalid flag type should fail", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     fail("Should not reach here")
 
@@ -396,22 +372,20 @@ cli(name="TestInvalidConfigurations")
 command(
     name="fail",
     action=test_action,
-    flags={
-        "invalid": {
+    flags=[
+        {
+            "name": "invalid",
             "default": "test",
             "type": "unknown_type"
         }
-    }
+    ]
 )
 command(name="test", action=lambda ctx: print("test executed"))
-`)
-
-		run(false)
+`, sindrtest.ShouldFail())
 	})
 
 	t.Run("non-string args should fail", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     fail("Should not reach here")
 
@@ -422,14 +396,11 @@ command(
     args=[123, "valid"]
 )
 command(name="test", action=lambda ctx: print("test executed"))
-`)
-
-		run(false)
+`, sindrtest.ShouldFail())
 	})
 
 	t.Run("invalid subcommand path should fail", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     fail("Should not reach here")
 
@@ -440,8 +411,6 @@ sub_command(
     action=test_action
 )
 command(name="test", action=lambda ctx: print("test executed"))
-`)
-
-		run(false)
+`, sindrtest.ShouldFail())
 	})
 }

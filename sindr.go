@@ -2,6 +2,7 @@ package sindr
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -25,7 +26,8 @@ import (
 type StarlarkBuiltin = func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error)
 
 type runOptions struct {
-	globals starlark.StringDict
+	globals   starlark.StringDict
+	directory string
 }
 
 var (
@@ -74,6 +76,12 @@ func WithNoCache(noCache bool) RunOption {
 	}
 }
 
+func WithDirectory(directory string) RunOption {
+	return func(o *runOptions, v *viper.Viper) {
+		o.directory = directory
+	}
+}
+
 // WithBuiltin does exactly what WithGlobalValue does, but handles the much more common case of wanting to add not just
 // any global but specifically a StarlarkBuiltin.
 func WithBuiltin(name string, builtin StarlarkBuiltin) RunOption {
@@ -92,15 +100,14 @@ func Run(ctx context.Context, args []string, opts ...RunOption) error {
 	v := viper.New()
 
 	fs := flag.NewFlagSet("sindr", flag.ContinueOnError)
-
+	fs.Usage = func() {} // unbind the default printing, we let urfave/cli handle this later on
 	fs.BoolP(flagName(verboseKey), "v", false, "print logs to stdout")
 	fs.BoolP(flagName(noCacheKey), "n", false, "ignore stored values in the cache")
 	fs.BoolP(flagName(lineNumbersKey), "l", false, "print logs with Starlark line numbers if possible")
 	fs.StringP(flagName(fileNameKey), "f", "sindr.star", "path to the Starlark config file")
 	fs.String(flagName(cacheDir), cacheDir, "path to the Starlark config file")
 	err := fs.Parse(args)
-
-	if err != nil {
+	if err != nil && !errors.Is(err, flag.ErrHelp) {
 		return fmt.Errorf("parsing sindr flags: %w", err)
 	}
 
@@ -126,18 +133,19 @@ func Run(ctx context.Context, args []string, opts ...RunOption) error {
 		o(&options, v)
 	}
 
-	fmt.Println(v.GetString(cacheDirKey))
 	logger.DoLogVerbose = v.GetBool(verboseKey)
 	logger.WithLineNumbers = v.GetBool(lineNumbersKey)
 	cache.GlobalCache.ForceOutOfDate = v.GetBool(noCacheKey)
 
 	cache.SetCache(v.GetString(cacheDirKey))
 
-	dir, err := findPathUpdwards(v.GetString(fileNameKey))
-	if err != nil {
-		return err
+	dir := options.directory
+	if dir == "" {
+		dir, err = findPathUpdwards(v.GetString(fileNameKey))
+		if err != nil {
+			return err
+		}
 	}
-
 	err = os.Chdir(dir)
 	if err != nil {
 		return err

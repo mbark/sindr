@@ -1,6 +1,7 @@
 package sindrtest
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,50 +12,49 @@ import (
 	"github.com/mbark/sindr"
 )
 
-var fileName = "test.star"
+type testOptions struct {
+	fail           bool
+	packageJson    map[string]any
+	rawPackageJson string
+}
 
-func SetupStarlarkRuntime(t *testing.T) func(noError ...bool) {
-	t.Helper()
-	dir := t.TempDir()
-	err := os.Chdir(dir)
-	require.NoError(t, err)
+type TestOption func(o *testOptions)
 
-	return func(noError ...bool) {
-		t.Helper()
-		var hasNoError bool
-		switch len(noError) {
-		case 0:
-			hasNoError = true
-		case 1:
-			hasNoError = noError[0]
-		default:
-			require.Fail(t, "setupStarlarkRuntime called with too many arguments")
-		}
-
-		err := sindr.Run(t.Context(),
-			[]string{t.Name(), "test"},
-			sindr.WithCacheDir(dir),
-			sindr.WithFileName(fileName),
-		)
-		if hasNoError {
-			require.NoError(t, err)
-		} else {
-			require.Error(t, err)
-		}
+func ShouldFail() TestOption {
+	return func(o *testOptions) {
+		o.fail = true
 	}
 }
 
-func WithMainStar(t *testing.T, contents string) {
-	t.Helper()
-	dir, err := os.Getwd()
-	require.NoError(t, err)
+func WithPackageJson(packageJson map[string]any) TestOption {
+	return func(o *testOptions) {
+		o.packageJson = packageJson
+	}
+}
 
-	err = os.RemoveAll(filepath.Join(dir, fileName))
+func WithRawPackageJson(packageJson string) TestOption {
+	return func(o *testOptions) {
+		o.rawPackageJson = packageJson
+	}
+}
+
+var fileName = "test.star"
+
+func Test(t *testing.T, contents string, opts ...TestOption) {
+	t.Helper()
+
+	var options testOptions
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	dir := t.TempDir()
+
+	err := os.RemoveAll(filepath.Join(dir, fileName))
 	require.NoError(t, err)
 
 	f, err := os.Create(filepath.Join(dir, fileName))
 	require.NoError(t, err)
-
 	t.Cleanup(func() {
 		err := f.Close()
 		require.NoError(t, err)
@@ -68,4 +68,44 @@ func WithMainStar(t *testing.T, contents string) {
 		t.Logf("%3d: %s", i+1, line)
 	}
 	t.Log()
+
+	if options.packageJson != nil {
+		withPackageJson(t, dir, options.packageJson)
+	} else if options.rawPackageJson != "" {
+		writePackageJson(t, dir, []byte(options.rawPackageJson))
+	}
+
+	err = sindr.Run(t.Context(),
+		[]string{t.Name(), "test"},
+		sindr.WithFileName(fileName),
+		sindr.WithCacheDir(dir+"/cache"),
+		sindr.WithDirectory(dir),
+	)
+	if options.fail {
+		require.Error(t, err)
+	} else {
+		require.NoError(t, err)
+	}
+}
+
+func withPackageJson(t *testing.T, dir string, data map[string]any) {
+	t.Helper()
+
+	jsonData, err := json.Marshal(data)
+	require.NoError(t, err)
+
+	writePackageJson(t, dir, jsonData)
+}
+
+func writePackageJson(t *testing.T, dir string, jsonData []byte) {
+	t.Helper()
+
+	packageJsonPath := filepath.Join(dir, "package.json")
+	err := os.WriteFile(packageJsonPath, jsonData, 0o644)
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		err := os.Remove(packageJsonPath)
+		require.NoError(t, err)
+	})
 }

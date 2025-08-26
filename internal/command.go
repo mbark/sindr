@@ -63,14 +63,14 @@ func SindrCommand(
 	var name, help string
 	var action starlark.Callable
 	var argsList *starlark.List
-	var flagsDict *starlark.Dict
+	var flagsList *starlark.List
 	var category string
 	if err := starlark.UnpackArgs("command", args, kwargs,
 		"name", &name,
 		"help?", &help,
 		"action", &action,
 		"args?", &argsList,
-		"flags?", &flagsDict,
+		"flags?", &flagsList,
 		"category?", &category,
 	); err != nil {
 		return nil, err
@@ -89,7 +89,7 @@ func SindrCommand(
 		return nil, err
 	}
 
-	if err := processFlags(flagsDict, cmd); err != nil {
+	if err := processFlags(flagsList, cmd); err != nil {
 		return nil, err
 	}
 
@@ -107,20 +107,20 @@ func SindrSubCommand(
 	var help string
 	var action starlark.Callable
 	var argsList *starlark.List
-	var flagsDict *starlark.Dict
+	var flagsList *starlark.List
 	var category string
 	if err := starlark.UnpackArgs("sub_command", args, kwargs,
 		"path", &pathList,
 		"help?", &help,
 		"action", &action,
 		"args?", &argsList,
-		"flags?", &flagsDict,
+		"flags?", &flagsList,
 		"category?", &category,
 	); err != nil {
 		return nil, err
 	}
 
-	path, err := parsePath(pathList)
+	path, err := fromList[string](pathList, func(v starlark.Value) (string, error) { return castString[starlark.String](v) })
 	if err != nil {
 		return nil, err
 	}
@@ -143,7 +143,7 @@ func SindrSubCommand(
 		return nil, err
 	}
 
-	if err := processFlags(flagsDict, cmd); err != nil {
+	if err := processFlags(flagsList, cmd); err != nil {
 		return nil, err
 	}
 
@@ -151,24 +151,36 @@ func SindrSubCommand(
 	return starlark.None, nil
 }
 
-func processFlags(flagsDict *starlark.Dict, cmd *Command) error {
-	if flagsDict == nil {
+func processFlags(flagsList *starlark.List, cmd *Command) error {
+	if flagsList == nil {
 		return nil
 	}
 
-	for _, item := range flagsDict.Items() {
-		name, err := cast[starlark.String](item[0])
-		if err != nil {
-			return fmt.Errorf("flag name: %w", err)
-		}
-		flagDef, err := cast[*starlark.Dict](item[1])
-		if err != nil {
-			return fmt.Errorf("flag value: %w", err)
-		}
+	for item := range flagsList.Elements() {
+		var flag cli.Flag
+		switch i := item.(type) {
+		case starlark.String:
+			flag = &cli.StringFlag{Name: string(i)}
 
-		flag, err := parseFlag(string(name), flagDef)
-		if err != nil {
-			return err
+		case *starlark.Dict:
+			nameVal, ok, _ := i.Get(starlark.String("name"))
+			if !ok {
+				return fmt.Errorf("no name given to flag")
+			}
+			name, err := castString[starlark.String](nameVal)
+			if err != nil {
+				return fmt.Errorf("flag name: %w", err)
+			}
+
+			f, err := parseFlag(name, i)
+			if err != nil {
+				return err
+			}
+
+			flag = f
+
+		default:
+			return fmt.Errorf("expected string or tuple, got: %T", i)
 		}
 
 		cmd.Command.Flags = append(cmd.Command.Flags, flag)
@@ -408,7 +420,6 @@ func createCommandAction(
 	}
 }
 
-// processArgs handles argument configuration for commands.
 func processArgs(argsList *starlark.List, cmd *Command) error {
 	if argsList == nil {
 		return nil
@@ -423,19 +434,6 @@ func processArgs(argsList *starlark.List, cmd *Command) error {
 		cmd.Args = append(cmd.Args, string(str))
 	}
 	return nil
-}
-
-// parsePath converts a Starlark list to a string slice.
-func parsePath(pathList *starlark.List) ([]string, error) {
-	var path []string
-	for i := 0; i < pathList.Len(); i++ {
-		str, ok := pathList.Index(i).(starlark.String)
-		if !ok {
-			return nil, fmt.Errorf("args must be list of strings")
-		}
-		path = append(path, string(str))
-	}
-	return path, nil
 }
 
 func findSubCommand(cmd *cli.Command, path []string) (*cli.Command, error) {

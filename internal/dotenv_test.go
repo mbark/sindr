@@ -1,7 +1,6 @@
 package internal_test
 
 import (
-	"os"
 	"testing"
 
 	"github.com/mbark/sindr/internal/sindrtest"
@@ -9,8 +8,7 @@ import (
 
 func TestDotenv(t *testing.T) {
 	t.Run("loads default .env file", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     # Use exec to create a .env file using Python
     exec('python3', '''
@@ -30,12 +28,10 @@ print('Created .env file')
 cli(name="TestDotenv")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 
 	t.Run("loads multiple env files", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     # Create multiple env files using Python
     exec('python3', '''
@@ -63,16 +59,13 @@ print('Created env files')
 cli(name="TestDotenv")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 
 	t.Run("skips overriding existing environment variables by default", func(t *testing.T) {
 		// Set environment variable at Go level before test
-		os.Setenv("EXISTING_VAR", "original")
-		defer os.Unsetenv("EXISTING_VAR")
+		t.Setenv("EXISTING_VAR", "original")
 
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     # Verify existing variable is set
     result = shell('echo $EXISTING_VAR')
@@ -97,16 +90,13 @@ print('Created .env file')
 cli(name="TestDotenv")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 
 	t.Run("overrides existing variables when overload=True", func(t *testing.T) {
 		// Set environment variable at Go level before test
-		os.Setenv("OVERRIDE_VAR", "original")
-		defer os.Unsetenv("OVERRIDE_VAR")
+		t.Setenv("OVERRIDE_VAR", "original")
 
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     # Verify existing variable is set
     result = shell('echo $OVERRIDE_VAR')
@@ -131,12 +121,10 @@ print('Created .env file')
 cli(name="TestDotenv")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 
 	t.Run("handles missing env file gracefully", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     # Try to load non-existent file - should fail
     try:
@@ -147,13 +135,11 @@ def test_action(ctx):
 
 cli(name="TestDotenv")
 command(name="test", action=test_action)
-`)
-		run(false) // Expect this to fail
+`, sindrtest.ShouldFail())
 	})
 
 	t.Run("loads complex env file with different formats", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     # Create complex .env file using Python
     exec('python3', '''
@@ -197,12 +183,10 @@ print('Created complex .env file')
 cli(name="TestDotenv")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 
 	t.Run("handles env variables with export in shell context", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     # Create .env file using Python
     exec('python3', '''
@@ -227,12 +211,10 @@ print('Created .env file')
 cli(name="TestDotenv")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 
 	t.Run("multiple dotenv calls work correctly", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     # Create first .env file using Python
     exec('python3', '''
@@ -270,6 +252,5 @@ print('Created .env2 file')
 cli(name="TestDotenv")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 }

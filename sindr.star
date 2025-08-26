@@ -262,18 +262,19 @@ command(
     help = "Comprehensive build example with args and flags",
     action = comprehensive_build,
     args = ["target"],
-    flags = {
-        "verbose": {
+    flags = [
+        {
+            "name": "verbose",
             "type": "bool",
             "default": False,
             "help": "Enable verbose output"
         },
-        "parallel": {
-            "type": "bool", 
+        {
+            "name": "parallel",
+            "type": "bool",
             "default": False,
             "help": "Enable parallel build"
-        }
-    }
+        }]
 )
 
 def string_slice_flag(ctx):
@@ -283,16 +284,19 @@ def string_slice_flag(ctx):
 command(
     name = 'slice_flag',
     action=string_slice_flag,
-    flags = {
-        "strings": {
+    flags = [
+        {
+            "name": "strings",
             "type": "strings",
             "default": ["1","2"],
         },
-        "ints": {
+        {
+            "name": "ints",
             "type": "ints",
             "default": [1,2,3],
-        }
-    }
+        },
+        "simple",
+ ]
 )
 
 def exec(ctx):
@@ -306,7 +310,7 @@ command(
     action=exec,
 )
 
-def dotenv(ctx):
+def dotenv_fn(ctx):
     dotenv()
     res = shell('echo $FOO')
     print('FOO is', res.stdout)
@@ -319,7 +323,7 @@ def dotenv(ctx):
 
 command(
     name='dotenv',
-    action=dotenv,
+    action=dotenv_fn,
 )
 
 # ============================================================================

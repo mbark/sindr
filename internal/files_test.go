@@ -1,142 +1,106 @@
 package internal_test
 
 import (
-	"os"
-	"path/filepath"
-	"strconv"
 	"testing"
-	"time"
-
-	"github.com/stretchr/testify/require"
 
 	"github.com/mbark/sindr/internal/sindrtest"
 )
 
 func TestFileTimestamps(t *testing.T) {
 	t.Run("newest_ts with single glob", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-
-		// Create test files with different modification times
-		file1 := "test1.txt"
-		file2 := "test2.txt"
-
-		require.NoError(t, os.WriteFile(file1, []byte("content1"), 0o644))
-		time.Sleep(10 * time.Millisecond)
-		require.NoError(t, os.WriteFile(file2, []byte("content2"), 0o644))
-
-		// Get expected newest timestamp
-		info2, err := os.Stat(file2)
-		require.NoError(t, err)
-		expectedNewest := info2.ModTime().Unix()
-
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
+    # Create test files with different modification times
+    shell('echo "content1" > test1.txt')
+    shell('sleep 0.1')  # Small delay to ensure different timestamps
+    shell('echo "content2" > test2.txt')
+    
+    # Get the newer timestamp and test it
     result = newest_ts('test*.txt')
-    expected = `+strconv.FormatInt(expectedNewest, 10)+`
+    
+    # Get timestamp of test2.txt for comparison
+    test2_ts_result = shell('stat -c %Y test2.txt 2>/dev/null || stat -f %m test2.txt')
+    expected = int(test2_ts_result.stdout)
+    
     if result != expected:
         fail('expected ' + str(expected) + ', got: ' + str(result))
 
 cli(name="TestNewestTS")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 
 	t.Run("oldest_ts with single glob", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-
-		// Create test files with different modification times
-		file1 := "old1.txt"
-		file2 := "old2.txt"
-
-		require.NoError(t, os.WriteFile(file1, []byte("content1"), 0o644))
-		info1, err := os.Stat(file1)
-		require.NoError(t, err)
-		expectedOldest := info1.ModTime().Unix()
-
-		time.Sleep(10 * time.Millisecond)
-		require.NoError(t, os.WriteFile(file2, []byte("content2"), 0o644))
-
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
+    # Create test files with different modification times
+    shell('echo "content1" > old1.txt')
+    # Get timestamp of old1.txt before creating the second file
+    old1_ts_result = shell('stat -c %Y old1.txt 2>/dev/null || stat -f %m old1.txt')
+    expected = int(old1_ts_result.stdout)
+    
+    shell('sleep 0.1')  # Small delay to ensure different timestamps  
+    shell('echo "content2" > old2.txt')
+    
     result = oldest_ts('old*.txt')
-    expected = `+strconv.FormatInt(expectedOldest, 10)+`
+    
     if result != expected:
         fail('expected ' + str(expected) + ', got: ' + str(result))
 
 cli(name="TestOldestTS")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 
 	t.Run("newest_ts with list of globs", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-
-		// Create test files in different directories
-		require.NoError(t, os.Mkdir("dir1", 0o755))
-		require.NoError(t, os.Mkdir("dir2", 0o755))
-
-		file1 := filepath.Join("dir1", "file.txt")
-		file2 := filepath.Join("dir2", "file.log")
-
-		require.NoError(t, os.WriteFile(file1, []byte("content1"), 0o644))
-		time.Sleep(10 * time.Millisecond)
-		require.NoError(t, os.WriteFile(file2, []byte("content2"), 0o644))
-
-		// Get expected newest timestamp
-		info2, err := os.Stat(file2)
-		require.NoError(t, err)
-		expectedNewest := info2.ModTime().Unix()
-
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
+    # Create test files in different directories
+    shell('mkdir -p dir1 dir2')
+    shell('echo "content1" > dir1/file.txt')
+    shell('sleep 0.1')  # Small delay to ensure different timestamps
+    shell('echo "content2" > dir2/file.log')
+    
+    # Get timestamp of the newer file for comparison
+    file2_ts_result = shell('stat -c %Y dir2/file.log 2>/dev/null || stat -f %m dir2/file.log')
+    expected = int(file2_ts_result.stdout)
+    
     result = newest_ts(['dir1/*.txt', 'dir2/*.log'])
-    expected = `+strconv.FormatInt(expectedNewest, 10)+`
+    
     if result != expected:
         fail('expected ' + str(expected) + ', got: ' + str(result))
 
 cli(name="TestNewestTSList")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 
 	t.Run("oldest_ts with list of globs", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-
-		// Create test files in different directories
-		require.NoError(t, os.Mkdir("src", 0o755))
-		require.NoError(t, os.Mkdir("docs", 0o755))
-
-		file1 := filepath.Join("src", "main.go")
-		file2 := filepath.Join("docs", "readme.md")
-
-		require.NoError(t, os.WriteFile(file1, []byte("package main"), 0o644))
-		info1, err := os.Stat(file1)
-		require.NoError(t, err)
-		expectedOldest := info1.ModTime().Unix()
-
-		time.Sleep(10 * time.Millisecond)
-		require.NoError(t, os.WriteFile(file2, []byte("# README"), 0o644))
-
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
+    # Create test files in different directories
+    shell('mkdir -p src docs')
+    shell('echo "package main" > src/main.go')
+    
+    # Get timestamp of the first file before creating the second
+    file1_ts_result = shell('stat -c %Y src/main.go 2>/dev/null || stat -f %m src/main.go')
+    expected = int(file1_ts_result.stdout)
+    
+    shell('sleep 0.1')  # Small delay to ensure different timestamps
+    shell('echo "# README" > docs/readme.md')
+    
     result = oldest_ts(['src/*.go', 'docs/*.md'])
-    expected = `+strconv.FormatInt(expectedOldest, 10)+`
+    
     if result != expected:
         fail('expected ' + str(expected) + ', got: ' + str(result))
 
 cli(name="TestOldestTSList")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 
 	t.Run("error when no files match", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     try:
         result = newest_ts('nonexistent*.xyz')
@@ -147,47 +111,40 @@ def test_action(ctx):
 
 cli(name="TestNoFilesError")
 command(name="test", action=test_action)
-`)
-		run(false)
+`, sindrtest.ShouldFail())
 	})
 
 	t.Run("skips directories", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-
-		// Create a directory and a file
-		require.NoError(t, os.Mkdir("testdir", 0o755))
-		require.NoError(t, os.WriteFile("testfile.txt", []byte("content"), 0o644))
-
-		// Get expected timestamp from the file
-		info, err := os.Stat("testfile.txt")
-		require.NoError(t, err)
-		expectedTS := info.ModTime().Unix()
-
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
+    # Create a directory and a file
+    shell('mkdir testdir')
+    shell('echo "content" > testfile.txt')
+    
+    # Get timestamp of the file for comparison
+    file_ts_result = shell('stat -c %Y testfile.txt 2>/dev/null || stat -f %m testfile.txt')
+    expected = int(file_ts_result.stdout)
+    
     result = newest_ts('test*')
-    expected = `+strconv.FormatInt(expectedTS, 10)+`
+    
     if result != expected:
         fail('expected ' + str(expected) + ', got: ' + str(result))
 
 cli(name="TestSkipsDirectories")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 }
 
 func TestGlob(t *testing.T) {
 	t.Run("glob with single pattern", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-
-		// Create test files
-		require.NoError(t, os.WriteFile("glob1.txt", []byte("content1"), 0o644))
-		require.NoError(t, os.WriteFile("glob2.txt", []byte("content2"), 0o644))
-		require.NoError(t, os.WriteFile("other.log", []byte("log"), 0o644))
-
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
+    # Create test files
+    shell('echo "content1" > glob1.txt')
+    shell('echo "content2" > glob2.txt')
+    shell('echo "log" > other.log')
+    
     result = glob('glob*.txt')
     if len(result) != 2:
         fail('expected 2 files, got: ' + str(len(result)))
@@ -201,35 +158,18 @@ def test_action(ctx):
 cli(name="TestGlob")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 
 	t.Run("glob with list of patterns", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-
-		// Create test files in different directories
-		require.NoError(t, os.Mkdir("src", 0o755))
-		require.NoError(t, os.Mkdir("test", 0o755))
-
-		require.NoError(
-			t,
-			os.WriteFile(filepath.Join("src", "main.go"), []byte("package main"), 0o644),
-		)
-		require.NoError(
-			t,
-			os.WriteFile(filepath.Join("src", "utils.go"), []byte("package main"), 0o644),
-		)
-		require.NoError(
-			t,
-			os.WriteFile(filepath.Join("test", "test1.py"), []byte("import unittest"), 0o644),
-		)
-		require.NoError(
-			t,
-			os.WriteFile(filepath.Join("test", "test2.py"), []byte("import unittest"), 0o644),
-		)
-
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
+    # Create test files in different directories
+    shell('mkdir -p src test')
+    shell('echo "package main" > src/main.go')
+    shell('echo "package main" > src/utils.go')
+    shell('echo "import unittest" > test/test1.py')
+    shell('echo "import unittest" > test/test2.py')
+    
     result = glob(['src/*.go', 'test/*.py'])
     if len(result) != 4:
         fail('expected 4 files, got: ' + str(len(result)))
@@ -243,13 +183,10 @@ def test_action(ctx):
 cli(name="TestGlobList")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 
 	t.Run("glob returns empty list when no matches", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     result = glob('nonexistent*.xyz')
     if len(result) != 0:
@@ -258,18 +195,15 @@ def test_action(ctx):
 cli(name="TestGlobEmpty")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 
 	t.Run("glob skips directories", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-
-		// Create a directory and a file with similar names
-		require.NoError(t, os.Mkdir("skipdir", 0o755))
-		require.NoError(t, os.WriteFile("skipfile.txt", []byte("content"), 0o644))
-
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
+    # Create a directory and a file with similar names
+    shell('mkdir skipdir')
+    shell('echo "content" > skipfile.txt')
+    
     result = glob('skip*')
     if len(result) != 1:
         fail('expected 1 file, got: ' + str(len(result)))
@@ -280,18 +214,15 @@ def test_action(ctx):
 cli(name="TestGlobSkipsDirectories")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 
 	t.Run("glob removes duplicates", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-
-		// Create test files
-		require.NoError(t, os.WriteFile("dup1.txt", []byte("content1"), 0o644))
-		require.NoError(t, os.WriteFile("dup2.txt", []byte("content2"), 0o644))
-
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
+    # Create test files
+    shell('echo "content1" > dup1.txt')
+    shell('echo "content2" > dup2.txt')
+    
     # Use overlapping patterns that would match the same files
     result = glob(['dup*.txt', 'dup1.txt', '*.txt'])
     
@@ -310,13 +241,10 @@ def test_action(ctx):
 cli(name="TestGlobDuplicates")
 command(name="test", action=test_action)
 `)
-		run()
 	})
 
 	t.Run("glob with invalid argument type", func(t *testing.T) {
-		run := sindrtest.SetupStarlarkRuntime(t)
-
-		sindrtest.WithMainStar(t, `
+		sindrtest.Test(t, `
 def test_action(ctx):
     try:
         result = glob(123)
@@ -327,7 +255,6 @@ def test_action(ctx):
 
 cli(name="TestGlobInvalidArg")
 command(name="test", action=test_action)
-`)
-		run(false)
+`, sindrtest.ShouldFail())
 	})
 }

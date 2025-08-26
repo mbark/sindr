@@ -390,8 +390,8 @@ All tests must follow this consistent pattern:
 ### Test Structure Pattern
 
 1. **Use helper functions from `internal/helpers_test.go`**:
-   - `sindrtest.SetupStarlarkRuntime(t)` - Creates runtime with temp directory and returns a run function
-   - `sindrtest.WithMainStar(t, starlarkCode)` - Creates main.star file with Starlark test code
+    - `sindrtest.SetupStarlarkRuntime(t, starlarkCode)` - Creates runtime with temp directory, writes Starlark test code
+      to file, and runs code.
 
 2. **Test function structure**:
    ```go

@@ -13,7 +13,8 @@ func InitialiseLocals(thread *starlark.Thread) (*CLI, *sync.WaitGroup) {
 	sindrCLI := &CLI{
 		Command: &Command{
 			Command: &cli.Command{},
-		}}
+		},
+	}
 
 	thread.SetLocal("cli", sindrCLI)
 	thread.SetLocal("wg", wg)

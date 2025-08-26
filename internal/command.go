@@ -121,7 +121,10 @@ func SindrSubCommand(
 		return nil, err
 	}
 
-	path, err := fromList[string](pathList, func(v starlark.Value) (string, error) { return castString[starlark.String](v) })
+	path, err := fromList[string](
+		pathList,
+		func(v starlark.Value) (string, error) { return castString[starlark.String](v) },
+	)
 	if err != nil {
 		return nil, err
 	}

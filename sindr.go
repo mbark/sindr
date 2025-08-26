@@ -104,7 +104,12 @@ func Run(ctx context.Context, args []string, opts ...RunOption) error {
 	fs.Usage = func() {} // unbind the default printing, we let urfave/cli handle this later on
 	fs.BoolP(flagName(verboseKey), "v", false, "print logs to stdout")
 	fs.BoolP(flagName(noCacheKey), "n", false, "ignore stored values in the cache")
-	fs.BoolP(flagName(lineNumbersKey), "l", false, "print logs with Starlark line numbers if possible")
+	fs.BoolP(
+		flagName(lineNumbersKey),
+		"l",
+		false,
+		"print logs with Starlark line numbers if possible",
+	)
 	fs.StringP(flagName(fileNameKey), "f", "sindr.star", "path to the Starlark config file")
 	fs.String(flagName(cacheDir), cacheDir, "path to the Starlark config file")
 	err := fs.Parse(args)
@@ -182,8 +187,6 @@ func Run(ctx context.Context, args []string, opts ...RunOption) error {
 }
 
 func runCLI(ctx context.Context, args []string, sindrCLI *internal.CLI, wg *sync.WaitGroup) error {
-	// TODO: implement it so that all flags are automatically copied over here
-	// in order for urfave/cli to not error out on invalid flags, we repeat our globally defined flags above again.
 	cliFlags := []cli.Flag{
 		&cli.BoolFlag{
 			Name:    "verbose",

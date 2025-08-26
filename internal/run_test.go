@@ -10,7 +10,7 @@ func TestPool(t *testing.T) {
 	t.Run("creates pool and runs tasks concurrently", func(t *testing.T) {
 		sindrtest.Test(t, `
 def test_action(ctx):
-    pool = pool()
+    p = pool()
     
     def task1():
         shell('echo "task1 done" > task1.txt')
@@ -18,9 +18,9 @@ def test_action(ctx):
     def task2():
         shell('echo "task2 done" > task2.txt')
     
-    pool.run(task1)
-    pool.run(task2)
-    pool.wait()
+    p.run(task1)
+    p.run(task2)
+    p.wait()
     
     # Check files were created
     task1_result = shell('cat task1.txt')
@@ -39,15 +39,15 @@ command(name="test", action=test_action)
 	t.Run("pool waits for all tasks to complete", func(t *testing.T) {
 		sindrtest.Test(t, `
 def test_action(ctx):
-    pool = pool()
+    p = pool()
     
     def delayed_task():
         # Simulate some work with shell command
         shell('sleep 0.1')
         shell('echo "delayed task done" > delayed.txt')
     
-    pool.run(delayed_task)
-    pool.wait()  # This should wait for the delayed task
+    p.run(delayed_task)
+    p.wait()  # This should wait for the delayed task
     
     result = shell('cat delayed.txt')
     if str(result) != 'delayed task done':
@@ -165,12 +165,12 @@ func TestRunTypeCreation(t *testing.T) {
 	t.Run("pool function creates pool userdata", func(t *testing.T) {
 		sindrtest.Test(t, `
 def test_action(ctx):
-    pool = pool()
+    p = pool()
     
     # Verify pool has expected methods - in Starlark we can check attributes exist
-    if not hasattr(pool, 'run'):
+    if not hasattr(p, 'run'):
         fail('expected pool to have run method')
-    if not hasattr(pool, 'wait'):
+    if not hasattr(p, 'wait'):
         fail('expected pool to have wait method')
 
 cli(name="TestRunTypeCreation", usage="Test pool type creation")

@@ -38,7 +38,7 @@ def test_action(ctx):
 echo "line2"
 echo "line3"'''
     result = exec(bin='sh', command=command)
-    expected = 'line1\\nline2\\nline3'
+    expected = '''line1\nline2\nline3'''
     if result.stdout != expected:
         fail('expected "' + expected + '", got: ' + str(result.stdout))
 
@@ -229,10 +229,10 @@ command(name="test", action=test_action)
 		sindrtest.Test(t, `
 def test_action(ctx):
     # Test with awk
-    awk_command = 'BEGIN { print "Hello from awk" }'
-    result = exec(bin='awk', command=awk_command)
-    if result.stdout != 'Hello from awk':
-        fail('expected "Hello from awk", got: ' + str(result.stdout))
+    awk_command = 'print "Hello from perl\n";'
+    result = exec(bin='perl', command=awk_command)
+    if result.stdout != 'Hello from perl':
+        fail('expected "Hello from perl", got: ' + str(result.stdout))
 
 cli(name="TestExec", usage="Test exec functionality")
 command(name="test", action=test_action)

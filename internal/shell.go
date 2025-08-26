@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"os/exec"
 	"strings"
 
@@ -61,10 +60,7 @@ func SindrShell(
 		logger.Log(commandStyle.Render("$ " + command))
 	}
 
-	command = os.ExpandEnv(command)
-	commandArgs := strings.Fields(command)
-
-	cmd := exec.CommandContext(ctx, commandArgs[0], commandArgs[1:]...) // #nosec G204
+	cmd := exec.CommandContext(ctx, "sh", "-c", command) // #nosec G204
 	if prefix != "" {
 		logger.LogVerbose(prefixStyle.Render(prefix), commandStyleVerbose.Render(cmd.String()))
 	} else {

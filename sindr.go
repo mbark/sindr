@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
 
 	"github.com/spf13/viper"
 	"github.com/urfave/cli/v3"
@@ -164,6 +165,8 @@ func Run(ctx context.Context, args []string, opts ...RunOption) error {
 			logger.WithStack(thread.CallStack()).Log(msg)
 		},
 	}
+
+	sindrCLI, wg := internal.InitialiseLocals(thread)
 	_, err = starlark.ExecFileOptions(
 		&syntax.FileOptions{},
 		thread,
@@ -175,10 +178,10 @@ func Run(ctx context.Context, args []string, opts ...RunOption) error {
 		return err
 	}
 
-	return runCLI(ctx, args)
+	return runCLI(ctx, args, sindrCLI, wg)
 }
 
-func runCLI(ctx context.Context, args []string) error {
+func runCLI(ctx context.Context, args []string, sindrCLI *internal.CLI, wg *sync.WaitGroup) error {
 	// TODO: implement it so that all flags are automatically copied over here
 	// in order for urfave/cli to not error out on invalid flags, we repeat our globally defined flags above again.
 	cliFlags := []cli.Flag{
@@ -199,7 +202,7 @@ func runCLI(ctx context.Context, args []string) error {
 		},
 	}
 
-	cmd := internal.GlobalCLI.Command.Command
+	cmd := sindrCLI.Command.Command
 	cmd.Flags = append(cmd.Flags, cliFlags...)
 
 	err := cmd.Run(ctx, args)
@@ -207,7 +210,7 @@ func runCLI(ctx context.Context, args []string) error {
 		return err
 	}
 
-	internal.WaitGroup.Wait()
+	wg.Wait()
 	return nil
 }
 

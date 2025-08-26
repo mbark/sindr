@@ -36,10 +36,10 @@ def test_action(ctx):
     # Create multiple env files using Python
     exec('python3', '''
 with open('.env.local', 'w') as f:
-    f.write('VAR1=value1\n')
+    f.write('VAR1=value1\\n')
     
 with open('.env.production', 'w') as f:
-    f.write('VAR2=value2\n')
+    f.write('VAR2=value2\\n')
     
 print('Created env files')
 ''')
@@ -191,7 +191,7 @@ def test_action(ctx):
     # Create .env file using Python
     exec('python3', '''
 with open('.env', 'w') as f:
-    f.write('EXPORT_TEST=exported_value\n')
+    f.write('EXPORT_TEST=exported_value\\n')
 print('Created .env file')
 ''')
     
@@ -219,7 +219,7 @@ def test_action(ctx):
     # Create first .env file using Python
     exec('python3', '''
 with open('.env1', 'w') as f:
-    f.write('FIRST_VAR=first\n')
+    f.write('FIRST_VAR=first\\n')
 print('Created .env1 file')
 ''')
     

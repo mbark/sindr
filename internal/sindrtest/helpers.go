@@ -60,9 +60,12 @@ func Test(t *testing.T, contents string, opts ...TestOption) {
 		require.NoError(t, err)
 	})
 
+	contents = strings.ReplaceAll(contents, "\t", "    ")
+
 	_, err = f.WriteString(contents)
 	require.NoError(t, err)
 
+	t.Log("Wrote to file", filepath.Join(dir, fileName))
 	t.Log("=== main.star ===")
 	for i, line := range strings.Split(contents, "\n") {
 		t.Logf("%3d: %s", i+1, line)
@@ -80,6 +83,7 @@ func Test(t *testing.T, contents string, opts ...TestOption) {
 		sindr.WithFileName(fileName),
 		sindr.WithCacheDir(dir+"/cache"),
 		sindr.WithDirectory(dir),
+		sindr.WithVerboseLogging(true),
 	)
 	if options.fail {
 		require.Error(t, err)

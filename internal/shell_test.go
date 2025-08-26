@@ -23,7 +23,7 @@ command(name="test", action=test_action)
 		sindrtest.Test(t, `
 def test_action(ctx):
     result = shell('printf "line1\\nline2\\nline3"')
-    expected = 'line1\\nline2\\nline3'
+    expected = '''line1\nline2\nline3'''
     if result.stdout != expected:
         fail('expected: ' + expected + ', got: ' + str(result.stdout))
 
@@ -232,7 +232,7 @@ def test_action(ctx):
     
     # Test multiline output capture
     multiline_result = shell('printf "line1\\nline2\\nline3"')
-    expected_multiline = 'line1\\nline2\\nline3'
+    expected_multiline = '''line1\nline2\nline3'''
     if multiline_result.stdout != expected_multiline:
         fail('REGRESSION: multiline stdout not captured - expected "' + expected_multiline + '", got "' + str(multiline_result.stdout) + '"')
 

@@ -8,7 +8,7 @@ import (
 
 func TestDiff(t *testing.T) {
 	t.Run("with diff expected", func(t *testing.T) {
-		sindrtest.Test(t, true, `
+		sindrtest.Test(t, `
 def test_action(ctx):
 	c = cache()
 	if not c.diff(name='version', version='1'):
@@ -20,7 +20,7 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("with no diff expected", func(t *testing.T) {
-		sindrtest.Test(t, true, `
+		sindrtest.Test(t, `
 def test_action(ctx):
 	c = cache()
 	c.set_version(name='version', version='1')
@@ -35,7 +35,7 @@ command(name="test", action=test_action)
 
 func TestStore(t *testing.T) {
 	t.Run("set_version version successfully", func(t *testing.T) {
-		sindrtest.Test(t, true, `
+		sindrtest.Test(t, `
 def test_action(ctx):
 	c = cache()
 	c.set_version(name='test-key', version='v1.0.0')
@@ -51,7 +51,7 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("set_version with int version", func(t *testing.T) {
-		sindrtest.Test(t, true, `
+		sindrtest.Test(t, `
 def test_action(ctx):
 	c = cache()
 	c.set_version(name='test-int', version=42)
@@ -69,7 +69,7 @@ command(name="test", action=test_action)
 
 func TestWithVersion(t *testing.T) {
 	t.Run("runs function when version differs", func(t *testing.T) {
-		sindrtest.Test(t, true, `
+		sindrtest.Test(t, `
 def test_action(ctx):
 	c = cache()
 	def version_func():
@@ -89,7 +89,7 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("skips function when version matches", func(t *testing.T) {
-		sindrtest.Test(t, true, `
+		sindrtest.Test(t, `
 def test_action(ctx):
 	c = cache()
 	def version_func():
@@ -112,7 +112,7 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("runs function with int version", func(t *testing.T) {
-		sindrtest.Test(t, true, `
+		sindrtest.Test(t, `
 def test_action(ctx):
 	c = cache()
 	def version_func():
@@ -139,7 +139,7 @@ command(name="test", action=test_action)
 
 func TestCacheWithCustomDir(t *testing.T) {
 	t.Run("create cache with custom directory", func(t *testing.T) {
-		sindrtest.Test(t, true, `
+		sindrtest.Test(t, `
 def test_action(ctx):
 	c = cache(cache_dir="/tmp/test-cache")
 	c.set_version(name='custom-dir-test', version='v1.0.0')

@@ -58,15 +58,15 @@ def demo_pool(ctx):
     """Demonstrates pool-based concurrent operations"""
     print("=== Pool Operations Demo ===")
     
-    pool = pool()
+    p = pool()
     
     # Add tasks to the pool
-    pool.run(lambda: shell('echo "Pool task 1" && sleep 1', prefix='[POOL1]'))
-    pool.run(lambda: shell('echo "Pool task 2" && sleep 1', prefix='[POOL2]'))
-    pool.run(lambda: shell('echo "Pool task 3" && sleep 1', prefix='[POOL3]'))
+    p.run(lambda: shell('echo "Pool task 1" && sleep 1', prefix='[POOL1]'))
+    p.run(lambda: shell('echo "Pool task 2" && sleep 1', prefix='[POOL2]'))
+    p.run(lambda: shell('echo "Pool task 3" && sleep 1', prefix='[POOL3]'))
     
     print("Pool tasks started, waiting...")
-    pool.wait()
+    p.wait()
     print("Pool tasks completed!")
 
 command(

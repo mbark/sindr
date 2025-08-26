@@ -44,6 +44,11 @@ func SindrLoadPackageJson(
 		return nil, err
 	}
 
+	sindrCLI, err := getSindrCLI(thread)
+	if err != nil {
+		return nil, err
+	}
+
 	logger := logger.WithStack(thread.CallStack())
 	logger.LogVerbose(
 		lipgloss.NewStyle().
@@ -55,8 +60,9 @@ func SindrLoadPackageJson(
 		logger.LogVerbose(
 			lipgloss.NewStyle().Faint(true).Padding(0, 2).Render(fmt.Sprintf("Imported %s", name)),
 		)
-		GlobalCLI.Command.Command.Commands = append(
-			GlobalCLI.Command.Command.Commands,
+
+		sindrCLI.Command.Command.Commands = append(
+			sindrCLI.Command.Command.Commands,
 			&cli.Command{
 				Name:            name,
 				SkipFlagParsing: true,

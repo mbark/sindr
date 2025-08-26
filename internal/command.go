@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"sync"
 	"unicode"
 
 	"github.com/charmbracelet/lipgloss"
@@ -27,15 +26,6 @@ type Command struct {
 	ArgType map[string]func(string) (starlark.Value, error)
 }
 
-var (
-	GlobalCLI CLI = CLI{
-		Command: &Command{
-			Command: &cli.Command{},
-		},
-	}
-	WaitGroup sync.WaitGroup
-)
-
 func SindrCLI(
 	thread *starlark.Thread,
 	fn *starlark.Builtin,
@@ -49,8 +39,14 @@ func SindrCLI(
 	); err != nil {
 		return nil, err
 	}
-	GlobalCLI.Command.Command.Name = name
-	GlobalCLI.Command.Command.Usage = usage
+
+	sindrCLI, err := getSindrCLI(thread)
+	if err != nil {
+		return nil, err
+	}
+
+	sindrCLI.Command.Command.Name = name
+	sindrCLI.Command.Command.Usage = usage
 	return starlark.None, nil
 }
 
@@ -93,7 +89,12 @@ func SindrCommand(
 		return nil, err
 	}
 
-	GlobalCLI.Command.Command.Commands = append(GlobalCLI.Command.Command.Commands, cmd.Command)
+	sindrCLI, err := getSindrCLI(thread)
+	if err != nil {
+		return nil, err
+	}
+
+	sindrCLI.Command.Command.Commands = append(sindrCLI.Command.Command.Commands, cmd.Command)
 	return starlark.None, nil
 }
 
@@ -125,7 +126,12 @@ func SindrSubCommand(
 		return nil, err
 	}
 
-	parentCmd, err := findSubCommand(GlobalCLI.Command.Command, path)
+	sindrCLI, err := getSindrCLI(thread)
+	if err != nil {
+		return nil, err
+	}
+
+	parentCmd, err := findSubCommand(sindrCLI.Command.Command, path)
 	if err != nil {
 		return nil, err
 	}

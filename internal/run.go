@@ -25,9 +25,14 @@ func SindrStart(
 		return nil, errors.New("start() argument must be a callable function")
 	}
 
-	WaitGroup.Add(1)
+	wg, err := getWaitGroup(thread)
+	if err != nil {
+		return nil, err
+	}
+
+	wg.Add(1)
 	go func() {
-		defer WaitGroup.Done()
+		defer wg.Done()
 
 		newThread := &starlark.Thread{Name: "async"}
 		_, err := starlark.Call(newThread, callable, starlark.Tuple{}, nil)
@@ -45,7 +50,12 @@ func SindrWait(
 	args starlark.Tuple,
 	kwargs []starlark.Tuple,
 ) (starlark.Value, error) {
-	WaitGroup.Wait()
+	wg, err := getWaitGroup(thread)
+	if err != nil {
+		return nil, err
+	}
+
+	wg.Wait()
 	return starlark.None, nil
 }
 

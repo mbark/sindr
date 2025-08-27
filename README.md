@@ -45,7 +45,63 @@ $ go test -short -race ./...
 
 ## Installation
 
-🚧 **TBD** 🚧
+The easiest way to install `sindr` is by using the installation script:
+
+```bash
+curl -sSL https://github.com/mbark/sindr/raw/master/install.sh | sh
+```
+
+### Pre-built Binaries
+
+You can find pre-built binaries for your platform at [GitHub Releases](https://github.com/mbark/sindr/releases/latest).
+
+#### macOS
+
+```bash
+# Intel Mac
+curl -sSL https://api.github.com/repos/mbark/sindr/releases/latest | \
+  grep "browser_download_url.*darwin_amd64.tar.gz" | \
+  cut -d '"' -f 4 | \
+  xargs curl -L | tar xz && chmod +x sindr && sudo mv sindr /usr/local/bin/
+
+# Apple Silicon Mac
+curl -sSL https://api.github.com/repos/mbark/sindr/releases/latest | \
+  grep "browser_download_url.*darwin_arm64.tar.gz" | \
+  cut -d '"' -f 4 | \
+  xargs curl -L | tar xz && chmod +x sindr && sudo mv sindr /usr/local/bin/
+```
+
+#### Linux
+
+```bash
+# 64-bit
+curl -sSL https://api.github.com/repos/mbark/sindr/releases/latest | \
+  grep "browser_download_url.*linux_amd64.tar.gz" | \
+  cut -d '"' -f 4 | \
+  xargs curl -L | tar xz && chmod +x sindr && sudo mv sindr /usr/local/bin/
+
+# ARM64
+curl -sSL https://api.github.com/repos/mbark/sindr/releases/latest | \
+  grep "browser_download_url.*linux_arm64.tar.gz" | \
+  cut -d '"' -f 4 | \
+  xargs curl -L | tar xz && chmod +x sindr && sudo mv sindr /usr/local/bin/
+```
+
+### Using Go
+
+If you have Go installed and prefer using that you can either `go install` with:
+
+```bash
+go install github.com/mbark/sindr@latest
+```
+
+When using Go 1.24+ you can also add it as a tool for your project:
+
+```bash
+go get -tool github.com/mbark/sindr
+go mod tidy
+go tool sindr
+```
 
 ## Quick start
 

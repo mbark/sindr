@@ -1,0 +1,3 @@
+ignore:
+  - "cmd"  # ignore the main cmd
+  - "examples" # example directory doesn't need tests

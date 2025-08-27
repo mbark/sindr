@@ -45,10 +45,21 @@ $ go test -short -race ./...
 
 ## Installation
 
-The easiest way to install `sindr` is by using the installation script:
+### Installation Script
+
+You can also install `sindr` using the installation script:
 
 ```bash
 curl -sSL https://github.com/mbark/sindr/raw/master/install.sh | sh
+```
+
+### Homebrew
+
+For users of Homebrew, it's probably easiest to install via `sindr` it:
+
+```bash
+brew tap mbark/tap
+brew install sindr
 ```
 
 ### Pre-built Binaries

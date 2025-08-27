@@ -112,23 +112,53 @@ case none are so it will log simply `a_command`.
 
 ## Comparison to other popular tools
 
-🚧 **TBD** 🚧
+`sindr` was developed out of frustration with existing project-specific commands focusing not being great for the task (
+`make`) or building on the somewhat arcane syntax (`just`). However, that doesn't mean those are great tools. This
+section attempts to outline how `sindr` compares to other popular tools for running commands.
 
-### Make
+### make
 
-🚧 **TBD** 🚧
+`make` and `Makefiles` are primarily built for (as the name indicates) building code. The `Makefile` format specifies
+what files should be built and what files they depend on. This makes it great for building code but not as good when you
+primarily use it for running commands. When using `Makefiles` for commands you can't really require passing arguments or
+flags and if you want some simple scripting logic like `if X then Y` the syntax looks arcane.
+
+Consider using `make` if you want to build code (typically C or C++) and maybe have only a few (`.PHONY`)
+command-targets, otherwise a tool specifically for scripts is a better idea.
 
 ## Just
 
-🚧 **TBD** 🚧
+`just` is more or less `make` but optimized for project-specific commands. `just` is a really nice tool but also suffers
+from having borrowed much syntax from `Makefiles`. In many ways it feels like how you wish `make` worked but it doesn't
+really re-think the paradigm.
+
+If you're already familiar with `Makefiles` or `Just` it's probably the better tool to choose. However, if you're not
+either `sindr` allows writing your commands with a subset of Python and you get a CLI – a tool that most developers are
+already very familiar with how it should be used.
 
 ## package.json
 
-🚧 **TBD** 🚧
+When working with web or `node` you can use the `script` section in your `package.json` to store common commands to run.
+
+Scripts in `package.json` files however, are primarily built around having simple one-liner calls, not writing more
+complex things. If you only have some simple things to do like `prettier --write' or similar, it works great. However,
+if you need to do more complex logic, you have to create a separate file and write the script there.
+
+`package.json` is good when you're already working with `npm` (or similar), have simple one-liners or are fine with
+creating new files for each command.
 
 ## Building your own CLI
 
-🚧 **TBD** 🚧
+Pretty much every programming language has some great library for writing your CLI and this is definitely a nice way to
+do it. It has several upsides: you can use the language the project is already in, you don't need to add any new tooling
+and you can even re-use some of your other parts of your code base.
+
+However, it can easily feel quite heavyhanded to have to create your own CLI just to run scripts. Additionally, some
+programming languages are not ideal for scripting and the scripts can become quite cumbersome.
+
+Using a tool developer specifically for running commands – like `sindr` – can be a good way to allow creating a CLI
+a bit more easily. Should you also want to add more complex commands, you can use your own file for those. And finally,
+it's not going to be too hard to migrate from a simple command-runner to your own CLI should you choose to do so.
 
 ## Inspiration
 

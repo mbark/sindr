@@ -19,5 +19,6 @@
 - [x] Allow the name of the global option be set via a command-line flag
 - [x] Map the pflags to cli.Flags automatically
 - [ ] Update the `README` with more context, comparisons to `just`, `mise`, `Makefile` etc.
+- [ ] Source all `sindr.star` upwards until one is defined as `root`
 - [ ] Tag a version 0.0.2 to build a binary to test `goreleaser` stuff.
 - [ ] Improve the tests for `packagejson` and command to actually check the commands are added (e.g., via --help)

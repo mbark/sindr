@@ -108,7 +108,51 @@ case none are so it will log simply `a_command`.
 
 ## Examples
 
-🚧 **TBD** 🚧
+A variety of examples can be found in the [examples directory](https://github.com/mbark/sindr/tree/master/examples).
+
+### Adding commands and subcommands
+
+* `cli`
+* `command`
+* `sub_command`
+
+### Shell commands
+
+* `shell`
+
+### String templating
+
+* `string`
+
+### Working with asynchronous commands
+
+* `start`
+* `wait`
+* `pool`
+
+### Working with files
+
+* `newest_ts`
+* `oldest_ts`
+* `glob`
+
+### Using the cache
+
+* `cache`
+
+### Running other programming languages
+
+* `exec`
+
+### Importing scripts from `pacage.json`
+
+* `load_package_json`
+
+### Sourcing .env files with `dotenv`
+
+* `dotenv`
+
+### Working with `sindr` as a Go-library
 
 ## Comparison to other popular tools
 

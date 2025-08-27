@@ -229,7 +229,7 @@ func mapPFlagsToCLIFlags(fs *flag.FlagSet) ([]cli.Flag, error) {
 			})
 
 		default:
-			err = errors.Join(err, fmt.Errorf("can't map flag %s, unkown type: %s", f.Name, f.Value.Type()))
+			err = errors.Join(err, fmt.Errorf("can't map flag %s, unknown type: %s", f.Name, f.Value.Type()))
 		}
 	})
 	return cliFlags, err

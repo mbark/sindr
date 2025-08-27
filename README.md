@@ -1,6 +1,12 @@
 <h1 align=center><code>🔨✨ sindr</code></h1>
 
-[![Test](https://github.com/mbark/sindr/actions/workflows/lint.yml/badge.svg)](https://github.com/mbark/sindr/actions/workflows/lint.yml)
+[![tag](https://img.shields.io/github/tag/mbark/sindr.svg)](https://github.com/mbark/sindr/releases)
+[![GoDoc](https://godoc.org/github.com/mbark/sindr?status.svg)](https://pkg.go.dev/github.com/mbark/sindr)
+[![Build Status](https://github.com/mbark/sindr/actions/workflows/lint.yml/badge.svg)](https://github.com/mbark/sindr/actions/workflows/lint.yml)
+[![Go report](https://goreportcard.com/badge/github.com/mbark/sindr)](https://goreportcard.com/report/github.com/mbark/sindr)
+[![Coverage](https://img.shields.io/codecov/c/github/mbark/sindr)](https://codecov.io/gh/mbark/sindr)
+[![Contributors](https://img.shields.io/github/contributors/mbark/sindr)](https://github.com/mbark/sindr/graphs/contributors)
+[![License](https://img.shields.io/github/license/mbark/sindr)](./LICENSE)
 
 `sindr` ([from Old Norse: "slag or dross from a forge"](https://cleasby-vigfusson-dictionary.vercel.app/word/sindr)) is
 a simple way to create a CLI to save and run project-specific commands.

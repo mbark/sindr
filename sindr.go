@@ -92,7 +92,7 @@ func WithBuiltin(name string, builtin StarlarkBuiltin) RunOption {
 }
 
 func flagName(s string) string {
-	return strings.ReplaceAll(s, "-", "_")
+	return strings.ReplaceAll(s, "_", "-")
 }
 
 func Run(ctx context.Context, args []string, opts ...RunOption) error {
@@ -111,7 +111,7 @@ func Run(ctx context.Context, args []string, opts ...RunOption) error {
 		"print logs with Starlark line numbers if possible",
 	)
 	fs.StringP(flagName(fileNameKey), "f", "sindr.star", "path to the Starlark config file")
-	fs.String(flagName(cacheDir), cacheDir, "path to the Starlark config file")
+	fs.String(flagName(cacheDirKey), cacheDir, "path to the Starlark config file")
 	err := fs.Parse(args)
 	if err != nil && !errors.Is(err, flag.ErrHelp) {
 		return fmt.Errorf("parsing sindr flags: %w", err)
@@ -183,38 +183,56 @@ func Run(ctx context.Context, args []string, opts ...RunOption) error {
 		return err
 	}
 
-	return runCLI(ctx, args, sindrCLI, wg)
+	return runCLI(ctx, args, fs, sindrCLI, wg)
 }
 
-func runCLI(ctx context.Context, args []string, sindrCLI *internal.CLI, wg *sync.WaitGroup) error {
-	cliFlags := []cli.Flag{
-		&cli.BoolFlag{
-			Name:    "verbose",
-			Usage:   "print logs to stdout",
-			Aliases: []string{"v"},
-		},
-		&cli.BoolFlag{
-			Name:    "no-cache",
-			Usage:   "ignore stored values in the cache",
-			Aliases: []string{"n"},
-		},
-		&cli.BoolFlag{
-			Name:    "with-line-numbers",
-			Usage:   "print logs with Starlark line numbers if possible",
-			Aliases: []string{"l"},
-		},
+func runCLI(ctx context.Context, args []string, fs *flag.FlagSet, sindrCLI *internal.CLI, wg *sync.WaitGroup) error {
+	cliFlags, err := mapPFlagsToCLIFlags(fs)
+	if err != nil {
+		return err
 	}
 
 	cmd := sindrCLI.Command.Command
 	cmd.Flags = append(cmd.Flags, cliFlags...)
 
-	err := cmd.Run(ctx, args)
+	err = cmd.Run(ctx, args)
 	if err != nil {
 		return err
 	}
 
 	wg.Wait()
 	return nil
+}
+
+func mapPFlagsToCLIFlags(fs *flag.FlagSet) ([]cli.Flag, error) {
+	var err error
+	var cliFlags []cli.Flag
+
+	fs.VisitAll(func(f *flag.Flag) {
+		var alias []string
+		if f.Shorthand != "" {
+			alias = []string{f.Shorthand}
+		}
+
+		switch f.Value.Type() {
+		case "bool":
+			cliFlags = append(cliFlags, &cli.BoolFlag{
+				Name:    f.Name,
+				Usage:   f.Usage,
+				Aliases: alias,
+			})
+		case "string":
+			cliFlags = append(cliFlags, &cli.StringFlag{
+				Name:    f.Name,
+				Usage:   f.Usage,
+				Aliases: alias,
+			})
+
+		default:
+			err = errors.Join(err, fmt.Errorf("can't map flag %s, unkown type: %s", f.Name, f.Value.Type()))
+		}
+	})
+	return cliFlags, err
 }
 
 // createPredeclaredDict creates the predeclared dictionary for Starlark execution.
@@ -244,6 +262,6 @@ func createPredeclaredDict(dir string) starlark.StringDict {
 			internal.SindrLoadPackageJson,
 		),
 		"cache":       starlark.NewBuiltin("cache", cache.NewCacheValue),
-		"current_dir": starlark.String("current_dir"),
+		"current_dir": starlark.String(dir),
 	}
 }

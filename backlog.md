@@ -17,7 +17,7 @@
 - [x] Check why individual unit tests are failing when all pass
 - [x] Allow configuring things like name of file and color via a config file (or global flag).
 - [x] Allow the name of the global option be set via a command-line flag
-- [ ] Map the pflags to cli.Flags automatically
+- [x] Map the pflags to cli.Flags automatically
 - [ ] Update the `README` with more context, comparisons to `just`, `mise`, `Makefile` etc.
 - [ ] Tag a version 0.0.2 to build a binary to test `goreleaser` stuff.
 - [ ] Improve the tests for `packagejson` and command to actually check the commands are added (e.g., via --help)

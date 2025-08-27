@@ -13,18 +13,6 @@ builds:
       - darwin
     main: ./cmd/main.go
 
-archives:
-  - format_overrides:
-      - goos: windows
-        format: zip
-    name_template: >-
-      {{ .ProjectName }}_
-      {{- title .Os }}_
-      {{- if eq .Arch "amd64" }}x86_64
-      {{- else if eq .Arch "386" }}i386
-      {{- else }}{{ .Arch }}{{ end }}
-      {{- if .Arm }}v{{ .Arm }}{{ end }}
-
 checksum:
   name_template: 'checksums.txt'
 
@@ -40,4 +28,4 @@ changelog:
 
 signs:
   - artifacts: checksum
-    args: ["--batch", "--local-user", "{{ .Env.GPG_FINGERPRINT }}", "--output", "${signature}", "--detach-sign", "${artifact}"]
+    args: [ "--batch", "--local-user", "{{ .Env.GPG_FINGERPRINT }}", "--output", "${signature}", "--detach-sign", "${artifact}" ]

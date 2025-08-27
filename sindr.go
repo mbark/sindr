@@ -186,7 +186,13 @@ func Run(ctx context.Context, args []string, opts ...RunOption) error {
 	return runCLI(ctx, args, fs, sindrCLI, wg)
 }
 
-func runCLI(ctx context.Context, args []string, fs *flag.FlagSet, sindrCLI *internal.CLI, wg *sync.WaitGroup) error {
+func runCLI(
+	ctx context.Context,
+	args []string,
+	fs *flag.FlagSet,
+	sindrCLI *internal.CLI,
+	wg *sync.WaitGroup,
+) error {
 	cliFlags, err := mapPFlagsToCLIFlags(fs)
 	if err != nil {
 		return err
@@ -229,7 +235,10 @@ func mapPFlagsToCLIFlags(fs *flag.FlagSet) ([]cli.Flag, error) {
 			})
 
 		default:
-			err = errors.Join(err, fmt.Errorf("can't map flag %s, unknown type: %s", f.Name, f.Value.Type()))
+			err = errors.Join(
+				err,
+				fmt.Errorf("can't map flag %s, unknown type: %s", f.Name, f.Value.Type()),
+			)
 		}
 	})
 	return cliFlags, err

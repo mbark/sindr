@@ -1,3 +1,5 @@
 ignore:
   - "cmd"  # ignore the main cmd
   - "examples" # example directory doesn't need tests
+  - "internal/sindrtest" # this is used by all tests but doesn't product coverage
+  - "internal/logger" # the simple logger doesn't require unit testing

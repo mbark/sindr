@@ -18,7 +18,10 @@
 - [x] Allow configuring things like name of file and color via a config file (or global flag).
 - [x] Allow the name of the global option be set via a command-line flag
 - [x] Map the pflags to cli.Flags automatically
-- [ ] Update the `README` with more context, comparisons to `just`, `mise`, `Makefile` etc.
+- [ ] Improve test coverage from 44% to ~80%.
 - [ ] Source all `sindr.star` upwards until one is defined as `root`
 - [ ] Tag a version 0.0.2 to build a binary to test `goreleaser` stuff.
 - [ ] Improve the tests for `packagejson` and command to actually check the commands are added (e.g., via --help)
+- [ ] Setup documentation site using Docosaurus
+- [ ] Add Go documentation for using `sindr` as a library
+- [x] Update the `README` with more context, comparisons to `just`, `mise`, `Makefile` etc.

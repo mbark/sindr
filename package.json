@@ -1,5 +1,6 @@
 {
   "scripts": {
     "echo": "echo 'foobar'"
-  }
+  },
+  "packageManager": "yarn@4.9.4"
 }

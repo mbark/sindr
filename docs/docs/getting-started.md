@@ -154,6 +154,6 @@ def deploy_to_env(env):
 
 ## Next Steps
 
-- Explore the [API Reference](./api-reference.md)
-- Check out [Examples](./examples.md)
-- Learn about [Best Practices](./best-practices.md)
+- Check the project repository for more examples and documentation
+- Explore the available functions and their parameters
+- Create your own custom commands for your workflow

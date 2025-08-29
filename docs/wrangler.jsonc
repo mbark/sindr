@@ -1,7 +1,13 @@
 {
-  "name": "sindr-docs",
+  "name": "sindr",
   "compatibility_date": "2025-08-28",
   "assets": {
     "directory": "./build"
-  }
+  },
+  "routes": [
+    {
+      "pattern": "sindr.dev",
+      "custom_domain": true
+    }
+  ]
 }

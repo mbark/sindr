@@ -4,68 +4,67 @@ import Heading from '@theme/Heading';
 import styles from './styles.module.css';
 
 type FeatureItem = {
-  title: string;
-  Svg: React.ComponentType<React.ComponentProps<'svg'>>;
-  description: ReactNode;
+    title: string;
+    Svg: React.ComponentType<React.ComponentProps<'svg'>>;
+    description: ReactNode;
 };
 
 const FeatureList: FeatureItem[] = [
-  {
-    title: 'Modern Make Alternative',
-    Svg: require('@site/static/img/undraw_docusaurus_mountain.svg').default,
-    description: (
-      <>
-        Sindr replaces traditional <code>make</code> with a modern approach using 
-        Starlark scripts for better readability and maintainability.
-      </>
-    ),
-  },
-  {
-    title: 'Starlark-Powered',
-    Svg: require('@site/static/img/undraw_docusaurus_tree.svg').default,
-    description: (
-      <>
-        Write your build configurations in Starlark - a Python-like language that's
-        simple, deterministic, and perfect for defining build processes.
-      </>
-    ),
-  },
-  {
-    title: 'Batteries Included',
-    Svg: require('@site/static/img/undraw_docusaurus_react.svg').default,
-    description: (
-      <>
-        Built-in functions for shell commands, async operations, caching, templating,
-        and more. Everything you need for modern development workflows.
-      </>
-    ),
-  },
+    {
+        title: 'Build a CLI',
+        Svg: require('@site/static/img/undraw_programming_65t2.svg').default,
+        description: (
+            <>
+                No need to learn how to use the tool, you build a CLI with flags, arguments and auto completion.
+            </>
+        ),
+    },
+    {
+        title: 'Configuration as code',
+        Svg: require('@site/static/img/undraw_building-blocks_h5jb.svg').default,
+        description: (
+            <>
+                No need to learn some arcane language or being restricted by a configuration language, configure your
+                CLI by writing Starlark, a Python-subset designed for configuration.
+            </>
+        ),
+    },
+    {
+        title: 'Batteries included',
+        Svg: require('@site/static/img/undraw_outer-space_qey5.svg').default,
+        description: (
+            <>
+                Contains everything you need for your commands like running shell commands, doing async operations,
+                caching, templating, and more.
+            </>
+        ),
+    },
 ];
 
 function Feature({title, Svg, description}: FeatureItem) {
-  return (
-    <div className={clsx('col col--4')}>
-      <div className="text--center">
-        <Svg className={styles.featureSvg} role="img" />
-      </div>
-      <div className="text--center padding-horiz--md">
-        <Heading as="h3">{title}</Heading>
-        <p>{description}</p>
-      </div>
-    </div>
-  );
+    return (
+        <div className={clsx('col col--4')}>
+            <div className="text--center">
+                <Svg className={styles.featureSvg} role="img"/>
+            </div>
+            <div className="text--center padding-horiz--md">
+                <Heading as="h3">{title}</Heading>
+                <p>{description}</p>
+            </div>
+        </div>
+    );
 }
 
 export default function HomepageFeatures(): ReactNode {
-  return (
-    <section className={styles.features}>
-      <div className="container">
-        <div className="row">
-          {FeatureList.map((props, idx) => (
-            <Feature key={idx} {...props} />
-          ))}
-        </div>
-      </div>
-    </section>
-  );
+    return (
+        <section className={styles.features}>
+            <div className="container">
+                <div className="row">
+                    {FeatureList.map((props, idx) => (
+                        <Feature key={idx} {...props} />
+                    ))}
+                </div>
+            </div>
+        </section>
+    );
 }

@@ -9,42 +9,42 @@ import Heading from '@theme/Heading';
 import styles from './index.module.css';
 
 function HomepageHeader() {
-  const {siteConfig} = useDocusaurusContext();
-  return (
-    <header className={clsx('hero hero--primary', styles.heroBanner)}>
-      <div className="container">
-        <Heading as="h1" className="hero__title">
-          {siteConfig.title}
-        </Heading>
-        <p className="hero__subtitle">{siteConfig.tagline}</p>
-        <div className={styles.buttons}>
-          <Link
-            className="button button--secondary button--lg"
-            to="/docs/installation">
-            Get Started 🚀
-          </Link>
-          <Link
-            className="button button--outline button--secondary button--lg"
-            to="/docs/getting-started"
-            style={{marginLeft: '1rem'}}>
-            Learn More
-          </Link>
-        </div>
-      </div>
-    </header>
-  );
+    const {siteConfig} = useDocusaurusContext();
+    return (
+        <header className={clsx(styles.heroBanner)}>
+            <div className="container">
+                <Heading as="h1" className="hero__title">
+                    {siteConfig.title}
+                </Heading>
+                <p className="hero__subtitle">{siteConfig.tagline}</p>
+                <div className={styles.buttons}>
+                    <Link
+                        className="button button--secondary button--lg"
+                        to="/docs/installation">
+                        🔨 Get started
+                    </Link>
+                    <Link
+                        className="button button--outline button--secondary button--lg"
+                        to="/docs/getting-started"
+                        style={{marginLeft: '1rem'}}>
+                        Learn more
+                    </Link>
+                </div>
+            </div>
+        </header>
+    );
 }
 
 export default function Home(): ReactNode {
-  const {siteConfig} = useDocusaurusContext();
-  return (
-    <Layout
-      title={`${siteConfig.title} - Modern Make Alternative`}
-      description="A modern replacement for make that allows creating CLI tools written in Starlark">
-      <HomepageHeader />
-      <main>
-        <HomepageFeatures />
-      </main>
-    </Layout>
-  );
+    const {siteConfig} = useDocusaurusContext();
+    return (
+        <Layout
+            title={`${siteConfig.title} - Modern Make Alternative`}
+            description="A modern replacement for make that allows creating CLI tools written in Starlark">
+            <HomepageHeader/>
+            <main>
+                <HomepageFeatures/>
+            </main>
+        </Layout>
+    );
 }

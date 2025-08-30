@@ -14,17 +14,19 @@ func cast[T any](f any) (T, error) {
 	}
 
 	var t T
+	if f == nil {
+		return t, nil
+	}
 	return v, fmt.Errorf("expected %T, got %T", t, f)
 }
 
 func castString[T ~string](f any) (string, error) {
-	v, ok := f.(T)
-	if ok {
-		return string(v), nil
+	v, err := cast[T](f)
+	if err != nil {
+		return "", err
 	}
 
-	var t T
-	return "", fmt.Errorf("expected %T, got %T", t, f)
+	return string(v), nil
 }
 
 func castInt(f any) (int, error) {
@@ -84,4 +86,35 @@ func mapList[T, V any](l []T, fn func(T) V) []V {
 		v[i] = fn(a)
 	}
 	return v
+}
+
+func union[K comparable, V any](m1, m2 map[K]V) map[K]V {
+	result := make(map[K]V)
+	for k, v := range m1 {
+		result[k] = v
+	}
+	for k, v := range m2 {
+		result[k] = v
+	}
+	return result
+}
+
+func splitKwargs(kwargs []starlark.Tuple, relevant ...string) ([]starlark.Tuple, []starlark.Tuple) {
+	keys := make(map[string]bool)
+	for _, r := range relevant {
+		keys[r] = true
+	}
+
+	var relevantKwargs []starlark.Tuple
+	var otherKwargs []starlark.Tuple
+	for _, kwarg := range kwargs {
+		k := kwargs[0].String()
+		if keys[k] {
+			relevantKwargs = append(relevantKwargs, kwarg)
+		} else {
+			otherKwargs = append(otherKwargs, kwarg)
+		}
+	}
+
+	return relevantKwargs, otherKwargs
 }

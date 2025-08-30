@@ -102,4 +102,117 @@ cli(name="TestTemplateString", usage="Test string templating")
 command(name="test", action=test_action)
 `)
 	})
+
+	t.Run("automatically includes context flags", func(t *testing.T) {
+		sindrtest.Test(t, `
+def test_action(ctx):
+    result = string('Debug: {{.debug}}, Verbose: {{.verbose}}')
+    if result != 'Debug: true, Verbose: false':
+        fail('expected "Debug: true, Verbose: false", got: ' + str(result))
+
+cli(name="TestTemplateString", usage="Test string templating")
+command(name="test", action=test_action, flags=[
+    {
+        "name": "debug",
+        "type": "bool",
+        "default": True,
+    },
+    {
+        "name": "verbose",
+        "type": "bool", 
+        "default": False,
+    }
+])
+`)
+	})
+
+	t.Run("automatically includes context args", func(t *testing.T) {
+		sindrtest.Test(t, `
+def test_action(ctx):
+    result = string('Building {{.target}} for {{.environment}}')
+    if result != 'Building backend for staging':
+        fail('expected "Building backend for staging", got: ' + str(result))
+
+cli(name="TestTemplateString", usage="Test string templating")
+command(name="test", action=test_action, args=["target", "environment"])
+`)
+	})
+
+	t.Run("context variables override explicit parameters", func(t *testing.T) {
+		sindrtest.Test(t, `
+def test_action(ctx):
+    # Context flag should override the explicit parameter
+    result = string('Mode: {{.mode}}', mode='explicit')
+    if result != 'Mode: development':
+        fail('expected "Mode: development", got: ' + str(result))
+
+cli(name="TestTemplateString", usage="Test string templating")
+command(name="test", action=test_action, flags=[
+    {
+        "name": "mode",
+        "type": "string",
+        "default": "development",
+    }
+])
+`)
+	})
+
+	t.Run("combines global variables with context flags and args", func(t *testing.T) {
+		sindrtest.Test(t, `
+# Global variables
+project = "sindr"
+version = "2.0.0"
+
+def test_action(ctx):
+    result = string('{{.project}} v{{.version}} building {{.target}} with debug={{.debug}}')
+    if result != 'sindr v2.0.0 building api with debug=true':
+        fail('expected "sindr v2.0.0 building api with debug=true", got: ' + str(result))
+
+cli(name="TestTemplateString", usage="Test string templating")
+command(name="test", action=test_action, args=["target"], flags=[
+    {
+        "name": "debug",
+        "type": "bool",
+        "default": True,
+    }
+])
+`)
+	})
+
+	t.Run("explicit parameters can still be added alongside context", func(t *testing.T) {
+		sindrtest.Test(t, `
+def test_action(ctx):
+    result = string('{{.verbose}} {{.custom}} {{.target}}', custom='extra')
+    if result != 'false extra production':
+        fail('expected "false extra production", got: ' + str(result))
+
+cli(name="TestTemplateString", usage="Test string templating")
+command(name="test", action=test_action, args=["target"], flags=[
+    {
+        "name": "verbose",
+        "type": "bool",
+        "default": False,
+    }
+])
+`)
+	})
+
+	t.Run("context access via direct flag/arg names", func(t *testing.T) {
+		sindrtest.Test(t, `
+def test_action(ctx):
+    # Test that context flags/args can be accessed directly by their names
+    result = string('Flag some_flag: {{.some_flag}}, Arg some_arg: {{.some_arg}}')
+    if result != 'Flag some_flag: true, Arg some_arg: test_value':
+        fail('expected "Flag some_flag: true, Arg some_arg: test_value", got: ' + str(result))
+
+cli(name="TestTemplateString", usage="Test string templating")
+command(name="test", action=test_action, args=["some_arg"], flags=[
+    {
+        "name": "some-flag",
+        "type": "bool", 
+        "default": True,
+    }
+])
+`)
+	})
 }

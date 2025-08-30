@@ -2,6 +2,7 @@ package internal
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"strings"
 	"text/template"
@@ -26,30 +27,59 @@ func SindrString(
 		return nil, fmt.Errorf("first argument must be a string")
 	}
 
+	evaled, err := evaluateTemplateString(string(tmplVal), thread, kwargs)
+	return starlark.String(evaled), err
+}
+
+func evaluateTemplateString(
+	tmpl string,
+	thread *starlark.Thread,
+	kwargs []starlark.Tuple,
+) (string, error) {
 	values := make(map[string]any)
+	var merr error
+
+	addKeyVal := func(key string, val starlark.Value) {
+		goValue, err := toGoValue(val)
+		if err != nil {
+			merr = errors.Join(merr, fmt.Errorf("invalid value for key %s: %w", string(key), err))
+			return
+		}
+
+		values[key] = goValue
+	}
+
+	c := thread.Local("ctx")
+	ctx, ok := c.(*Context)
+	if ok {
+		for k, v := range ctx.Flags.data {
+			addKeyVal(k, v)
+		}
+		for k, v := range ctx.Args.data {
+			addKeyVal(k, v)
+		}
+	}
+
 	for _, kv := range kwargs {
 		key, ok := kv[0].(starlark.String)
 		if !ok {
 			continue
 		}
-
-		goValue, err := toGoValue(kv[1])
-		if err != nil {
-			return nil, fmt.Errorf("invalid value for key %s: %w", string(key), err)
-		}
-
-		values[string(key)] = goValue
+		addKeyVal(string(key), kv[1])
+	}
+	if merr != nil {
+		return "", merr
 	}
 
-	tmplString := strings.TrimSpace(string(tmplVal))
+	tmplString := strings.TrimSpace(tmpl)
 	t := template.Must(template.New("").Parse(tmplString))
 	var buf bytes.Buffer
 	err := t.Execute(&buf, values)
 	if err != nil {
-		return nil, fmt.Errorf("execute template: %w", err)
+		return "", fmt.Errorf("execute template: %w", err)
 	}
 
-	return starlark.String(buf.String()), nil
+	return buf.String(), nil
 }
 
 func toGoValue(value starlark.Value) (any, error) {

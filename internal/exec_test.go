@@ -296,3 +296,223 @@ command(name="test", action=test_action)
 `)
 	})
 }
+
+func TestExecTemplating(t *testing.T) {
+	t.Run("automatic string template expansion with global variables", func(t *testing.T) {
+		sindrtest.Test(t, `
+# Define global variables
+service_name = "api-server"
+port = 8080
+
+def test_action(ctx):
+    result = exec(bin='sh', command='echo "Starting {{.service_name}} on port {{.port}}"')
+    if result.stdout != 'Starting api-server on port 8080':
+        fail('expected "Starting api-server on port 8080", got: ' + str(result.stdout))
+
+cli(name="TestExecTemplating", usage="Test exec automatic templating")
+command(name="test", action=test_action)
+`)
+	})
+
+	t.Run("automatic string template expansion with context flags", func(t *testing.T) {
+		sindrtest.Test(t, `
+def test_action(ctx):
+    result = exec(bin='sh', command='echo "Debug mode: {{.debug}}"')
+    if result.stdout != 'Debug mode: true':
+        fail('expected "Debug mode: true", got: ' + str(result.stdout))
+
+cli(name="TestExecTemplating", usage="Test exec automatic templating")
+command(name="test", action=test_action, flags=[
+    {
+        "name": "debug",
+        "type": "bool",
+        "default": True,
+    }
+])
+`)
+	})
+
+	t.Run("automatic string template expansion with context args", func(t *testing.T) {
+		sindrtest.Test(t, `
+def test_action(ctx):
+    result = exec(bin='sh', command='echo "Processing environment: {{.environment}}"')
+    if result.stdout != 'Processing environment: development':
+        fail('expected "Processing environment: development", got: ' + str(result.stdout))
+
+cli(name="TestExecTemplating", usage="Test exec automatic templating")
+command(name="test", action=test_action, args=["environment"])
+`)
+	})
+
+	t.Run("automatic string template expansion with python command", func(t *testing.T) {
+		sindrtest.Test(t, `
+# Global variables
+app_version = "2.1.0"
+build_number = 42
+
+def test_action(ctx):
+    python_code = '''print("App version {{.app_version}} build {{.build_number}} with verbose={{.verbose}}")'''
+    result = exec(bin='python3', command=python_code)
+    if result.stdout != 'App version 2.1.0 build 42 with verbose=false':
+        fail('expected "App version 2.1.0 build 42 with verbose=false", got: ' + str(result.stdout))
+
+cli(name="TestExecTemplating", usage="Test exec automatic templating")
+command(name="test", action=test_action, flags=[
+    {
+        "name": "verbose",
+        "type": "bool", 
+        "default": False,
+    }
+])
+`)
+	})
+
+	t.Run("automatic string template expansion with multiline command", func(t *testing.T) {
+		sindrtest.Test(t, `
+# Global variables
+database = "postgres"
+host = "localhost"
+
+def test_action(ctx):
+    shell_script = '''echo "Database: {{.database}}"
+echo "Host: {{.host}}"
+echo "Mode: {{.mode}}"'''
+    result = exec(bin='sh', command=shell_script)
+    expected = '''Database: postgres\nHost: localhost\nMode: production'''
+    if result.stdout != expected:
+        fail('expected "' + expected + '", got: ' + str(result.stdout))
+
+cli(name="TestExecTemplating", usage="Test exec automatic templating")
+command(name="test", action=test_action, args=["mode"])
+`)
+	})
+
+	t.Run("automatic string template expansion with prefix option", func(t *testing.T) {
+		sindrtest.Test(t, `
+config_file = "app.config"
+
+def test_action(ctx):
+    result = exec(bin='sh', command='echo "Loading config: {{.config_file}}"', prefix='CONFIG')
+    if result.stdout != 'Loading config: app.config':
+        fail('expected "Loading config: app.config", got: ' + str(result.stdout))
+
+cli(name="TestExecTemplating", usage="Test exec automatic templating")
+command(name="test", action=test_action)
+`)
+	})
+
+	t.Run("template expansion handles commands without templates", func(t *testing.T) {
+		sindrtest.Test(t, `
+def test_action(ctx):
+    result = exec(bin='sh', command='echo "no template variables here"')
+    if result.stdout != 'no template variables here':
+        fail('expected "no template variables here", got: ' + str(result.stdout))
+
+cli(name="TestExecTemplating", usage="Test exec automatic templating")
+command(name="test", action=test_action)
+`)
+	})
+
+	t.Run("kwargs templating with additional variables", func(t *testing.T) {
+		sindrtest.Test(t, `
+# Global variables
+service_name = "web-server"
+
+def test_action(ctx):
+    result = exec(bin='sh', command='echo "{{.service_name}} {{.instance}} {{.region}}"', instance="web-01", region="us-west-2")
+    if result.stdout != 'web-server web-01 us-west-2':
+        fail('expected "web-server web-01 us-west-2", got: ' + str(result.stdout))
+
+cli(name="TestExecTemplating", usage="Test exec automatic templating")
+command(name="test", action=test_action)
+`)
+	})
+
+	t.Run("kwargs templating overrides global variables", func(t *testing.T) {
+		sindrtest.Test(t, `
+# Global variables
+service_name = "original-service"
+port = 8080
+
+def test_action(ctx):
+    result = exec(bin='sh', command='echo "{{.service_name}} {{.port}}"', service_name="overridden-service")
+    if result.stdout != 'overridden-service 8080':
+        fail('expected "overridden-service 8080", got: ' + str(result.stdout))
+
+cli(name="TestExecTemplating", usage="Test exec automatic templating")
+command(name="test", action=test_action)
+`)
+	})
+
+	t.Run("kwargs templating with context flags and args", func(t *testing.T) {
+		sindrtest.Test(t, `
+def test_action(ctx):
+    result = exec(bin='sh', command='echo "{{.environment}} {{.debug}} {{.deployment_id}}"', deployment_id="deploy-123")
+    if result.stdout != 'development true deploy-123':
+        fail('expected "development true deploy-123", got: ' + str(result.stdout))
+
+cli(name="TestExecTemplating", usage="Test exec automatic templating")
+command(name="test", action=test_action, args=["environment"], flags=[
+    {
+        "name": "debug",
+        "type": "bool",
+        "default": True,
+    }
+])
+`)
+	})
+
+	t.Run("kwargs templating with python command", func(t *testing.T) {
+		sindrtest.Test(t, `
+def test_action(ctx):
+    python_code = '''print("Processing {{.task_name}} with ID {{.task_id}} status {{.status}}")'''
+    result = exec(bin='python3', command=python_code, task_name="backup", task_id="task-456", status="running")
+    if result.stdout != 'Processing backup with ID task-456 status running':
+        fail('expected "Processing backup with ID task-456 status running", got: ' + str(result.stdout))
+
+cli(name="TestExecTemplating", usage="Test exec automatic templating")
+command(name="test", action=test_action)
+`)
+	})
+
+	t.Run("kwargs templating with prefix option", func(t *testing.T) {
+		sindrtest.Test(t, `
+def test_action(ctx):
+    result = exec(bin='sh', command='echo "Executing {{.operation}} on {{.resource}}"', prefix='EXEC', operation="deploy", resource="cluster")
+    if result.stdout != 'Executing deploy on cluster':
+        fail('expected "Executing deploy on cluster", got: ' + str(result.stdout))
+
+cli(name="TestExecTemplating", usage="Test exec automatic templating")
+command(name="test", action=test_action)
+`)
+	})
+
+	t.Run("kwargs templating with multiline command", func(t *testing.T) {
+		sindrtest.Test(t, `
+def test_action(ctx):
+    shell_script = '''echo "Database: {{.database}}"
+echo "User: {{.user}}"
+echo "Backup ID: {{.backup_id}}"'''
+    result = exec(bin='sh', command=shell_script, database="production_db", user="admin", backup_id="backup-789")
+    expected = '''Database: production_db\nUser: admin\nBackup ID: backup-789'''
+    if result.stdout != expected:
+        fail('expected "' + expected + '", got: ' + str(result.stdout))
+
+cli(name="TestExecTemplating", usage="Test exec automatic templating")
+command(name="test", action=test_action)
+`)
+	})
+
+	t.Run("kwargs templating with complex data types", func(t *testing.T) {
+		sindrtest.Test(t, `
+def test_action(ctx):
+    python_code = '''print(f"Count: {{.count}} Enabled: {{.enabled}} Rate: {{.rate}}")'''
+    result = exec(bin='python3', command=python_code, count=100, enabled=False, rate=1.5)
+    if result.stdout != 'Count: 100 Enabled: false Rate: 1.5':
+        fail('expected "Count: 100 Enabled: false Rate: 1.5", got: ' + str(result.stdout))
+
+cli(name="TestExecTemplating", usage="Test exec automatic templating")
+command(name="test", action=test_action)
+`)
+	})
+}

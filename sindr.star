@@ -23,7 +23,7 @@ def demo_shell(ctx):
 
 command(
     name = "shell",
-    help = "Demonstrate shell command execution",
+    usage = "Demonstrate shell command execution",
     action = demo_shell
 )
 
@@ -47,7 +47,7 @@ def demo_async(ctx):
 
 command(
     name = "async",
-    help = "Demonstrate async operations with start/wait",
+    usage = "Demonstrate async operations with start/wait",
     action = demo_async
 )
 
@@ -71,7 +71,7 @@ def demo_pool(ctx):
 
 command(
     name = "pool",
-    help = "Demonstrate pool-based concurrent operations",
+    usage = "Demonstrate pool-based concurrent operations",
     action = demo_pool
 )
 
@@ -113,7 +113,7 @@ Services: {{range .services}}
 
 command(
     name = "templates",
-    help = "Demonstrate string templating features",
+    usage = "Demonstrate string templating features",
     action = demo_templates
 )
 
@@ -163,7 +163,7 @@ def demo_versioning(ctx):
 
 command(
     name = "versioning",
-    help = "Demonstrate versioning and caching with cache instances",
+    usage = "Demonstrate versioning and caching with cache instances",
     action = demo_versioning
 )
 
@@ -201,7 +201,7 @@ def demo_diff(ctx):
 
 command(
     name = "diff",
-    help = "Demonstrate version comparison with cache.diff()",
+    usage = "Demonstrate version comparison with cache.diff()",
     action = demo_diff
 )
 
@@ -259,7 +259,7 @@ echo "Build completed at $(date)" > {{.build_dir}}/build.log
 
 command(
     name = "build",
-    help = "Comprehensive build example with args and flags",
+    usage = "Comprehensive build example with args and flags",
     action = comprehensive_build,
     args = ["target"],
     flags = [
@@ -267,13 +267,13 @@ command(
             "name": "verbose",
             "type": "bool",
             "default": False,
-            "help": "Enable verbose output"
+            "usage": "Enable verbose output"
         },
         {
             "name": "parallel",
             "type": "bool",
             "default": False,
-            "help": "Enable parallel build"
+            "usage": "Enable parallel build"
         }]
 )
 
@@ -297,6 +297,19 @@ command(
         },
         "simple",
  ]
+)
+
+def shell_string(ctx):
+    res = shell('echo {{.string_flag}} {{.argument}}')
+    print(res.stdout)
+    print(ctx.string_flag)
+    print(ctx.argument)
+
+command(
+    name = 'shell_string',
+    action=shell_string,
+    flags=[{'name': 'string_flag', 'type': 'bool'}],
+    args=['argument'],
 )
 
 def exec(ctx):
@@ -340,19 +353,19 @@ def deploy_production(ctx):
 # Parent deploy command
 command(
     name = "deploy",
-    help = "Deploy to different environments"
+    usage = "Deploy to different environments"
 )
 
 # Sub-commands for deployment
 sub_command(
     path = ["deploy", "staging"],
-    help = "Deploy to staging environment",
+    usage = "Deploy to staging environment",
     action = deploy_staging
 )
 
 sub_command(
     path = ["deploy", "production"],
-    help = "Deploy to production environment", 
+    usage = "Deploy to production environment",
     action = deploy_production
 )
 
@@ -398,7 +411,7 @@ def demo_file_timestamps(ctx):
 
 command(
     name = "timestamps",
-    help = "Demonstrate file timestamp functions newest_ts and oldest_ts",
+    usage = "Demonstrate file timestamp functions newest_ts and oldest_ts",
     action = demo_file_timestamps
 )
 
@@ -446,7 +459,7 @@ def demo_build_cache(ctx):
 
 command(
     name = "build-cache",
-    help = "Advanced example using timestamps for intelligent build caching",
+    usage = "Advanced example using timestamps for intelligent build caching",
     action = demo_build_cache
 )
 
@@ -533,7 +546,7 @@ def demo_glob(ctx):
 
 command(
     name = "glob",
-    help = "Demonstrate glob function for file pattern matching",
+    usage = "Demonstrate glob function for file pattern matching",
     action = demo_glob
 )
 
@@ -567,6 +580,6 @@ Try running any of these commands to see sindr features in action!
 
 command(
     name = "examples",
-    help = "Show all available feature demonstrations",
+    usage = "Show all available feature demonstrations",
     action = show_examples
 )

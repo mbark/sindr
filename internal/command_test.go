@@ -37,7 +37,7 @@ def build_action(ctx):
 cli(name="TestSindrCommand")
 command(
     name="build",
-    help="Build the project",
+    usage="Build the project",
     action=build_action
 )
 command(name="test", action=lambda ctx: print("test executed"))
@@ -53,12 +53,11 @@ def deploy_action(ctx):
 
 cli(name="TestSindrCommand")
 command(
-    name="deploy",
-    help="Deploy the application",
+    name="test",
+    usage="Deploy the application",
     action=deploy_action,
     args=["target", "environment"]
 )
-command(name="test", action=lambda ctx: print("test executed"))
 `)
 	})
 
@@ -72,31 +71,30 @@ def test_action(ctx):
 
 cli(name="TestSindrCommand")
 command(
-    name="run",
-    help="Run with flags",
+    name="test",
+    usage="Run with flags",
     action=test_action,
     flags=[
         {
             "name": "verbose",
             "default": False,
             "type": "bool",
-            "help": "Enable verbose output"
+            "usage": "Enable verbose output"
         },
         {
             "name": "count",
             "default": 1,
             "type": "int", 
-            "help": "Number of iterations"
+            "usage": "Number of iterations"
         },
         {
             "name": "name",
             "default": "default",
             "type": "string",
-            "help": "Name parameter"
+            "usage": "Name parameter"
         }
     ]
 )
-command(name="test", action=lambda ctx: print("test executed"))
 `)
 	})
 
@@ -114,19 +112,18 @@ def test_action(ctx):
 
 cli(name="TestSindrCommand")
 command(
-    name="strings-test",
-    help="Test strings flag type",
+    name="test",
+    usage="Test strings flag type",
     action=test_action,
     flags=[
         {
             "name": "strings",
             "default": ["default1", "default2"],
             "type": "strings",
-            "help": "List of strings"
+            "usage": "List of strings"
         }
     ]
 )
-command(name="test", action=lambda ctx: print("test executed"))
 `)
 	})
 
@@ -144,19 +141,18 @@ def test_action(ctx):
 
 cli(name="TestSindrCommand")
 command(
-    name="ints-test",
-    help="Test ints flag type",
+    name="test",
+    usage="Test ints flag type",
     action=test_action,
     flags=[
         {
             "name": "ints",
             "default": [10, 20, 30],
             "type": "ints",
-            "help": "List of integers"
+            "usage": "List of integers"
         }
     ]
 )
-command(name="test", action=lambda ctx: print("test executed"))
 `)
 	})
 
@@ -167,12 +163,11 @@ def test_action(ctx):
 
 cli(name="TestSindrCommand")
 command(
-    name="lint",
-    help="Run linting",
+    name="test",
+    usage="Run linting",
     action=test_action,
     category="development"
 )
-command(name="test", action=lambda ctx: print("test executed"))
 `)
 	})
 
@@ -188,8 +183,8 @@ def test_action(ctx):
 
 cli(name="TestSindrCommand")
 command(
-    name="deploy",
-    help="Deploy with dash-case flag",
+    name="test",
+    usage="Deploy with dash-case flag",
     action=test_action,
     flags=[
         {
@@ -199,7 +194,6 @@ command(
         }
     ]
 )
-command(name="test", action=lambda ctx: print("test executed"))
 `)
 	})
 }
@@ -217,25 +211,23 @@ cli(name="TestSindrSubCommand")
 
 # Create parent deploy command first
 command(
-    name="deploy",
-    help="Deployment commands",
+    name="test",
+    usage="Deployment commands",
     action=lambda ctx: print("Use subcommands")
 )
 
 sub_command(
-    path=["deploy", "staging"],
-    help="Deploy to staging",
+    path=["test", "staging"],
+    usage="Deploy to staging",
     action=deploy_staging_action
 )
 
 sub_command(
-    path=["deploy", "production"], 
-    help="Deploy to production",
+    path=["test", "production"], 
+    usage="Deploy to production",
     action=deploy_production_action
 )
-
-command(name="test", action=lambda ctx: print("test executed"))
-`)
+`, sindrtest.WithArgs("test", "staging"))
 	})
 
 	t.Run("creates deeply nested subcommands", func(t *testing.T) {
@@ -246,22 +238,20 @@ def action(ctx):
 cli(name="TestSindrSubCommand")
 
 # Create parent commands
-command(name="cloud", help="Cloud commands", action=lambda ctx: print("Use subcommands"))
+command(name="cloud", usage="Cloud commands", action=lambda ctx: print("Use subcommands"))
 
 sub_command(
     path=["cloud", "aws"],
-    help="AWS commands", 
+    usage="AWS commands", 
     action=lambda ctx: print("Use AWS subcommands")
 )
 
 sub_command(
     path=["cloud", "aws", "deploy"],
-    help="Deploy to AWS",
+    usage="Deploy to AWS",
     action=action
 )
-
-command(name="test", action=lambda ctx: print("test executed"))
-`)
+`, sindrtest.WithArgs("cloud", "aws", "deploy"))
 	})
 
 	t.Run("subcommand with arguments and flags", func(t *testing.T) {
@@ -273,11 +263,11 @@ def deploy_action(ctx):
 
 cli(name="TestSindrSubCommand")
 
-command(name="k8s", help="Kubernetes commands", action=lambda ctx: print("Use subcommands"))
+command(name="k8s", usage="Kubernetes commands", action=lambda ctx: print("Use subcommands"))
 
 sub_command(
     path=["k8s", "deploy"],
-    help="Deploy to Kubernetes",
+    usage="Deploy to Kubernetes",
     action=deploy_action,
     args=["service"],
     flags=[
@@ -285,12 +275,12 @@ sub_command(
             "name": "force",
             "default": False,
             "type": "bool",
-            "help": "Force deployment"
+            "usage": "Force deployment"
         }
     ]
 )
 
-command(name="test", action=lambda ctx: print("test executed"))
+command(name="k8s deploy", action=lambda ctx: print("test executed"))
 `)
 	})
 }
@@ -316,14 +306,13 @@ def test_action(ctx):
 
 cli(name="TestContextFlagAccess")
 command(
-    name="check",
+    name="test",
     action=test_action,
     flags=[
         {"name": "verbose", "default": True, "type": "bool"},
         {"name": "dry-run", "default": False, "type": "bool"}
     ]
 )
-command(name="test", action=lambda ctx: print("test executed"))
 `)
 	})
 
@@ -336,11 +325,10 @@ def test_action(ctx):
 
 cli(name="TestContextFlagAccess")
 command(
-    name="deploy",
+    name="test",
     action=test_action,
     args=["target", "environment"]
 )
-command(name="test", action=lambda ctx: print("test executed"))
 `)
 	})
 
@@ -354,10 +342,164 @@ def test_action(ctx):
 
 cli(name="TestContextFlagAccess")
 command(
-    name="process",
+    name="test",
     action=test_action
 )
-command(name="test", action=lambda ctx: print("test executed"))
+`)
+	})
+
+	t.Run("direct context attribute access for flags", func(t *testing.T) {
+		sindrtest.Test(t, `
+def test_action(ctx):
+    # Test direct flag access without going through ctx.flags
+    verbose = ctx.verbose
+    dry_run = ctx.dry_run
+    count = ctx.count
+    name = ctx.name
+    
+    # Verify values match expected defaults
+    if verbose != True:
+        fail("verbose flag should be True, got: " + str(verbose))
+    if dry_run != False:
+        fail("dry_run flag should be False, got: " + str(dry_run))  
+    if count != 10:
+        fail("count flag should be 10, got: " + str(count))
+    if name != "default":
+        fail("name flag should be 'default', got: " + str(name))
+        
+    print("Direct flag access works correctly")
+
+cli(name="TestDirectContextAccess")
+command(
+    name="test",
+    action=test_action,
+    flags=[
+        {"name": "verbose", "default": True, "type": "bool"},
+        {"name": "dry-run", "default": False, "type": "bool"},
+        {"name": "count", "default": 10, "type": "int"},
+        {"name": "name", "default": "default", "type": "string"}
+    ]
+)
+`)
+	})
+
+	t.Run("direct context attribute access for args", func(t *testing.T) {
+		sindrtest.Test(t, `
+def test_action(ctx):
+    # Test direct arg access without going through ctx.args
+    target = ctx.target
+    environment = ctx.environment
+    
+    print("Direct arg access - target:", target, "environment:", environment)
+    
+    # Verify these match the traditional ctx.args access
+    if target != ctx.args.target:
+        fail("ctx.target should match ctx.args.target")
+    if environment != ctx.args.environment:
+        fail("ctx.environment should match ctx.args.environment")
+
+cli(name="TestDirectContextAccess") 
+command(
+    name="test",
+    action=test_action,
+    args=["target", "environment"]
+)
+`)
+	})
+
+	t.Run("mixed direct and nested context access", func(t *testing.T) {
+		sindrtest.Test(t, `
+def test_action(ctx):
+    # Test mixing direct access with traditional nested access
+    
+    # Direct access
+    verbose = ctx.verbose
+    target = ctx.target
+    
+    # Traditional nested access
+    verbose_nested = ctx.flags.verbose
+    target_nested = ctx.args.target
+    
+    # Index access
+    verbose_index = ctx.flags["verbose"]
+    target_index = ctx.args["target"]
+    
+    # All should be equivalent
+    if verbose != verbose_nested or verbose != verbose_index:
+        fail("All verbose flag access methods should be equivalent")
+    if target != target_nested or target != target_index:
+        fail("All target arg access methods should be equivalent")
+        
+    print("Mixed access patterns work correctly")
+
+cli(name="TestMixedContextAccess")
+command(
+    name="test",
+    action=test_action,
+    flags=[{"name": "verbose", "default": True, "type": "bool"}],
+    args=["target"]
+)
+`)
+	})
+
+	t.Run("direct access with snake_case conversion", func(t *testing.T) {
+		sindrtest.Test(t, `
+def test_action(ctx):
+    # Test that dash-case flags can be accessed via snake_case directly
+    dry_run = ctx.dry_run
+    api_key = ctx.api_key
+    
+    # Verify these match the nested access patterns
+    if dry_run != ctx.flags.dry_run:
+        fail("ctx.dry_run should match ctx.flags.dry_run")
+    if api_key != ctx.flags.api_key:
+        fail("ctx.api_key should match ctx.flags.api_key")
+        
+    # Also verify index access works with original dash-case names
+    if dry_run != ctx.flags["dry-run"]:
+        fail("ctx.dry_run should match ctx.flags['dry-run']")
+    if api_key != ctx.flags["api-key"]:
+        fail("ctx.api_key should match ctx.flags['api-key']")
+        
+    print("Snake case conversion works correctly")
+
+cli(name="TestSnakeCaseConversion")
+command(
+    name="test",
+    action=test_action,
+    flags=[
+        {"name": "dry-run", "default": False, "type": "bool"},
+        {"name": "api-key", "default": "secret", "type": "string"}
+    ]
+)
+`)
+	})
+
+	t.Run("reserved attributes take precedence", func(t *testing.T) {
+		sindrtest.Test(t, `
+def test_action(ctx):
+    # Test that reserved attributes (flags, args, args_list) are overridden if set.
+    flags_obj = ctx.flags
+    args_obj = ctx.args
+    args_list_obj = ctx.args_list
+
+    # These should be the container objects, not direct values
+    if str(type(flags_obj)) == "FlagMap":
+        fail("ctx.flags should not be FlagMap type")
+    if str(type(args_obj)) == "FlagMap":
+        fail("ctx.args should not be FlagMap type")
+    if str(type(args_list_obj)) == "list":
+        fail("ctx.args_list should not be list type")
+        
+    print("Reserved attributes work correctly")
+
+cli(name="TestReservedAttributes")
+command(
+    name="test",
+    action=test_action,
+    flags=[{"name": "flags", "default": "should_not_override", "type": "string"}],
+    args=["args", "args_list"]
+)
 `)
 	})
 }
@@ -370,7 +512,7 @@ def test_action(ctx):
 
 cli(name="TestInvalidConfigurations")
 command(
-    name="fail",
+    name="test",
     action=test_action,
     flags=[
         {
@@ -380,7 +522,6 @@ command(
         }
     ]
 )
-command(name="test", action=lambda ctx: print("test executed"))
 `, sindrtest.ShouldFail())
 	})
 
@@ -391,11 +532,10 @@ def test_action(ctx):
 
 cli(name="TestInvalidConfigurations")
 command(
-    name="fail",
+    name="test",
     action=test_action,
     args=[123, "valid"]
 )
-command(name="test", action=lambda ctx: print("test executed"))
 `, sindrtest.ShouldFail())
 	})
 

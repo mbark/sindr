@@ -112,12 +112,9 @@ func Run(ctx context.Context, args []string, opts ...RunOption) error {
 	)
 	fs.StringP(flagName(fileNameKey), "f", "sindr.star", "path to the Starlark config file")
 	fs.String(flagName(cacheDirKey), cacheDir, "path to the Starlark config file")
-	err := fs.Parse(args)
-	if err != nil && !errors.Is(err, flag.ErrHelp) {
-		return fmt.Errorf("parsing sindr flags: %w", err)
-	}
+	_ = fs.Parse(args) // ignore this error, let urfave/cli deal with it later on
 
-	err = v.BindPFlags(fs)
+	err := v.BindPFlags(fs)
 	if err != nil {
 		return fmt.Errorf("viper bind flags: %w", err)
 	}

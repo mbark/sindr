@@ -39,9 +39,11 @@ func SindrShell(
 	args starlark.Tuple,
 	kwargs []starlark.Tuple,
 ) (starlark.Value, error) {
+	relevantKwargs, otherKwargs := splitKwargs(kwargs, "command", "prefix", "no_output")
+
 	var command, prefix string
 	var noOutput bool
-	if err := starlark.UnpackArgs("shell", args, kwargs,
+	if err := starlark.UnpackArgs("shell", args, relevantKwargs,
 		"command", &command,
 		"prefix?", &prefix,
 		"no_output?", &noOutput,
@@ -52,12 +54,22 @@ func SindrShell(
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	logger := logger.WithStack(thread.CallStack())
-
 	if prefix != "" {
-		logger.Log(prefixStyle.Render(prefix) + " " + commandStyle.Render("$ "+command))
+		logger.Log(prefixStyle.Render(prefix), commandStyleVerbose.Render(command))
 	} else {
-		logger.Log(commandStyle.Render("$ " + command))
+		logger.Log(commandStyleVerbose.Render(command))
+	}
+
+	command, err := evaluateTemplateString(command, thread, otherKwargs)
+	if err != nil {
+		return nil, err
+	}
+
+	logger := logger.WithStack(thread.CallStack())
+	if prefix != "" {
+		logger.LogVerbose(prefixStyle.Render(prefix) + " " + commandStyle.Render("$ "+command))
+	} else {
+		logger.LogVerbose(commandStyle.Render("$ " + command))
 	}
 
 	cmd := exec.CommandContext(ctx, "sh", "-c", command) // #nosec G204

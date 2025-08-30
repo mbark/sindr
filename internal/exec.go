@@ -18,15 +18,18 @@ func SindrExec(
 	args starlark.Tuple,
 	kwargs []starlark.Tuple,
 ) (starlark.Value, error) {
+	relevantKwargs, otherKwargs := splitKwargs(kwargs,
+		"bin", "command", "args", "prefix", "no_output")
+
 	var bin, command, prefix string
 	var binArgs *starlark.List
 	var noOutput bool
-	if err := starlark.UnpackArgs("exec", args, kwargs,
+	if err := starlark.UnpackArgs("exec", args, relevantKwargs,
 		"bin", &bin,
 		"command", &command,
 		"args?", &binArgs,
-		"no_output?", &noOutput,
 		"prefix?", &prefix,
+		"no_output?", &noOutput,
 	); err != nil {
 		return nil, err
 	}
@@ -52,6 +55,17 @@ func SindrExec(
 	err = os.WriteFile(file, []byte(command), 0o644)
 	if err != nil {
 		return nil, fmt.Errorf("create file %s to exec: %w", file, err)
+	}
+
+	if prefix != "" {
+		logger.LogVerbose(prefixStyle.Render(prefix), commandStyleVerbose.Render(command))
+	} else {
+		logger.LogVerbose(commandStyleVerbose.Render(command))
+	}
+
+	command, err = evaluateTemplateString(command, thread, otherKwargs)
+	if err != nil {
+		return nil, err
 	}
 
 	logger := logger.WithStack(thread.CallStack())

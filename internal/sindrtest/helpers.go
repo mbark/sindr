@@ -13,6 +13,7 @@ import (
 )
 
 type testOptions struct {
+	args           []string
 	fail           bool
 	packageJson    map[string]any
 	rawPackageJson string
@@ -35,6 +36,12 @@ func WithPackageJson(packageJson map[string]any) TestOption {
 func WithRawPackageJson(packageJson string) TestOption {
 	return func(o *testOptions) {
 		o.rawPackageJson = packageJson
+	}
+}
+
+func WithArgs(command ...string) TestOption {
+	return func(o *testOptions) {
+		o.args = command
 	}
 }
 
@@ -78,8 +85,13 @@ func Test(t *testing.T, contents string, opts ...TestOption) {
 		writePackageJson(t, dir, []byte(options.rawPackageJson))
 	}
 
+	args := []string{t.Name()}
+	if options.args != nil {
+		args = append(args, options.args...)
+	}
+
 	err = sindr.Run(t.Context(),
-		[]string{t.Name(), "test"},
+		args,
 		sindr.WithFileName(fileName),
 		sindr.WithCacheDir(dir+"/cache"),
 		sindr.WithDirectory(dir),

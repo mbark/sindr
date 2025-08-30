@@ -87,13 +87,13 @@ The linter configuration ensures code quality and security best practices are fo
 - `cli()`: Configure the CLI tool name and usage
 - `command()`: Define top-level commands with name, help, action, args, and flags
 - `sub_command()`: Define nested subcommands with path arrays
-- `shell()`: Execute shell commands with optional prefixes and return a structured result containing stdout, stderr, exit code, and success status
-- `exec()`: Execute commands with a specific binary/interpreter by writing the command to a temporary file
+- `shell()`: Execute shell commands with automatic template expansion, optional prefixes, and return a structured result containing stdout, stderr, exit code, and success status
+- `exec()`: Execute commands with a specific binary/interpreter by writing the command to a temporary file, with automatic template expansion
 - `dotenv()`: Load environment variables from .env files with optional overloading
 - `start()`: Run functions concurrently
 - `wait()`: Wait for async operations to complete
 - `pool()`: Manage groups of concurrent operations
-- `string()`: Render string templates with Go template syntax
+- `string()`: Render string templates with Go template syntax and automatic context variable inclusion
 - `cache()`: Create a cache instance for version management and caching operations
 
 ### Cache Functions
@@ -115,7 +115,80 @@ c = cache(cache_dir="/custom/path")  # Uses custom cache directory
 
 - String templates support Go template syntax with `{{.variable}}`
 - Global Starlark variables are automatically available in templates
-- `string()` function renders templates with optional additional context
+- `string()`, `shell()`, and `exec()` functions all support automatic template expansion
+- **Automatic Template Expansion**: All three functions (`string()`, `shell()`, `exec()`) automatically perform template expansion using:
+  - Global Starlark variables
+  - Command context flags (accessible as `{{.flag_name}}`)
+  - Command context arguments (accessible as `{{.arg_name}}`)
+- Context variables override explicit parameters when both are provided
+
+### Context Access and Automatic Templating
+
+The command context (`ctx`) provides access to flags and arguments in multiple ways:
+
+**Direct Context Access:**
+```python
+def my_command(ctx):
+    # Access flags via ctx.flags
+    verbose = ctx.flags.verbose
+    debug_mode = ctx.flags["debug-mode"]  # For dash-case flags
+    
+    # Access args via ctx.args  
+    target = ctx.args.target
+    environment = ctx.args.environment
+    
+    # Access all args as list via ctx.args_list
+    all_args = ctx.args_list
+```
+
+**Automatic Template Variables:**
+All templating functions (`string()`, `shell()`, `exec()`) automatically include:
+
+```python
+# Global variables
+project_name = "myapp" 
+version = "1.2.0"
+
+def deploy_command(ctx):
+    # All these variables are automatically available in templates:
+    # - Global variables: project_name, version
+    # - Context flags: debug, verbose, etc.
+    # - Context args: target, environment, etc.
+    
+    # shell() with automatic templating
+    shell('echo "Deploying {{.project_name}} v{{.version}} to {{.target}} (debug={{.debug}})"')
+    
+    # exec() with automatic templating  
+    python_code = '''
+print("Project: {{.project_name}}")
+print("Target: {{.target}}")
+print("Debug: {{.debug}}")
+'''
+    exec(bin='python3', command=python_code)
+    
+    # string() with automatic templating
+    message = string('{{.project_name}} v{{.version}} deployment to {{.target}} complete')
+    print(message)
+
+command(
+    name="deploy",
+    action=deploy_command,
+    args=["target", "environment"],
+    flags=[
+        {"name": "debug", "type": "bool", "default": False},
+        {"name": "verbose", "type": "bool", "default": False}
+    ]
+)
+```
+
+**Template Variable Priority:**
+1. Context flags and args (highest priority)
+2. Explicit parameters passed to the function
+3. Global Starlark variables (lowest priority)
+
+**Flag Name Conversion:**
+- Dash-case flags like `--dry-run` are accessible as both `{{.dry_run}}` and `{{.dry-run}}` in templates
+- In context access, use `ctx.flags.dry_run` or `ctx.flags["dry-run"]`
 
 ### Shell Command Results
 
@@ -145,6 +218,12 @@ if shell('test -f myfile.txt'):
     print("File exists")
 else:
     print("File does not exist")
+
+# Automatic template expansion with context variables
+def build_command(ctx):
+    # Global variables, context flags, and args are automatically available
+    shell('echo "Building {{.target}} with debug={{.debug}}"')
+    # Expands to: echo "Building backend with debug=true"
 ```
 
 ### Exec Function
@@ -197,6 +276,15 @@ result = exec(bin='python3', command=python_code)
 
 # Use with prefix and no_output
 exec(bin='sh', command='echo "Building..."', prefix='BUILD', no_output=True)
+
+# Automatic template expansion with context variables
+def deploy_command(ctx):
+    python_script = '''
+print("Deploying {{.project_name}} to {{.environment}}")
+print("Debug mode: {{.debug}}")
+'''
+    exec(bin='python3', command=python_script)
+    # Templates automatically expand using global vars and context
 ```
 
 ### Dotenv Function
@@ -301,12 +389,13 @@ command(
     help = "Build the project", 
     action = build,
     args = ["target"],
-    flags = {
-        "some-flag": {
+    flags = [
+        {
+            "name": "some-flag",
             "type": "bool",
             "default": False,
         }
-    }
+    ]
 )
 
 # Define subcommands using path arrays

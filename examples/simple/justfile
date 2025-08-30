@@ -1,0 +1,12 @@
+short := "true"
+
+test *args="":
+    #!/usr/bin/env sh
+    if [ "{{short}}" = "true" ]; then
+        go test -short {{args}} ./...
+    else
+        go test {{args}} ./...
+    fi
+
+help:
+    @just --list

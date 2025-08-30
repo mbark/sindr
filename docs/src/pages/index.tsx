@@ -7,6 +7,7 @@ import HomepageFeatures from '@site/src/components/HomepageFeatures';
 import Heading from '@theme/Heading';
 
 import styles from './index.module.css';
+import HomepageCode from '../components/HomepageCode';
 
 function HomepageHeader() {
     const {siteConfig} = useDocusaurusContext();
@@ -39,10 +40,11 @@ export default function Home(): ReactNode {
     const {siteConfig} = useDocusaurusContext();
     return (
         <Layout
-            title={`${siteConfig.title} - Modern Make Alternative`}
-            description="A modern replacement for make that allows creating CLI tools written in Starlark">
+            title={`${siteConfig.title} - Project-specific commands as a CLI`}
+            description="Project-specific commands as a CLI.">
             <HomepageHeader/>
             <main>
+                <HomepageCode/>
                 <HomepageFeatures/>
             </main>
         </Layout>

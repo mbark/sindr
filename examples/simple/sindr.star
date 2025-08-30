@@ -1,26 +1,24 @@
 cli(
     name = "sindr",
-    usage = "✨🔨 Easily configurable project-specific CLI."
+    usage = "✨🔨 Project-specific commands as a CLI. "
 )
 
 def test(ctx):
-    flags = []
-    if ctx.flags.short:
-        flags.append('-short')
-
-    shell(string('go test {{.flags}} {{.args}} ./...', flags=' '.join(flags), args=ctx.args.args))
+    shell('go test {{.flags}} {{.args}} ./...',
+        flags='-short' if ctx.short else '')
 
 command(
     name = "test",
-    help = "run go test",
+    usage = "run go test",
     action = test,
     args = ['args'],
-    flags = {
-        "short": {
+    flags = [
+        {
+            "name": "short",
             "type": "bool",
             "default": True,
-            "help": "Use the -short flag when running the tests"
+            "usage": "Use the -short flag when running the tests"
         },
-    },
+    ],
 )
 

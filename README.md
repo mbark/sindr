@@ -14,7 +14,7 @@ a simple way to create a CLI to save and run project-specific commands.
 Using [Starlark](https://github.com/bazelbuild/starlark), a Python-subset, you can create a CLI with flags, arguments
 and autocompletion to save and run project-specific commands.
 
-<img src="carbon.png">
+<img src="docs/static/img/code_sindr.png">
 
 Configure your CLI in `Starlark`, using builtin functions like `command` and `shell` to easily create a CLI for your
 project. Then run `sindr` to get a CLI for your project-specific commands.

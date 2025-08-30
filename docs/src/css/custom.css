@@ -35,3 +35,11 @@
     --ifm-color-primary-contrast-background: #000;
     --ifm-color-primary-contrast-foreground: #fff;
 }
+
+[data-theme='dark'] [data-theme-is='light'] {
+    display: none !important;
+}
+
+[data-theme='light'] [data-theme-is='dark'] {
+    display: none !important;
+}

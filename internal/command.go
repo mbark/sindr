@@ -56,14 +56,14 @@ func SindrCommand(
 	args starlark.Tuple,
 	kwargs []starlark.Tuple,
 ) (starlark.Value, error) {
-	var name, help string
+	var name, usage string
 	var action starlark.Callable
 	var argsList *starlark.List
 	var flagsList *starlark.List
 	var category string
 	if err := starlark.UnpackArgs("command", args, kwargs,
 		"name", &name,
-		"help?", &help,
+		"usage?", &usage,
 		"action", &action,
 		"args?", &argsList,
 		"flags?", &flagsList,
@@ -75,7 +75,7 @@ func SindrCommand(
 	cmd := &Command{
 		Command: &cli.Command{
 			Name:     name,
-			Usage:    help,
+			Usage:    usage,
 			Action:   createCommandAction(name, thread, action),
 			Category: category,
 		},
@@ -105,14 +105,14 @@ func SindrSubCommand(
 	kwargs []starlark.Tuple,
 ) (starlark.Value, error) {
 	var pathList *starlark.List
-	var help string
+	var usage string
 	var action starlark.Callable
 	var argsList *starlark.List
 	var flagsList *starlark.List
 	var category string
 	if err := starlark.UnpackArgs("sub_command", args, kwargs,
 		"path", &pathList,
-		"help?", &help,
+		"usage?", &usage,
 		"action", &action,
 		"args?", &argsList,
 		"flags?", &flagsList,
@@ -142,7 +142,7 @@ func SindrSubCommand(
 	cmd := &Command{
 		Command: &cli.Command{
 			Name:     path[len(path)-1],
-			Usage:    help,
+			Usage:    usage,
 			Action:   createCommandAction(path[len(path)-1], thread, action),
 			Category: category,
 		},
@@ -200,7 +200,7 @@ func processFlags(flagsList *starlark.List, cmd *Command) error {
 
 func parseFlag(name string, flagDef *starlark.Dict) (cli.Flag, error) {
 	var defaultVal starlark.Value
-	var flagHelp string
+	var flagUsage string
 	var err error
 
 	stringKeyed := make(map[string]starlark.Value)
@@ -222,10 +222,10 @@ func parseFlag(name string, flagDef *starlark.Dict) (cli.Flag, error) {
 			// ignore this for now, we do this in the second pass
 		case "default":
 			defaultVal = v
-		case "help":
-			flagHelp, err = castString[starlark.String](v)
+		case "usage":
+			flagUsage, err = castString[starlark.String](v)
 			if err != nil {
-				return nil, fmt.Errorf("flag help: %w", err)
+				return nil, fmt.Errorf("flag usage: %w", err)
 			}
 		}
 	}
@@ -250,7 +250,7 @@ func parseFlag(name string, flagDef *starlark.Dict) (cli.Flag, error) {
 
 			cliFlag = &cli.BoolFlag{
 				Name:  name,
-				Usage: flagHelp,
+				Usage: flagUsage,
 				Value: bool(value),
 			}
 
@@ -262,7 +262,7 @@ func parseFlag(name string, flagDef *starlark.Dict) (cli.Flag, error) {
 
 			cliFlag = &cli.StringFlag{
 				Name:  name,
-				Usage: flagHelp,
+				Usage: flagUsage,
 				Value: value,
 			}
 
@@ -283,7 +283,7 @@ func parseFlag(name string, flagDef *starlark.Dict) (cli.Flag, error) {
 
 			cliFlag = &cli.StringSliceFlag{
 				Name:  name,
-				Usage: flagHelp,
+				Usage: flagUsage,
 				Value: value,
 			}
 
@@ -295,7 +295,7 @@ func parseFlag(name string, flagDef *starlark.Dict) (cli.Flag, error) {
 
 			cliFlag = &cli.IntFlag{
 				Name:  name,
-				Usage: flagHelp,
+				Usage: flagUsage,
 				Value: i,
 			}
 
@@ -316,7 +316,7 @@ func parseFlag(name string, flagDef *starlark.Dict) (cli.Flag, error) {
 
 			cliFlag = &cli.IntSliceFlag{
 				Name:  name,
-				Usage: flagHelp,
+				Usage: flagUsage,
 				Value: value,
 			}
 
@@ -420,11 +420,10 @@ func createCommandAction(
 				Log(argOrFlagStyle.Render(fmt.Sprintf("%d: %s", i, a)))
 		}
 
-		_, err := starlark.Call(thread, action, starlark.Tuple{&Context{
-			Flags:     flags,
-			Args:      argsDict,
-			ArgsSlice: starlark.NewList(list),
-		}}, nil)
+		c := NewContext(flags, argsDict, starlark.NewList(list))
+		thread.SetLocal("ctx", c)
+
+		_, err := starlark.Call(thread, action, starlark.Tuple{c}, nil)
 		return err
 	}
 }
@@ -469,9 +468,19 @@ var (
 )
 
 type Context struct {
-	Flags     starlark.StringDict
-	Args      starlark.StringDict
-	ArgsSlice *starlark.List
+	Flags        *FlagMap
+	Args         *FlagMap
+	FlagsAndArgs *FlagMap
+	ArgsSlice    *starlark.List
+}
+
+func NewContext(flags, args starlark.StringDict, argsSlice *starlark.List) *Context {
+	return &Context{
+		Flags:        NewFlagMap(flags),
+		Args:         NewFlagMap(args),
+		FlagsAndArgs: NewFlagMap(union(flags, args)),
+		ArgsSlice:    argsSlice,
+	}
 }
 
 func (c *Context) String() string        { return "<ctx>" }
@@ -480,15 +489,21 @@ func (c *Context) Freeze()               {}
 func (c *Context) Truth() starlark.Bool  { return starlark.True }
 func (c *Context) Hash() (uint32, error) { return 0, errors.New("unhashable") }
 func (c *Context) Attr(name string) (starlark.Value, error) {
+	value, ok, err := c.FlagsAndArgs.Get(starlark.String(name))
+	if ok {
+		return value, err
+	}
+
 	switch name {
 	case "flags":
-		return NewFlagMap(c.Flags), nil
+		return c.Flags.Attr(name)
 	case "args":
-		return NewFlagMap(c.Args), nil
+		return c.Args.Attr(name)
 	case "args_list":
 		return c.ArgsSlice, nil
+	default:
+		return nil, nil
 	}
-	return nil, nil
 }
 
 func (c *Context) AttrNames() []string {

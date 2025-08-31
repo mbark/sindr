@@ -15,6 +15,7 @@ The project consists of:
 - **Go Runtime**: Core engine that interprets and executes Starlark scripts (`run_starlark.go`, `command.go`)
 - **Starlark Integration**: Uses `go.starlark.net` interpreter with custom builtin functions
 - **CLI Framework**: Built on `urfave/cli/v3` for command parsing and help generation
+- **Dynamic Completion**: Context-aware shell completion system that adapts to different project configurations
 - **Configuration**: Projects use `main.star` files to define commands and actions
 
 ## Common Commands
@@ -350,11 +351,46 @@ OPTIONAL_VAR=
 CONFIG_JSON={"key":"value","nested":{"setting":"enabled"}}
 ```
 
+## Shell Completion System
+
+The project implements a dynamic shell completion system that provides context-aware command suggestions based on the current project's `sindr.star` configuration.
+
+### Architecture
+
+- **Dynamic Generation**: Completion scripts are generated with dynamic function calls instead of static command lists
+- **Helper Command**: `sindr __list-commands` (hidden) provides current available commands for any project
+- **Multi-Shell Support**: Generates completion scripts for bash, zsh, fish, and PowerShell
+- **Context-Aware**: Completions change automatically when switching between projects or modifying configurations
+
+### Implementation
+
+- `internal/completion.go`: Custom completion script generation and helper commands
+- `internal/locals.go`: Integration with CLI initialization via `ConfigureShellCompletion()`
+- Dynamic completion scripts use `sindr __list-commands` to get current context
+
+### Usage
+
+```bash
+# Generate dynamic completion script
+sindr completion fish > ~/.config/fish/completions/sindr.fish
+
+# The generated script calls back to sindr for context-aware suggestions
+# Works across different projects automatically
+```
+
+### Benefits
+
+- ✅ One-time installation works for all projects
+- ✅ Always up-to-date with config changes  
+- ✅ No manual maintenance required
+- ✅ Supports nested subcommands and project-specific flags
+
 ## Project Structure
 
 - `cmd/main.go`: Entry point that calls `Run()`
 - `internal/run.go`: Main runtime and Starlark integration
 - `internal/command.go`: CLI command building and Starlark integration
+- `internal/completion.go`: Dynamic shell completion system
 - `internal/shell.go`: Shell execution with async support
 - `internal/exec.go`: Binary/interpreter execution with temporary files
 - `internal/dotenv.go`: Environment variable loading from .env files

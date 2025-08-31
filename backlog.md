@@ -4,9 +4,20 @@ A mental list of everything to do for the project.
 
 ## TODO
 
+### Splash page
+
+- [ ] Add a screen recording showing how `sindr` works
+- [ ] Improve the example to better show `sindr` vs `make` in terms of how they work
+
+### Documentation
+
 - [ ] Add docs for all use cases.
-- [ ] Source all `sindr.star` upwards until one is defined as `root`
 - [ ] Add Go documentation for using `sindr` as a library
+
+### Sindr
+
+- [x] Ensure autocompletion works
+- [ ] Source all `sindr.star` upwards until one is defined as `root`
 - [ ] Improve the tests for `packagejson` and command to actually check the commands are added (e.g., via --help)
 - [ ] Improve test coverage from 44% to ~80%.
 

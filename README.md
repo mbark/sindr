@@ -179,6 +179,75 @@ $ echo "hello from sindr"
 When running a command `sindr` will log the name of the command, with flags and arguments if any are defined. In this
 case none are so it will log simply `a_command`.
 
+## Shell Completion
+
+`sindr` supports dynamic shell completion for **bash**, **zsh**, **fish**, and **PowerShell**. The completion automatically adapts to your project's `sindr.star` configuration, providing context-aware suggestions that work across different projects.
+
+### Installation
+
+#### Fish
+```bash
+# Install completion permanently
+sindr completion fish > ~/.config/fish/completions/sindr.fish
+
+# Or source dynamically
+sindr completion fish | source
+```
+
+#### Bash
+```bash
+# For current session
+source <(sindr completion bash)
+
+# For permanent installation (Linux)
+sindr completion bash > /etc/bash_completion.d/sindr
+
+# For permanent installation (macOS with Homebrew)
+sindr completion bash > /usr/local/etc/bash_completion.d/sindr
+```
+
+#### Zsh
+```bash
+# For current session
+source <(sindr completion zsh)
+
+# For permanent installation
+sindr completion zsh > ~/.zsh/completions/_sindr
+
+# Make sure your ~/.zshrc includes:
+# autoload -U compinit && compinit
+```
+
+#### PowerShell
+```powershell
+# Save to profile
+sindr completion powershell >> $PROFILE
+
+# Or for current session
+sindr completion powershell | Out-String | Invoke-Expression
+```
+
+### How It Works
+
+The completion system is **dynamic** and **context-aware**:
+
+- ✅ **Project-specific**: Completions change based on the `sindr.star` file in your current directory
+- ✅ **Always up-to-date**: Modifications to `sindr.star` are reflected immediately without reinstalling
+- ✅ **Cross-project**: Works seamlessly when switching between different projects
+- ✅ **Global flags**: Static global flags (like `--verbose`, `--file-name`) are always available
+
+### Example
+
+```bash
+# In project A with commands: build, test, deploy
+$ sindr <TAB>
+build  test  deploy
+
+# In project B with commands: start, stop, logs  
+$ sindr <TAB>
+start  stop  logs
+```
+
 ## Examples
 
 A variety of examples can be found in the [examples directory](https://github.com/mbark/sindr/tree/master/examples).

@@ -12,9 +12,14 @@ func InitialiseLocals(thread *starlark.Thread) (*CLI, *sync.WaitGroup) {
 	wg := &sync.WaitGroup{}
 	sindrCLI := &CLI{
 		Command: &Command{
-			Command: &cli.Command{},
+			Command: &cli.Command{
+				EnableShellCompletion: true,
+			},
 		},
 	}
+
+	// Configure custom completion
+	ConfigureShellCompletion(sindrCLI)
 
 	thread.SetLocal("cli", sindrCLI)
 	thread.SetLocal("wg", wg)

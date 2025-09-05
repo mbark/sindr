@@ -2,14 +2,17 @@ package sindrtest
 
 import (
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"go.starlark.net/starlark"
 
 	"github.com/mbark/sindr"
+	"github.com/mbark/sindr/internal/logger"
 )
 
 type testOptions struct {
@@ -17,6 +20,8 @@ type testOptions struct {
 	fail           bool
 	packageJson    map[string]any
 	rawPackageJson string
+	logger         logger.Interface
+	writer         io.Writer
 }
 
 type TestOption func(o *testOptions)
@@ -42,6 +47,18 @@ func WithRawPackageJson(packageJson string) TestOption {
 func WithArgs(command ...string) TestOption {
 	return func(o *testOptions) {
 		o.args = command
+	}
+}
+
+func WithLogger(logger logger.Interface) TestOption {
+	return func(o *testOptions) {
+		o.logger = logger
+	}
+}
+
+func WithWriter(writer io.Writer) TestOption {
+	return func(o *testOptions) {
+		o.writer = writer
 	}
 }
 
@@ -90,18 +107,74 @@ func Test(t *testing.T, contents string, opts ...TestOption) {
 		args = append(args, options.args...)
 	}
 
+	var l logger.Interface = testLogger{T: t}
+	if options.logger != nil {
+		l = options.logger
+	}
+	writer := t.Output()
+	if options.writer != nil {
+		writer = options.writer
+	}
+
 	err = sindr.Run(t.Context(),
 		args,
 		sindr.WithFileName(fileName),
 		sindr.WithCacheDir(dir+"/cache"),
 		sindr.WithDirectory(dir),
 		sindr.WithVerboseLogging(true),
+		sindr.WithLogger(l),
+		sindr.WithWriter(writer),
 	)
 	if options.fail {
 		require.Error(t, err)
 	} else {
 		require.NoError(t, err)
 	}
+}
+
+var _ io.Writer = (*CollectWriter)(nil)
+
+type CollectWriter struct {
+	T      *testing.T
+	Writes []string
+}
+
+func (c *CollectWriter) Write(p []byte) (n int, err error) {
+	c.Writes = append(c.Writes, string(p))
+	return len(p), nil
+}
+
+var _ logger.Interface = testLogger{}
+
+type testLogger struct {
+	T     *testing.T
+	stack starlark.CallStack
+}
+
+func (t testLogger) Print(message string) {
+	t.T.Logf("%s", message)
+}
+
+func (t testLogger) WithStack(stack starlark.CallStack) logger.Interface {
+	t.stack = stack
+	return t
+}
+
+func (t testLogger) Log(messages ...string) {
+	if len(t.stack) > 0 {
+		t.T.Logf("%s %s\n", t.stack[0].Pos.String(), strings.Join(messages, " "))
+		return
+	}
+
+	t.T.Log(strings.Join(messages, " "))
+}
+
+func (t testLogger) LogErr(message string, err error) {
+	require.NoError(t.T, err, message)
+}
+
+func (t testLogger) LogVerbose(messages ...string) {
+	t.Log(messages...)
 }
 
 func withPackageJson(t *testing.T, dir string, data map[string]any) {

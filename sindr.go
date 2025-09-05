@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"strings"
@@ -29,6 +30,8 @@ type StarlarkBuiltin = func(thread *starlark.Thread, fn *starlark.Builtin, args 
 type runOptions struct {
 	globals   starlark.StringDict
 	directory string
+	logger    logger.Interface
+	writer    io.Writer
 }
 
 var (
@@ -40,6 +43,18 @@ var (
 )
 
 type RunOption func(o *runOptions, v *viper.Viper)
+
+func WithLogger(l logger.Interface) RunOption {
+	return func(o *runOptions, v *viper.Viper) {
+		o.logger = l
+	}
+}
+
+func WithWriter(w io.Writer) RunOption {
+	return func(o *runOptions, v *viper.Viper) {
+		o.writer = w
+	}
+}
 
 func WithCacheDir(dir string) RunOption {
 	return func(o *runOptions, v *viper.Viper) {
@@ -136,6 +151,12 @@ func Run(ctx context.Context, args []string, opts ...RunOption) error {
 		o(&options, v)
 	}
 
+	if options.logger != nil {
+		logger.Default = options.logger
+	}
+	if options.writer != nil {
+		logger.Writer = options.writer
+	}
 	logger.DoLogVerbose = v.GetBool(verboseKey)
 	logger.WithLineNumbers = v.GetBool(lineNumbersKey)
 	cache.GlobalCache.ForceOutOfDate = v.GetBool(noCacheKey)

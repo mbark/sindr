@@ -88,7 +88,7 @@ func SindrShell(
 }
 
 func StartShellCmd(
-	logger logger.Logger,
+	logger logger.Interface,
 	cmd *exec.Cmd,
 	name string,
 	noOutput bool,

@@ -6,6 +6,8 @@ import (
 
 	"github.com/urfave/cli/v3"
 	"go.starlark.net/starlark"
+
+	"github.com/mbark/sindr/internal/logger"
 )
 
 func InitialiseLocals(thread *starlark.Thread) (*CLI, *sync.WaitGroup) {
@@ -13,17 +15,15 @@ func InitialiseLocals(thread *starlark.Thread) (*CLI, *sync.WaitGroup) {
 	sindrCLI := &CLI{
 		Command: &Command{
 			Command: &cli.Command{
-				EnableShellCompletion: true,
+				EnableShellCompletion:           true,
+				ConfigureShellCompletionCommand: ConfigureShellCompletionCommand,
+				Writer:                          logger.Writer,
 			},
 		},
 	}
 
-	// Configure custom completion
-	ConfigureShellCompletion(sindrCLI)
-
 	thread.SetLocal("cli", sindrCLI)
 	thread.SetLocal("wg", wg)
-
 	return sindrCLI, wg
 }
 

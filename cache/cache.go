@@ -207,7 +207,7 @@ func (c *Cache) withVersion(
 	return starlark.Bool(true), nil
 }
 
-func checkIfDiff(logger logger.Logger, cache diskCache, options cacheDiffOptions) (bool, error) {
+func checkIfDiff(logger logger.Interface, cache diskCache, options cacheDiffOptions) (bool, error) {
 	currentVersion, err := cache.GetVersion(options.name)
 	if err != nil {
 		return false, err

@@ -12,7 +12,6 @@ import (
 )
 
 func TestShellCompletionFunctionality(t *testing.T) {
-
 	t.Run("completion shows commands at root level", func(t *testing.T) {
 		writer := new(sindrtest.CollectWriter)
 		sindrtest.Test(t, `

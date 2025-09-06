@@ -179,7 +179,9 @@ func (t testLogger) WithStack(stack starlark.CallStack) logger.Interface {
 func (t testLogger) Log(messages ...string) {
 	if len(t.stack) > 0 {
 		t.T.Logf("%s %s\n", t.stack[0].Pos.String(), strings.Join(messages, " "))
-		_, _ = t.writer.Write([]byte(fmt.Sprintf("%s %s\n", t.stack[0].Pos.String(), strings.Join(messages, " "))))
+		_, _ = t.writer.Write(
+			[]byte(fmt.Sprintf("%s %s\n", t.stack[0].Pos.String(), strings.Join(messages, " "))),
+		)
 		return
 	}
 

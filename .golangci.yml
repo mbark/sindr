@@ -15,6 +15,7 @@ linters:
     - lll
     - dupword
     - gocognit
+    - nestif
 
   exclusions:
     rules:

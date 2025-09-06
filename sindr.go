@@ -219,6 +219,13 @@ func runCLI(
 	cmd := sindrCLI.Command.Command
 	cmd.Flags = append(cmd.Flags, cliFlags...)
 
+	cmd.Commands = append(cmd.Commands, &cli.Command{
+		Name:   "__complete",
+		Hidden: true,
+		Usage:  "internal: fish dynamic completion",
+		Action: internal.CompleteAction(cmd),
+	})
+
 	err = cmd.Run(ctx, args)
 	if err != nil {
 		return err

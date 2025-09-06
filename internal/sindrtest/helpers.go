@@ -2,6 +2,7 @@ package sindrtest
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -22,6 +23,7 @@ type testOptions struct {
 	rawPackageJson string
 	logger         logger.Interface
 	writer         io.Writer
+	envs           map[string]string
 }
 
 type TestOption func(o *testOptions)
@@ -62,12 +64,18 @@ func WithWriter(writer io.Writer) TestOption {
 	}
 }
 
+func WithEnv(k, v string) TestOption {
+	return func(o *testOptions) {
+		o.envs[k] = v
+	}
+}
+
 var fileName = "test.star"
 
 func Test(t *testing.T, contents string, opts ...TestOption) {
 	t.Helper()
 
-	var options testOptions
+	options := testOptions{envs: make(map[string]string)}
 	for _, opt := range opts {
 		opt(&options)
 	}
@@ -102,20 +110,26 @@ func Test(t *testing.T, contents string, opts ...TestOption) {
 		writePackageJson(t, dir, []byte(options.rawPackageJson))
 	}
 
-	args := []string{t.Name()}
+	args := []string{"sindr"}
 	if options.args != nil {
 		args = append(args, options.args...)
 	}
 
-	var l logger.Interface = testLogger{T: t}
-	if options.logger != nil {
-		l = options.logger
-	}
+	var testWriter io.Writer = &CollectWriter{T: t}
 	writer := t.Output()
 	if options.writer != nil {
 		writer = options.writer
+		testWriter = options.writer
 	}
 
+	var l logger.Interface = testLogger{T: t, writer: testWriter}
+	if options.logger != nil {
+		l = options.logger
+	}
+
+	for k, v := range options.envs {
+		t.Setenv(k, v)
+	}
 	err = sindr.Run(t.Context(),
 		args,
 		sindr.WithFileName(fileName),
@@ -147,12 +161,14 @@ func (c *CollectWriter) Write(p []byte) (n int, err error) {
 var _ logger.Interface = testLogger{}
 
 type testLogger struct {
-	T     *testing.T
-	stack starlark.CallStack
+	T      *testing.T
+	stack  starlark.CallStack
+	writer io.Writer
 }
 
 func (t testLogger) Print(message string) {
 	t.T.Logf("%s", message)
+	_, _ = t.writer.Write([]byte(message))
 }
 
 func (t testLogger) WithStack(stack starlark.CallStack) logger.Interface {
@@ -163,10 +179,12 @@ func (t testLogger) WithStack(stack starlark.CallStack) logger.Interface {
 func (t testLogger) Log(messages ...string) {
 	if len(t.stack) > 0 {
 		t.T.Logf("%s %s\n", t.stack[0].Pos.String(), strings.Join(messages, " "))
+		_, _ = t.writer.Write([]byte(fmt.Sprintf("%s %s\n", t.stack[0].Pos.String(), strings.Join(messages, " "))))
 		return
 	}
 
 	t.T.Log(strings.Join(messages, " "))
+	_, _ = t.writer.Write([]byte(strings.Join(messages, " ")))
 }
 
 func (t testLogger) LogErr(message string, err error) {

@@ -14,13 +14,19 @@ func SindrStringArg(
 	args starlark.Tuple,
 	kwargs []starlark.Tuple,
 ) (starlark.Value, error) {
-	return sindrArg[string](thread, fn, args, kwargs, func(name, usage string, defaultValue string) (cli.Argument, error) {
-		return &cli.StringArg{
-			Name:      name,
-			UsageText: usage,
-			Value:     defaultValue,
-		}, nil
-	})
+	return sindrArg[string](
+		thread,
+		fn,
+		args,
+		kwargs,
+		func(name, usage string, defaultValue string) (cli.Argument, error) {
+			return &cli.StringArg{
+				Name:      name,
+				UsageText: usage,
+				Value:     defaultValue,
+			}, nil
+		},
+	)
 }
 
 func SindrIntArg(
@@ -29,13 +35,19 @@ func SindrIntArg(
 	args starlark.Tuple,
 	kwargs []starlark.Tuple,
 ) (starlark.Value, error) {
-	return sindrArg[int](thread, fn, args, kwargs, func(name, usage string, defaultValue int) (cli.Argument, error) {
-		return &cli.IntArg{
-			Name:      name,
-			UsageText: usage,
-			Value:     defaultValue,
-		}, nil
-	})
+	return sindrArg[int](
+		thread,
+		fn,
+		args,
+		kwargs,
+		func(name, usage string, defaultValue int) (cli.Argument, error) {
+			return &cli.IntArg{
+				Name:      name,
+				UsageText: usage,
+				Value:     defaultValue,
+			}, nil
+		},
+	)
 }
 
 func sindrArg[T any](

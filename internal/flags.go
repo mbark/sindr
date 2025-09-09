@@ -14,13 +14,19 @@ func SindrStringFlag(
 	args starlark.Tuple,
 	kwargs []starlark.Tuple,
 ) (starlark.Value, error) {
-	return sindrFlag[starlark.String](thread, fn, args, kwargs, func(name, usage string, defaultValue starlark.String) (cli.Flag, error) {
-		return &cli.StringFlag{
-			Name:  name,
-			Usage: usage,
-			Value: string(defaultValue),
-		}, nil
-	})
+	return sindrFlag[starlark.String](
+		thread,
+		fn,
+		args,
+		kwargs,
+		func(name, usage string, defaultValue starlark.String) (cli.Flag, error) {
+			return &cli.StringFlag{
+				Name:  name,
+				Usage: usage,
+				Value: string(defaultValue),
+			}, nil
+		},
+	)
 }
 
 func SindrBoolFlag(
@@ -29,13 +35,19 @@ func SindrBoolFlag(
 	args starlark.Tuple,
 	kwargs []starlark.Tuple,
 ) (starlark.Value, error) {
-	return sindrFlag[starlark.Bool](thread, fn, args, kwargs, func(name, usage string, defaultValue starlark.Bool) (cli.Flag, error) {
-		return &cli.BoolFlag{
-			Name:  name,
-			Usage: usage,
-			Value: bool(defaultValue),
-		}, nil
-	})
+	return sindrFlag[starlark.Bool](
+		thread,
+		fn,
+		args,
+		kwargs,
+		func(name, usage string, defaultValue starlark.Bool) (cli.Flag, error) {
+			return &cli.BoolFlag{
+				Name:  name,
+				Usage: usage,
+				Value: bool(defaultValue),
+			}, nil
+		},
+	)
 }
 
 func SindrIntFlag(
@@ -44,18 +56,24 @@ func SindrIntFlag(
 	args starlark.Tuple,
 	kwargs []starlark.Tuple,
 ) (starlark.Value, error) {
-	return sindrFlag[starlark.Int](thread, fn, args, kwargs, func(name, usage string, defaultValue starlark.Int) (cli.Flag, error) {
-		i, err := castInt(defaultValue)
-		if err != nil {
-			return nil, err
-		}
+	return sindrFlag[starlark.Int](
+		thread,
+		fn,
+		args,
+		kwargs,
+		func(name, usage string, defaultValue starlark.Int) (cli.Flag, error) {
+			i, err := castInt(defaultValue)
+			if err != nil {
+				return nil, err
+			}
 
-		return &cli.IntFlag{
-			Name:  name,
-			Usage: usage,
-			Value: i,
-		}, nil
-	})
+			return &cli.IntFlag{
+				Name:  name,
+				Usage: usage,
+				Value: i,
+			}, nil
+		},
+	)
 }
 
 func SindrStringSliceFlag(
@@ -64,18 +82,27 @@ func SindrStringSliceFlag(
 	args starlark.Tuple,
 	kwargs []starlark.Tuple,
 ) (starlark.Value, error) {
-	return sindrFlag[*starlark.List](thread, fn, args, kwargs, func(name, usage string, defaultValue *starlark.List) (cli.Flag, error) {
-		value, err := fromList(defaultValue, func(value starlark.Value) (string, error) { return castString(value) })
-		if err != nil {
-			return nil, err
-		}
+	return sindrFlag[*starlark.List](
+		thread,
+		fn,
+		args,
+		kwargs,
+		func(name, usage string, defaultValue *starlark.List) (cli.Flag, error) {
+			value, err := fromList(
+				defaultValue,
+				func(value starlark.Value) (string, error) { return castString(value) },
+			)
+			if err != nil {
+				return nil, err
+			}
 
-		return &cli.StringSliceFlag{
-			Name:  name,
-			Usage: usage,
-			Value: value,
-		}, nil
-	})
+			return &cli.StringSliceFlag{
+				Name:  name,
+				Usage: usage,
+				Value: value,
+			}, nil
+		},
+	)
 }
 
 func SindrIntSliceFlag(
@@ -84,18 +111,27 @@ func SindrIntSliceFlag(
 	args starlark.Tuple,
 	kwargs []starlark.Tuple,
 ) (starlark.Value, error) {
-	return sindrFlag[*starlark.List](thread, fn, args, kwargs, func(name, usage string, defaultValue *starlark.List) (cli.Flag, error) {
-		value, err := fromList(defaultValue, func(value starlark.Value) (int, error) { return castInt(value) })
-		if err != nil {
-			return nil, err
-		}
+	return sindrFlag[*starlark.List](
+		thread,
+		fn,
+		args,
+		kwargs,
+		func(name, usage string, defaultValue *starlark.List) (cli.Flag, error) {
+			value, err := fromList(
+				defaultValue,
+				func(value starlark.Value) (int, error) { return castInt(value) },
+			)
+			if err != nil {
+				return nil, err
+			}
 
-		return &cli.IntSliceFlag{
-			Name:  name,
-			Usage: usage,
-			Value: value,
-		}, nil
-	})
+			return &cli.IntSliceFlag{
+				Name:  name,
+				Usage: usage,
+				Value: value,
+			}, nil
+		},
+	)
 }
 
 func sindrFlag[T starlark.Value](
@@ -139,9 +175,7 @@ func processFlags(flagsList *starlark.List, cmd *Command) error {
 	return nil
 }
 
-var (
-	_ starlark.Value = (*Flag)(nil)
-)
+var _ starlark.Value = (*Flag)(nil)
 
 type Flag struct {
 	flag cli.Flag
@@ -157,6 +191,4 @@ func (c *Flag) Freeze()               {}
 func (c *Flag) Truth() starlark.Bool  { return starlark.True }
 func (c *Flag) Hash() (uint32, error) { return 0, errors.New("unhashable") }
 
-var (
-	_ starlark.Value = (*Arg)(nil)
-)
+var _ starlark.Value = (*Arg)(nil)

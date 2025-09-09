@@ -123,7 +123,7 @@ func SindrSubCommand(
 
 	path, err := fromList[string](
 		pathList,
-		func(v starlark.Value) (string, error) { return castString[starlark.String](v) },
+		func(v starlark.Value) (string, error) { return castString(v) },
 	)
 	if err != nil {
 		return nil, err
@@ -158,174 +158,6 @@ func SindrSubCommand(
 
 	parentCmd.Commands = append(parentCmd.Commands, cmd.Command)
 	return starlark.None, nil
-}
-
-func processFlags(flagsList *starlark.List, cmd *Command) error {
-	if flagsList == nil {
-		return nil
-	}
-
-	for item := range flagsList.Elements() {
-		var flag cli.Flag
-		switch i := item.(type) {
-		case starlark.String:
-			flag = &cli.StringFlag{Name: string(i)}
-
-		case *starlark.Dict:
-			nameVal, ok, _ := i.Get(starlark.String("name"))
-			if !ok {
-				return fmt.Errorf("no name given to flag")
-			}
-			name, err := castString[starlark.String](nameVal)
-			if err != nil {
-				return fmt.Errorf("flag name: %w", err)
-			}
-
-			f, err := parseFlag(name, i)
-			if err != nil {
-				return err
-			}
-
-			flag = f
-
-		default:
-			return fmt.Errorf("expected string or tuple, got: %T", i)
-		}
-
-		cmd.Command.Flags = append(cmd.Command.Flags, flag)
-	}
-
-	return nil
-}
-
-func parseFlag(name string, flagDef *starlark.Dict) (cli.Flag, error) {
-	var defaultVal starlark.Value
-	var flagUsage string
-	var err error
-
-	stringKeyed := make(map[string]starlark.Value)
-	for _, kv := range flagDef.Items() {
-		if len(kv) != 2 {
-			return nil, fmt.Errorf("flag definition must be a dict of key-value pairs")
-		}
-
-		ks, err := castString[starlark.String](kv[0])
-		if err != nil {
-			return nil, fmt.Errorf("flag config key: %w", err)
-		}
-		stringKeyed[ks] = kv[1]
-	}
-
-	for k, v := range stringKeyed {
-		switch k {
-		case "type":
-			// ignore this for now, we do this in the second pass
-		case "default":
-			defaultVal = v
-		case "usage":
-			flagUsage, err = castString[starlark.String](v)
-			if err != nil {
-				return nil, fmt.Errorf("flag usage: %w", err)
-			}
-		}
-	}
-
-	var cliFlag cli.Flag
-	for key, v := range stringKeyed {
-		if key != "type" { // only check for type on the second pass
-			continue
-		}
-
-		typeName, err := castString[starlark.String](v)
-		if err != nil {
-			return nil, fmt.Errorf("flag type: %w", err)
-		}
-
-		switch typeName {
-		case "bool":
-			value, err := cast[starlark.Bool](defaultVal)
-			if err != nil {
-				return nil, fmt.Errorf("flag default value: %w", err)
-			}
-
-			cliFlag = &cli.BoolFlag{
-				Name:  name,
-				Usage: flagUsage,
-				Value: bool(value),
-			}
-
-		case "string":
-			value, err := castString[starlark.String](defaultVal)
-			if err != nil {
-				return nil, fmt.Errorf("flag default value: %w", err)
-			}
-
-			cliFlag = &cli.StringFlag{
-				Name:  name,
-				Usage: flagUsage,
-				Value: value,
-			}
-
-		case "strings":
-			list, err := cast[*starlark.List](defaultVal)
-			if err != nil {
-				return nil, fmt.Errorf("flag default value: %w", err)
-			}
-
-			var value []string
-			for elem := range starlark.Elements(list) {
-				s, err := castString[starlark.String](elem)
-				if err != nil {
-					return nil, fmt.Errorf("flag default value: %w", err)
-				}
-				value = append(value, s)
-			}
-
-			cliFlag = &cli.StringSliceFlag{
-				Name:  name,
-				Usage: flagUsage,
-				Value: value,
-			}
-
-		case "int":
-			i, err := castInt(defaultVal)
-			if err != nil {
-				return nil, fmt.Errorf("flag default value: %w", err)
-			}
-
-			cliFlag = &cli.IntFlag{
-				Name:  name,
-				Usage: flagUsage,
-				Value: i,
-			}
-
-		case "ints":
-			list, err := cast[*starlark.List](defaultVal)
-			if err != nil {
-				return nil, fmt.Errorf("flag default value: %w", err)
-			}
-
-			var value []int
-			for elem := range starlark.Elements(list) {
-				i, err := castInt(elem)
-				if err != nil {
-					return nil, fmt.Errorf("flag default value: %w", err)
-				}
-				value = append(value, i)
-			}
-
-			cliFlag = &cli.IntSliceFlag{
-				Name:  name,
-				Usage: flagUsage,
-				Value: value,
-			}
-
-		default:
-			return nil, fmt.Errorf("unknown flag type: %s", typeName)
-		}
-	}
-
-	return cliFlag, nil
 }
 
 var (
@@ -428,22 +260,6 @@ func createCommandAction(
 	}
 }
 
-func processArgs(argsList *starlark.List, cmd *Command) error {
-	if argsList == nil {
-		return nil
-	}
-
-	for i := 0; i < argsList.Len(); i++ {
-		str, ok := argsList.Index(i).(starlark.String)
-		if !ok {
-			return fmt.Errorf("args must be list of strings")
-		}
-		cmd.Command.Arguments = append(cmd.Command.Arguments, &cli.StringArg{Name: string(str)})
-		cmd.Args = append(cmd.Args, string(str))
-	}
-	return nil
-}
-
 func findSubCommand(cmd *cli.Command, path []string) (*cli.Command, error) {
 	if len(path) == 0 {
 		return nil, fmt.Errorf("empty path")
@@ -496,9 +312,9 @@ func (c *Context) Attr(name string) (starlark.Value, error) {
 
 	switch name {
 	case "flags":
-		return c.Flags.Attr(name)
+		return c.Flags, nil
 	case "args":
-		return c.Args.Attr(name)
+		return c.Args, nil
 	case "args_list":
 		return c.ArgsSlice, nil
 	default:
@@ -507,7 +323,7 @@ func (c *Context) Attr(name string) (starlark.Value, error) {
 }
 
 func (c *Context) AttrNames() []string {
-	return []string{"flags", "args"}
+	return []string{"flags", "args", "args_list"}
 }
 
 var (

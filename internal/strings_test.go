@@ -112,16 +112,8 @@ def test_action(ctx):
 
 cli(name="TestTemplateString", usage="Test string templating")
 command(name="test", action=test_action, flags=[
-    {
-        "name": "debug",
-        "type": "bool",
-        "default": True,
-    },
-    {
-        "name": "verbose",
-        "type": "bool", 
-        "default": False,
-    }
+    bool_flag("debug", default=True),
+    bool_flag("verbose", default=False)
 ])
 `)
 	})
@@ -134,7 +126,7 @@ def test_action(ctx):
         fail('expected "Building backend for staging", got: ' + str(result))
 
 cli(name="TestTemplateString", usage="Test string templating")
-command(name="test", action=test_action, args=["target", "environment"])
+command(name="test", action=test_action, args=[string_arg("target"), string_arg("environment")])
 `)
 	})
 
@@ -148,11 +140,7 @@ def test_action(ctx):
 
 cli(name="TestTemplateString", usage="Test string templating")
 command(name="test", action=test_action, flags=[
-    {
-        "name": "mode",
-        "type": "string",
-        "default": "development",
-    }
+    string_flag("mode", default="development")
 ])
 `)
 	})
@@ -169,12 +157,8 @@ def test_action(ctx):
         fail('expected "sindr v2.0.0 building api with debug=true", got: ' + str(result))
 
 cli(name="TestTemplateString", usage="Test string templating")
-command(name="test", action=test_action, args=["target"], flags=[
-    {
-        "name": "debug",
-        "type": "bool",
-        "default": True,
-    }
+command(name="test", action=test_action, args=[string_arg("target")], flags=[
+    bool_flag("debug", default=True)
 ])
 `)
 	})
@@ -187,12 +171,8 @@ def test_action(ctx):
         fail('expected "false extra production", got: ' + str(result))
 
 cli(name="TestTemplateString", usage="Test string templating")
-command(name="test", action=test_action, args=["target"], flags=[
-    {
-        "name": "verbose",
-        "type": "bool",
-        "default": False,
-    }
+command(name="test", action=test_action, args=[string_arg("target")], flags=[
+    bool_flag("verbose", default=False)
 ])
 `)
 	})
@@ -206,12 +186,8 @@ def test_action(ctx):
         fail('expected "Flag some_flag: true, Arg some_arg: test_value", got: ' + str(result))
 
 cli(name="TestTemplateString", usage="Test string templating")
-command(name="test", action=test_action, args=["some_arg"], flags=[
-    {
-        "name": "some-flag",
-        "type": "bool", 
-        "default": True,
-    }
+command(name="test", action=test_action, args=[string_arg("some_arg")], flags=[
+    bool_flag("some-flag", default=True)
 ])
 `)
 	})

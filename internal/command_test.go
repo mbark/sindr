@@ -56,7 +56,7 @@ command(
     name="test",
     usage="Deploy the application",
     action=deploy_action,
-    args=["target", "environment"]
+    args=[string_arg("target"), string_arg("environment")]
 )
 `)
 	})
@@ -75,24 +75,9 @@ command(
     usage="Run with flags",
     action=test_action,
     flags=[
-        {
-            "name": "verbose",
-            "default": False,
-            "type": "bool",
-            "usage": "Enable verbose output"
-        },
-        {
-            "name": "count",
-            "default": 1,
-            "type": "int", 
-            "usage": "Number of iterations"
-        },
-        {
-            "name": "name",
-            "default": "default",
-            "type": "string",
-            "usage": "Name parameter"
-        }
+		bool_flag('verbose',usage="Enable verbose output"),
+		int_flag('count',usage="Number of iterations"),
+		string_flag('name',usage="Name parameter")
     ]
 )
 `)
@@ -116,12 +101,7 @@ command(
     usage="Test strings flag type",
     action=test_action,
     flags=[
-        {
-            "name": "strings",
-            "default": ["default1", "default2"],
-            "type": "strings",
-            "usage": "List of strings"
-        }
+        string_slice_flag('strings', default=["default1", "default2"], usage="List of strings")
     ]
 )
 `)
@@ -145,12 +125,7 @@ command(
     usage="Test ints flag type",
     action=test_action,
     flags=[
-        {
-            "name": "ints",
-            "default": [10, 20, 30],
-            "type": "ints",
-            "usage": "List of integers"
-        }
+        int_slice_flag('ints', default=[10, 20, 30], usage="List of integers")
     ]
 )
 `)
@@ -187,11 +162,7 @@ command(
     usage="Deploy with dash-case flag",
     action=test_action,
     flags=[
-        {
-            "name": "dry-run",
-            "default": True,
-            "type": "bool"
-        }
+        bool_flag('dry-run', default=True)
     ]
 )
 `)
@@ -271,12 +242,7 @@ sub_command(
     action=deploy_action,
     args=["service"],
     flags=[
-        {
-            "name": "force",
-            "default": False,
-            "type": "bool",
-            "usage": "Force deployment"
-        }
+        bool_flag('force', default=False, usage="Force deployment")
     ]
 )
 
@@ -309,8 +275,8 @@ command(
     name="test",
     action=test_action,
     flags=[
-        {"name": "verbose", "default": True, "type": "bool"},
-        {"name": "dry-run", "default": False, "type": "bool"}
+        bool_flag('verbose', default=True),
+        bool_flag('dry-run', default=False)
     ]
 )
 `)
@@ -374,10 +340,10 @@ command(
     name="test",
     action=test_action,
     flags=[
-        {"name": "verbose", "default": True, "type": "bool"},
-        {"name": "dry-run", "default": False, "type": "bool"},
-        {"name": "count", "default": 10, "type": "int"},
-        {"name": "name", "default": "default", "type": "string"}
+        bool_flag('verbose', default=True),
+        bool_flag('dry-run', default=False),
+        int_flag('count', default=10),
+        string_flag('name', default="default")
     ]
 )
 `)
@@ -436,7 +402,7 @@ cli(name="TestMixedContextAccess")
 command(
     name="test",
     action=test_action,
-    flags=[{"name": "verbose", "default": True, "type": "bool"}],
+    flags=[bool_flag('verbose', default=True)],
     args=["target"]
 )
 `)
@@ -468,8 +434,8 @@ command(
     name="test",
     action=test_action,
     flags=[
-        {"name": "dry-run", "default": False, "type": "bool"},
-        {"name": "api-key", "default": "secret", "type": "string"}
+        bool_flag('dry-run', default=False),
+        string_flag('api-key', default="secret")
     ]
 )
 `)
@@ -497,7 +463,7 @@ cli(name="TestReservedAttributes")
 command(
     name="test",
     action=test_action,
-    flags=[{"name": "flags", "default": "should_not_override", "type": "string"}],
+    flags=[string_flag('flags', default="should_not_override")],
     args=["args", "args_list"]
 )
 `)
@@ -515,11 +481,7 @@ command(
     name="test",
     action=test_action,
     flags=[
-        {
-            "name": "invalid",
-            "default": "test",
-            "type": "unknown_type"
-        }
+        unknown_type_flag('invalid', default="test")
     ]
 )
 `, sindrtest.ShouldFail())

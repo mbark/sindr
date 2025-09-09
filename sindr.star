@@ -261,42 +261,28 @@ command(
     name = "build",
     usage = "Comprehensive build example with args and flags",
     action = comprehensive_build,
-    args = ["target"],
+    args = [
+        string_arg("target"),
+    ],
     flags = [
-        {
-            "name": "verbose",
-            "type": "bool",
-            "default": False,
-            "usage": "Enable verbose output"
-        },
-        {
-            "name": "parallel",
-            "type": "bool",
-            "default": False,
-            "usage": "Enable parallel build"
-        }]
+        bool_flag('verbose', usage="Enable verbose output"),
+        bool_flag('parallel', usage="Enable parallel build")
+    ]
 )
 
-def string_slice_flag(ctx):
+def string_slice_flags(ctx):
     print('strings:', ctx.flags.strings)
     print('ints:', ctx.flags.ints)
+    print('simple:', ctx.flags.simple)
 
 command(
     name = 'slice_flag',
-    action=string_slice_flag,
+    action=string_slice_flags,
     flags = [
-        {
-            "name": "strings",
-            "type": "strings",
-            "default": ["1","2"],
-        },
-        {
-            "name": "ints",
-            "type": "ints",
-            "default": [1,2,3],
-        },
-        "simple",
- ]
+        string_slice_flag("strings", default=["1","2"]),
+        int_slice_flag("ints", default=[1,2,3]),
+        string_flag("simple"),
+    ]
 )
 
 def shell_string(ctx):
@@ -308,8 +294,8 @@ def shell_string(ctx):
 command(
     name = 'shell_string',
     action=shell_string,
-    flags=[{'name': 'string_flag', 'type': 'bool'}],
-    args=['argument'],
+    flags=[bool_flag('string_flag')],
+    args=[string_arg('argument')],
 )
 
 def exec(ctx):

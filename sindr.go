@@ -276,6 +276,15 @@ func createPredeclaredDict(dir string) starlark.StringDict {
 		"command":     starlark.NewBuiltin("command", internal.SindrCommand),
 		"sub_command": starlark.NewBuiltin("sub_command", internal.SindrSubCommand),
 
+		"string_flag":       starlark.NewBuiltin("string_flag", internal.SindrStringFlag),
+		"bool_flag":         starlark.NewBuiltin("bool_flag", internal.SindrBoolFlag),
+		"int_flag":          starlark.NewBuiltin("int_flag", internal.SindrIntFlag),
+		"string_slice_flag": starlark.NewBuiltin("string_slice_flag", internal.SindrStringSliceFlag),
+		"int_slice_flag":    starlark.NewBuiltin("int_slice_flag", internal.SindrIntSliceFlag),
+
+		"string_arg": starlark.NewBuiltin("string_arg", internal.SindrStringArg),
+		"int_arg":    starlark.NewBuiltin("int_arg", internal.SindrIntArg),
+
 		"dotenv": starlark.NewBuiltin("dotenv", internal.SindrDotenv),
 
 		"shell": starlark.NewBuiltin("shell", internal.SindrShell),

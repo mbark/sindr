@@ -11,13 +11,8 @@ command(
     name = "test",
     usage = "run go test",
     action = test,
-    args = ['args'],
+    args = [string_arg('args')],
     flags = [
-        {
-            "name": "short",
-            "type": "bool",
-            "default": True,
-            "usage": "Use the -short flag when running the tests"
-        },
+        bool_flag("short", default=True, usage="Use the -short flag when running the tests")
     ],
 )

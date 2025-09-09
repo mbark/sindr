@@ -323,11 +323,7 @@ def test_action(ctx):
 
 cli(name="TestExecTemplating", usage="Test exec automatic templating")
 command(name="test", action=test_action, flags=[
-    {
-        "name": "debug",
-        "type": "bool",
-        "default": True,
-    }
+    bool_flag("debug", default=True)
 ])
 `)
 	})
@@ -340,7 +336,7 @@ def test_action(ctx):
         fail('expected "Processing environment: development", got: ' + str(result.stdout))
 
 cli(name="TestExecTemplating", usage="Test exec automatic templating")
-command(name="test", action=test_action, args=["environment"])
+command(name="test", action=test_action, args=[string_arg("environment")])
 `)
 	})
 
@@ -383,7 +379,7 @@ echo "Mode: {{.mode}}"'''
         fail('expected "' + expected + '", got: ' + str(result.stdout))
 
 cli(name="TestExecTemplating", usage="Test exec automatic templating")
-command(name="test", action=test_action, args=["mode"])
+command(name="test", action=test_action, args=[string_arg("mode")])
 `)
 	})
 
@@ -452,12 +448,8 @@ def test_action(ctx):
         fail('expected "development true deploy-123", got: ' + str(result.stdout))
 
 cli(name="TestExecTemplating", usage="Test exec automatic templating")
-command(name="test", action=test_action, args=["environment"], flags=[
-    {
-        "name": "debug",
-        "type": "bool",
-        "default": True,
-    }
+command(name="test", action=test_action, args=[string_arg("environment")], flags=[
+    bool_flag("debug", default=True)
 ])
 `)
 	})

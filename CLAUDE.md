@@ -83,6 +83,39 @@ The linter configuration ensures code quality and security best practices are fo
 - Supports nested subcommands via `sub_command()` with path arrays
 - Flags, arguments, and actions are defined as function parameters
 
+#### Flag and Argument Definition
+
+Flags and arguments are now defined using dedicated functions instead of dictionaries:
+
+**Flag Functions:**
+- `bool_flag(name, default=None, usage="")`: Boolean flag
+- `string_flag(name, default="", usage="")`: String flag
+- `int_flag(name, default=0, usage="")`: Integer flag
+- `string_slice_flag(name, default=[], usage="")`: List of strings flag
+- `int_slice_flag(name, default=[], usage="")`: List of integers flag
+
+**Argument Functions:**
+- `string_arg(name)`: String argument
+- `int_arg(name)`: Integer argument
+
+**Examples:**
+```python
+# Define flags using functions
+flags = [
+    bool_flag("verbose", default=False, usage="Enable verbose output"),
+    string_flag("env", default="dev", usage="Target environment"),
+    int_flag("count", default=1, usage="Number of iterations"),
+    string_slice_flag("tags", default=["latest"], usage="Docker tags"),
+    int_slice_flag("ports", default=[8080], usage="Port numbers")
+]
+
+# Define arguments using functions
+args = [
+    string_arg("target"),
+    int_arg("timeout")
+]
+```
+
 ### Available Functions
 
 - `cli()`: Configure the CLI tool name and usage
@@ -174,10 +207,10 @@ print("Debug: {{.debug}}")
 command(
     name="deploy",
     action=deploy_command,
-    args=["target", "environment"],
+    args=[string_arg("target"), string_arg("environment")],
     flags=[
-        {"name": "debug", "type": "bool", "default": False},
-        {"name": "verbose", "type": "bool", "default": False}
+        bool_flag("debug", default=False),
+        bool_flag("verbose", default=False)
     ]
 )
 ```
@@ -424,13 +457,9 @@ command(
     name = "build",
     help = "Build the project", 
     action = build,
-    args = ["target"],
+    args = [string_arg("target")],
     flags = [
-        {
-            "name": "some-flag",
-            "type": "bool",
-            "default": False,
-        }
+        bool_flag("some-flag", default=False)
     ]
 )
 

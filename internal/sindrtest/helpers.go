@@ -113,6 +113,8 @@ func Test(t *testing.T, contents string, opts ...TestOption) {
 	args := []string{"sindr"}
 	if options.args != nil {
 		args = append(args, options.args...)
+	} else {
+		args = append(args, "test")
 	}
 
 	var testWriter io.Writer = &CollectWriter{T: t}

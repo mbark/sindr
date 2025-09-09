@@ -268,11 +268,7 @@ def test_action(ctx):
 
 cli(name="TestShellTemplating", usage="Test shell automatic templating")
 command(name="test", action=test_action, flags=[
-    {
-        "name": "verbose",
-        "type": "bool",
-        "default": True,
-    }
+    bool_flag("verbose", default=True)
 ])
 `)
 	})
@@ -285,7 +281,7 @@ def test_action(ctx):
         fail('expected "Building target: production", got: ' + str(result.stdout))
 
 cli(name="TestShellTemplating", usage="Test shell automatic templating")
-command(name="test", action=test_action, args=["target"])
+command(name="test", action=test_action, args=[string_arg("target")])
 `)
 	})
 

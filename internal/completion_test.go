@@ -83,7 +83,7 @@ command(
     name="test", 
     action=test_action,
     flags=[
-        {"name": "testflag", "type": "bool", "default": False, "usage": "Testing flag"}
+        bool_flag("testflag", default=False, usage="Testing flag")
     ]
 )
 `,

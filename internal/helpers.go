@@ -7,7 +7,7 @@ import (
 	"go.starlark.net/starlark"
 )
 
-func cast[T any](f any) (T, error) {
+func cast[T any](f starlark.Value) (T, error) {
 	v, ok := f.(T)
 	if ok {
 		return v, nil
@@ -20,8 +20,8 @@ func cast[T any](f any) (T, error) {
 	return v, fmt.Errorf("expected %T, got %T", t, f)
 }
 
-func castString[T ~string](f any) (string, error) {
-	v, err := cast[T](f)
+func castString(f starlark.Value) (string, error) {
+	v, err := cast[starlark.String](f)
 	if err != nil {
 		return "", err
 	}
@@ -29,7 +29,7 @@ func castString[T ~string](f any) (string, error) {
 	return string(v), nil
 }
 
-func castInt(f any) (int, error) {
+func castInt(f starlark.Value) (int, error) {
 	si, ok := f.(starlark.Int)
 	if !ok {
 		return 0, fmt.Errorf("expected starlark.Int, got %T", f)

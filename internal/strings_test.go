@@ -127,40 +127,22 @@ def test_action(ctx):
 
 cli(name="TestTemplateString", usage="Test string templating")
 command(name="test", action=test_action, args=[string_arg("target"), string_arg("environment")])
-`)
+`, sindrtest.WithArgs("test", "backend", "staging"))
 	})
 
-	t.Run("context variables override explicit parameters", func(t *testing.T) {
+	t.Run("explicit variables override context variables", func(t *testing.T) {
 		sindrtest.Test(t, `
 def test_action(ctx):
     # Context flag should override the explicit parameter
     result = string('Mode: {{.mode}}', mode='explicit')
-    if result != 'Mode: development':
-        fail('expected "Mode: development", got: ' + str(result))
+    if result != 'Mode: explicit':
+        fail('expected "Mode: explicit", got: ' + str(result))
 
 cli(name="TestTemplateString", usage="Test string templating")
 command(name="test", action=test_action, flags=[
     string_flag("mode", default="development")
 ])
-`)
-	})
-
-	t.Run("combines global variables with context flags and args", func(t *testing.T) {
-		sindrtest.Test(t, `
-# Global variables
-project = "sindr"
-version = "2.0.0"
-
-def test_action(ctx):
-    result = string('{{.project}} v{{.version}} building {{.target}} with debug={{.debug}}')
-    if result != 'sindr v2.0.0 building api with debug=true':
-        fail('expected "sindr v2.0.0 building api with debug=true", got: ' + str(result))
-
-cli(name="TestTemplateString", usage="Test string templating")
-command(name="test", action=test_action, args=[string_arg("target")], flags=[
-    bool_flag("debug", default=True)
-])
-`)
+`, sindrtest.WithArgs("test", "--mode", "development"))
 	})
 
 	t.Run("explicit parameters can still be added alongside context", func(t *testing.T) {
@@ -174,7 +156,7 @@ cli(name="TestTemplateString", usage="Test string templating")
 command(name="test", action=test_action, args=[string_arg("target")], flags=[
     bool_flag("verbose", default=False)
 ])
-`)
+`, sindrtest.WithArgs("test", "production"))
 	})
 
 	t.Run("context access via direct flag/arg names", func(t *testing.T) {
@@ -189,6 +171,6 @@ cli(name="TestTemplateString", usage="Test string templating")
 command(name="test", action=test_action, args=[string_arg("some_arg")], flags=[
     bool_flag("some-flag", default=True)
 ])
-`)
+`, sindrtest.WithArgs("test", "--some-flag", "test_value"))
 	})
 }

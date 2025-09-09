@@ -21,6 +21,7 @@ A mental list of everything to do for the project.
 - [ ] Source all `sindr.star` upwards until one is defined as `root`
 - [ ] Improve the tests for `packagejson` and command to actually check the commands are added (e.g., via --help)
 - [ ] Improve test coverage from 44% to ~80%.
+- [ ] Add expectation functions for the sindr tests
 
 ## Done
 

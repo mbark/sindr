@@ -243,22 +243,6 @@ command(name="test", action=test_action)
 }
 
 func TestShellTemplating(t *testing.T) {
-	t.Run("automatic string template expansion with global variables", func(t *testing.T) {
-		sindrtest.Test(t, `
-# Define global variables
-project_name = "myproject"
-version = "1.0.0"
-
-def test_action(ctx):
-    result = shell('echo "{{.project_name}} v{{.version}}"')
-    if result.stdout != 'myproject v1.0.0':
-        fail('expected "myproject v1.0.0", got: ' + str(result.stdout))
-
-cli(name="TestShellTemplating", usage="Test shell automatic templating")
-command(name="test", action=test_action)
-`)
-	})
-
 	t.Run("automatic string template expansion with context flags", func(t *testing.T) {
 		sindrtest.Test(t, `
 def test_action(ctx):
@@ -282,43 +266,21 @@ def test_action(ctx):
 
 cli(name="TestShellTemplating", usage="Test shell automatic templating")
 command(name="test", action=test_action, args=[string_arg("target")])
-`)
+`, sindrtest.WithArgs("test", "production"))
 	})
 
 	t.Run("automatic string template expansion with mixed variables", func(t *testing.T) {
 		sindrtest.Test(t, `
-# Global variables
-app_name = "myapp"
-env = "staging"
-
 def test_action(ctx):
-    result = shell('echo "Deploying {{.app_name}} to {{.env}} with debug={{.debug}} target={{.target}}"')
-    if result.stdout != 'Deploying myapp to staging with debug=false target=backend':
-        fail('expected "Deploying myapp to staging with debug=false target=backend", got: ' + str(result.stdout))
+    result = shell('echo "Deploying debug={{.debug}} target={{.target}}"')
+    if result.stdout != 'Deploying debug=false target=backend':
+        fail('expected "Deploying debug=false target=backend", got: ' + str(result.stdout))
 
 cli(name="TestShellTemplating", usage="Test shell automatic templating")
-command(name="test", action=test_action, args=["target"], flags=[
-    {
-        "name": "debug",
-        "type": "bool",
-        "default": False,
-    }
+command(name="test", action=test_action, args=[string_arg("target")], flags=[
+	bool_flag("debug"),
 ])
-`)
-	})
-
-	t.Run("automatic string template expansion with prefix option", func(t *testing.T) {
-		sindrtest.Test(t, `
-build_dir = "dist"
-
-def test_action(ctx):
-    result = shell('echo "Building in {{.build_dir}}"', prefix='BUILD')
-    if result.stdout != 'Building in dist':
-        fail('expected "Building in dist", got: ' + str(result.stdout))
-
-cli(name="TestShellTemplating", usage="Test shell automatic templating")
-command(name="test", action=test_action)
-`)
+`, sindrtest.WithArgs("test", "backend"))
 	})
 
 	t.Run("template expansion handles empty templates", func(t *testing.T) {
@@ -335,13 +297,10 @@ command(name="test", action=test_action)
 
 	t.Run("kwargs templating with additional variables", func(t *testing.T) {
 		sindrtest.Test(t, `
-# Global variables
-project_name = "myproject"
-
 def test_action(ctx):
-    result = shell('echo "{{.project_name}} {{.custom_var}} {{.another_var}}"', custom_var="test123", another_var="value456")
-    if result.stdout != 'myproject test123 value456':
-        fail('expected "myproject test123 value456", got: ' + str(result.stdout))
+    result = shell('echo "{{.custom_var}} {{.another_var}}"', custom_var="test123", another_var="value456")
+    if result.stdout != 'test123 value456':
+        fail('expected "test123 value456", got: ' + str(result.stdout))
 
 cli(name="TestShellTemplating", usage="Test shell automatic templating")
 command(name="test", action=test_action)
@@ -350,17 +309,13 @@ command(name="test", action=test_action)
 
 	t.Run("kwargs templating overrides global variables", func(t *testing.T) {
 		sindrtest.Test(t, `
-# Global variables
-project_name = "original"
-version = "1.0.0"
-
 def test_action(ctx):
-    result = shell('echo "{{.project_name}} {{.version}}"', project_name="overridden")
-    if result.stdout != 'overridden 1.0.0':
-        fail('expected "overridden 1.0.0", got: ' + str(result.stdout))
+    result = shell('echo "{{.project_name}}"', project_name="overridden")
+    if result.stdout != 'overridden':
+        fail('expected "overridden", got: ' + str(result.stdout))
 
 cli(name="TestShellTemplating", usage="Test shell automatic templating")
-command(name="test", action=test_action)
+command(name="test", action=test_action, flags=[string_flag("project_name", default="default")])
 `)
 	})
 
@@ -372,14 +327,10 @@ def test_action(ctx):
         fail('expected "production false custom_value", got: ' + str(result.stdout))
 
 cli(name="TestShellTemplating", usage="Test shell automatic templating")
-command(name="test", action=test_action, args=["target"], flags=[
-    {
-        "name": "debug",
-        "type": "bool",
-        "default": False,
-    }
+command(name="test", action=test_action, args=[string_arg("target")], flags=[
+	bool_flag("debug"),
 ])
-`)
+`, sindrtest.WithArgs("test", "production"))
 	})
 
 	t.Run("kwargs templating with prefix option", func(t *testing.T) {

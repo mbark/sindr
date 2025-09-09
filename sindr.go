@@ -217,6 +217,7 @@ func runCLI(
 	}
 
 	cmd := sindrCLI.Command.Command
+	cmd.ExitErrHandler = func(ctx context.Context, command *cli.Command, err error) {}
 	cmd.Flags = append(cmd.Flags, cliFlags...)
 
 	cmd.Commands = append(cmd.Commands, &cli.Command{

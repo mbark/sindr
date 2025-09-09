@@ -240,14 +240,14 @@ sub_command(
     path=["k8s", "deploy"],
     usage="Deploy to Kubernetes",
     action=deploy_action,
-    args=["service"],
+    args=[string_arg("service")],
     flags=[
         bool_flag('force', default=False, usage="Force deployment")
     ]
 )
 
 command(name="k8s deploy", action=lambda ctx: print("test executed"))
-`)
+`, sindrtest.WithArgs("k8s", "deploy", "service1", "--force"))
 	})
 }
 
@@ -293,7 +293,7 @@ cli(name="TestContextFlagAccess")
 command(
     name="test",
     action=test_action,
-    args=["target", "environment"]
+    args=[string_arg("target"), string_arg("environment")]
 )
 `)
 	})
@@ -368,7 +368,7 @@ cli(name="TestDirectContextAccess")
 command(
     name="test",
     action=test_action,
-    args=["target", "environment"]
+    args=[string_arg("target"), string_arg("environment")]
 )
 `)
 	})
@@ -403,7 +403,7 @@ command(
     name="test",
     action=test_action,
     flags=[bool_flag('verbose', default=True)],
-    args=["target"]
+    args=[string_arg("target")]
 )
 `)
 	})
@@ -464,7 +464,7 @@ command(
     name="test",
     action=test_action,
     flags=[string_flag('flags', default="should_not_override")],
-    args=["args", "args_list"]
+    args=[string_arg("args"), string_arg("args_list")]
 )
 `)
 	})

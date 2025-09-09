@@ -55,6 +55,9 @@ func evaluateTemplateString(
 		for k, v := range ctx.Flags.data {
 			addKeyVal(k, v)
 		}
+		for k, v := range ctx.Flags.aliasKeys {
+			addKeyVal(k, ctx.Flags.data[v])
+		}
 		for k, v := range ctx.Args.data {
 			addKeyVal(k, v)
 		}
@@ -95,6 +98,9 @@ func toGoValue(value starlark.Value) (any, error) {
 		}
 
 		return nil, fmt.Errorf("invalid int value: %s", val.String())
+
+	case starlark.Float:
+		return float64(val), nil
 
 	case *starlark.Dict:
 		m := make(map[string]any)

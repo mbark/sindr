@@ -51,12 +51,6 @@ func SindrExec(
 		}
 	}()
 
-	file := filepath.Join(tmpdir, "exec")
-	err = os.WriteFile(file, []byte(command), 0o644)
-	if err != nil {
-		return nil, fmt.Errorf("create file %s to exec: %w", file, err)
-	}
-
 	if prefix != "" {
 		logger.LogVerbose(prefixStyle.Render(prefix), commandStyleVerbose.Render(command))
 	} else {
@@ -66,6 +60,12 @@ func SindrExec(
 	command, err = evaluateTemplateString(command, thread, otherKwargs)
 	if err != nil {
 		return nil, err
+	}
+
+	file := filepath.Join(tmpdir, "exec")
+	err = os.WriteFile(file, []byte(command), 0o644)
+	if err != nil {
+		return nil, fmt.Errorf("create file %s to exec: %w", file, err)
 	}
 
 	logger := logger.WithStack(thread.CallStack())

@@ -40,6 +40,7 @@ func SindrShell(
 	kwargs []starlark.Tuple,
 ) (starlark.Value, error) {
 	relevantKwargs, otherKwargs := splitKwargs(kwargs, "command", "prefix", "no_output")
+	fmt.Println(relevantKwargs, otherKwargs)
 
 	var command, prefix string
 	var noOutput bool

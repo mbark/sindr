@@ -305,9 +305,12 @@ func (c *Context) Freeze()               {}
 func (c *Context) Truth() starlark.Bool  { return starlark.True }
 func (c *Context) Hash() (uint32, error) { return 0, errors.New("unhashable") }
 func (c *Context) Attr(name string) (starlark.Value, error) {
-	value, ok, err := c.FlagsAndArgs.Get(starlark.String(name))
-	if ok {
-		return value, err
+	value, err := c.FlagsAndArgs.Attr(name)
+	if err != nil {
+		return nil, err
+	}
+	if value != nil {
+		return value, nil
 	}
 
 	switch name {

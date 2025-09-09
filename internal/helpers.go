@@ -108,8 +108,12 @@ func splitKwargs(kwargs []starlark.Tuple, relevant ...string) ([]starlark.Tuple,
 	var relevantKwargs []starlark.Tuple
 	var otherKwargs []starlark.Tuple
 	for _, kwarg := range kwargs {
-		k := kwargs[0].String()
-		if keys[k] {
+		k, ok := kwarg[0].(starlark.String)
+		if !ok {
+			continue
+		}
+
+		if keys[string(k)] {
 			relevantKwargs = append(relevantKwargs, kwarg)
 		} else {
 			otherKwargs = append(otherKwargs, kwarg)

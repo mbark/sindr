@@ -11,8 +11,7 @@ func TestShell(t *testing.T) {
 		sindrtest.Test(t, `
 def test_action(ctx):
     result = shell('echo "hello world"')
-    if result.stdout != 'hello world':
-        fail('expected "hello world", got: ' + str(result.stdout))
+    assert_equals('hello world', result.stdout, 'expected hello world')
 
 cli(name="TestShell", usage="Test shell functionality")
 command(name="test", action=test_action)
@@ -24,8 +23,7 @@ command(name="test", action=test_action)
 def test_action(ctx):
     result = shell('printf "line1\\nline2\\nline3"')
     expected = '''line1\nline2\nline3'''
-    if result.stdout != expected:
-        fail('expected: ' + expected + ', got: ' + str(result.stdout))
+    assert_equals(expected, result.stdout, 'expected multiline output')
 
 cli(name="TestShell", usage="Test shell functionality")
 command(name="test", action=test_action)
@@ -36,8 +34,7 @@ command(name="test", action=test_action)
 		sindrtest.Test(t, `
 def test_action(ctx):
     result = shell('VAR="test value" && echo $VAR')
-    if result.stdout != 'test value':
-        fail('expected "test value", got: ' + str(result.stdout))
+    assert_equals('test value', result.stdout, 'expected test value')
 
 cli(name="TestShell", usage="Test shell functionality")
 command(name="test", action=test_action)
@@ -48,8 +45,7 @@ command(name="test", action=test_action)
 		sindrtest.Test(t, `
 def test_action(ctx):
     result = shell('echo "prefixed output"', prefix='TEST')
-    if result.stdout != 'prefixed output':
-        fail('expected "prefixed output", got: ' + str(result.stdout))
+    assert_equals('prefixed output', result.stdout, 'expected prefixed output')
 
 cli(name="TestShell", usage="Test shell functionality")
 command(name="test", action=test_action)
@@ -60,13 +56,11 @@ command(name="test", action=test_action)
 		sindrtest.Test(t, `
 def test_action(ctx):
     result = shell('echo "  content with spaces  "')
-    if result.stdout != 'content with spaces':
-        fail('expected "content with spaces", got: ' + str(result.stdout))
+    assert_equals('content with spaces', result.stdout, 'expected content with spaces')
     
     # Test trailing newline is trimmed
     result2 = shell('printf "no newline here"')
-    if result2.stdout != 'no newline here':
-        fail('expected "no newline here", got: ' + str(result2.stdout))
+    assert_equals('no newline here', result2.stdout, 'expected no newline here')
 
 cli(name="TestShell", usage="Test shell functionality")
 command(name="test", action=test_action)
@@ -77,8 +71,7 @@ command(name="test", action=test_action)
 		sindrtest.Test(t, `
 def test_action(ctx):
     result = shell('true')  # command that produces no output
-    if result.stdout != '':
-        fail('expected empty string, got: ' + str(result.stdout))
+    assert_equals('', result.stdout, 'expected empty string')
 
 cli(name="TestShell", usage="Test shell functionality")
 command(name="test", action=test_action)

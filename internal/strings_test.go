@@ -11,8 +11,7 @@ func TestTemplateString(t *testing.T) {
 		sindrtest.Test(t, `
 def test_action(ctx):
     result = string('Hello {{.name}}!', name='World')
-    if result != 'Hello World!':
-        fail('expected "Hello World!", got: ' + str(result))
+    assert_equals('Hello World!', result, 'expected "Hello World!"')
 
 cli(name="TestTemplateString", usage="Test string templating")
 command(name="test", action=test_action)
@@ -28,8 +27,7 @@ bool_var = True
 def test_action(ctx):
     result = string('{{.str_var}} {{.num_var}} {{.bool_var}}',str_var=str_var, num_var=num_var, bool_var=bool_var)
     print('result is', result)
-    if result != 'text 42 true':
-        fail('expected "text 42 true", got: ' + str(result))
+    assert_equals('text 42 true', result, 'expected "text 42 true"')
 
 cli(name="TestTemplateString", usage="Test string templating")
 command(name="test", action=test_action)
@@ -42,8 +40,7 @@ debug = True
 
 def test_action(ctx):
     result = string('{{if .debug}}DEBUG: {{end}}message', message='test',debug=debug)
-    if result != 'DEBUG: message':
-        fail('expected "DEBUG: message", got: ' + str(result))
+    assert_equals('DEBUG: message', result, 'expected "DEBUG: message"')
 
 cli(name="TestTemplateString", usage="Test string templating")
 command(name="test", action=test_action)
@@ -55,8 +52,7 @@ command(name="test", action=test_action)
 def test_action(ctx):
     items = ['apple', 'banana', 'cherry']
     result = string('{{range .items}}{{.}} {{end}}', items=items)
-    if result != 'apple banana cherry ':
-        fail('expected "apple banana cherry ", got: ' + str(result))
+    assert_equals('apple banana cherry ', result, 'expected "apple banana cherry "')
 
 cli(name="TestTemplateString", usage="Test string templating")
 command(name="test", action=test_action)
@@ -91,12 +87,7 @@ Port: 8080
 Features: auth logging metrics
 """)
     
-    if result != expected:
-		print('got')
-		print(string(result))
-		print('expected')
-		print(string(expected))
-        fail('template did not render correctly')
+    assert_equals(expected, result, 'template did not render correctly')
 
 cli(name="TestTemplateString", usage="Test string templating")
 command(name="test", action=test_action)
@@ -107,8 +98,7 @@ command(name="test", action=test_action)
 		sindrtest.Test(t, `
 def test_action(ctx):
     result = string('Debug: {{.debug}}, Verbose: {{.verbose}}')
-    if result != 'Debug: true, Verbose: false':
-        fail('expected "Debug: true, Verbose: false", got: ' + str(result))
+    assert_equals('Debug: true, Verbose: false', result, 'expected "Debug: true, Verbose: false"')
 
 cli(name="TestTemplateString", usage="Test string templating")
 command(name="test", action=test_action, flags=[
@@ -122,8 +112,7 @@ command(name="test", action=test_action, flags=[
 		sindrtest.Test(t, `
 def test_action(ctx):
     result = string('Building {{.target}} for {{.environment}}')
-    if result != 'Building backend for staging':
-        fail('expected "Building backend for staging", got: ' + str(result))
+    assert_equals('Building backend for staging', result, 'expected "Building backend for staging"')
 
 cli(name="TestTemplateString", usage="Test string templating")
 command(name="test", action=test_action, args=[string_arg("target"), string_arg("environment")])
@@ -135,8 +124,7 @@ command(name="test", action=test_action, args=[string_arg("target"), string_arg(
 def test_action(ctx):
     # Context flag should override the explicit parameter
     result = string('Mode: {{.mode}}', mode='explicit')
-    if result != 'Mode: explicit':
-        fail('expected "Mode: explicit", got: ' + str(result))
+    assert_equals('Mode: explicit', result, 'expected "Mode: explicit"')
 
 cli(name="TestTemplateString", usage="Test string templating")
 command(name="test", action=test_action, flags=[
@@ -149,8 +137,7 @@ command(name="test", action=test_action, flags=[
 		sindrtest.Test(t, `
 def test_action(ctx):
     result = string('{{.verbose}} {{.custom}} {{.target}}', custom='extra')
-    if result != 'false extra production':
-        fail('expected "false extra production", got: ' + str(result))
+    assert_equals('false extra production', result, 'expected "false extra production"')
 
 cli(name="TestTemplateString", usage="Test string templating")
 command(name="test", action=test_action, args=[string_arg("target")], flags=[
@@ -164,8 +151,7 @@ command(name="test", action=test_action, args=[string_arg("target")], flags=[
 def test_action(ctx):
     # Test that context flags/args can be accessed directly by their names
     result = string('Flag some_flag: {{.some_flag}}, Arg some_arg: {{.some_arg}}')
-    if result != 'Flag some_flag: true, Arg some_arg: test_value':
-        fail('expected "Flag some_flag: true, Arg some_arg: test_value", got: ' + str(result))
+    assert_equals('Flag some_flag: true, Arg some_arg: test_value', result, 'expected "Flag some_flag: true, Arg some_arg: test_value"')
 
 cli(name="TestTemplateString", usage="Test string templating")
 command(name="test", action=test_action, args=[string_arg("some_arg")], flags=[

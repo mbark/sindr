@@ -42,8 +42,7 @@ def test_action(ctx):
 	
 	# Verify it was stored by checking with get_version
 	stored = c.get_version('test-key')
-	if stored != 'v1.0.0':
-		fail('expected stored version to be v1.0.0, got: ' + str(stored))
+	assert_equals('v1.0.0', stored, 'expected stored version to be v1.0.0')
 
 cli(name="TestStore", usage="Test set_version functionality")
 command(name="test", action=test_action)
@@ -58,8 +57,7 @@ def test_action(ctx):
 	
 	# Verify it was stored by checking with get_version
 	stored = c.get_version('test-int')
-	if stored != '42':
-		fail('expected stored version to be 42, got: ' + str(stored))
+	assert_equals('42', stored, 'expected stored version to be 42')
 
 cli(name="TestStore", usage="Test set_version functionality")
 command(name="test", action=test_action)
@@ -128,8 +126,7 @@ def test_action(ctx):
 	
 	# Verify version was stored
 	stored = c.get_version('int-version')
-	if stored != '123':
-		fail('expected stored version to be 123, got: ' + str(stored))
+	assert_equals('123', stored, 'expected stored version to be 123')
 
 cli(name="TestWithVersion", usage="Test with_version functionality")
 command(name="test", action=test_action)
@@ -146,8 +143,7 @@ def test_action(ctx):
 	
 	# Verify it was stored
 	stored = c.get_version('custom-dir-test')
-	if stored != 'v1.0.0':
-		fail('expected stored version to be v1.0.0, got: ' + str(stored))
+	assert_equals('v1.0.0', stored, 'expected stored version to be v1.0.0')
 
 cli(name="TestCacheWithCustomDir", usage="Test cache with custom directory")
 command(name="test", action=test_action)

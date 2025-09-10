@@ -22,8 +22,7 @@ def test_action(ctx):
     test2_ts_result = shell('stat -c %Y test2.txt 2>/dev/null || stat -f %m test2.txt')
     expected = int(test2_ts_result.stdout)
     
-    if result != expected:
-        fail('expected ' + str(expected) + ', got: ' + str(result))
+    assert_equals(expected, result, 'expected newest timestamp')
 
 cli(name="TestNewestTS")
 command(name="test", action=test_action)
@@ -44,8 +43,7 @@ def test_action(ctx):
     
     result = oldest_ts('old*.txt')
     
-    if result != expected:
-        fail('expected ' + str(expected) + ', got: ' + str(result))
+    assert_equals(expected, result, 'expected oldest timestamp')
 
 cli(name="TestOldestTS")
 command(name="test", action=test_action)
@@ -67,8 +65,7 @@ def test_action(ctx):
     
     result = newest_ts(['dir1/*.txt', 'dir2/*.log'])
     
-    if result != expected:
-        fail('expected ' + str(expected) + ', got: ' + str(result))
+    assert_equals(expected, result, 'expected newest timestamp from multiple globs')
 
 cli(name="TestNewestTSList")
 command(name="test", action=test_action)
@@ -91,8 +88,7 @@ def test_action(ctx):
     
     result = oldest_ts(['src/*.go', 'docs/*.md'])
     
-    if result != expected:
-        fail('expected ' + str(expected) + ', got: ' + str(result))
+    assert_equals(expected, result, 'expected oldest timestamp from multiple globs')
 
 cli(name="TestOldestTSList")
 command(name="test", action=test_action)
@@ -127,8 +123,7 @@ def test_action(ctx):
     
     result = newest_ts('test*')
     
-    if result != expected:
-        fail('expected ' + str(expected) + ', got: ' + str(result))
+    assert_equals(expected, result, 'expected file timestamp, not directory')
 
 cli(name="TestSkipsDirectories")
 command(name="test", action=test_action)
@@ -146,14 +141,12 @@ def test_action(ctx):
     shell('echo "log" > other.log')
     
     result = glob('glob*.txt')
-    if len(result) != 2:
-        fail('expected 2 files, got: ' + str(len(result)))
+    assert_equals(2, len(result), 'expected 2 files from glob')
     
     # Convert to sorted list for consistent comparison
     files = sorted([str(f) for f in result])
     expected = ['glob1.txt', 'glob2.txt']
-    if files != expected:
-        fail('expected ' + str(expected) + ', got: ' + str(files))
+    assert_equals(expected, files, 'expected specific file list')
 
 cli(name="TestGlob")
 command(name="test", action=test_action)
@@ -171,14 +164,12 @@ def test_action(ctx):
     shell('echo "import unittest" > test/test2.py')
     
     result = glob(['src/*.go', 'test/*.py'])
-    if len(result) != 4:
-        fail('expected 4 files, got: ' + str(len(result)))
+    assert_equals(4, len(result), 'expected 4 files from multiple globs')
     
     # Convert to sorted list for consistent comparison
     files = sorted([str(f) for f in result])
     expected = ['src/main.go', 'src/utils.go', 'test/test1.py', 'test/test2.py']
-    if files != expected:
-        fail('expected ' + str(expected) + ', got: ' + str(files))
+    assert_equals(expected, files, 'expected specific files from multiple patterns')
 
 cli(name="TestGlobList")
 command(name="test", action=test_action)
@@ -189,8 +180,7 @@ command(name="test", action=test_action)
 		sindrtest.Test(t, `
 def test_action(ctx):
     result = glob('nonexistent*.xyz')
-    if len(result) != 0:
-        fail('expected empty list, got: ' + str(len(result)) + ' files')
+    assert_equals(0, len(result), 'expected empty list for non-matching glob')
 
 cli(name="TestGlobEmpty")
 command(name="test", action=test_action)
@@ -205,11 +195,9 @@ def test_action(ctx):
     shell('echo "content" > skipfile.txt')
     
     result = glob('skip*')
-    if len(result) != 1:
-        fail('expected 1 file, got: ' + str(len(result)))
+    assert_equals(1, len(result), 'expected 1 file, skipping directory')
     
-    if str(result[0]) != 'skipfile.txt':
-        fail('expected skipfile.txt, got: ' + str(result[0]))
+    assert_equals('skipfile.txt', str(result[0]), 'expected skipfile.txt')
 
 cli(name="TestGlobSkipsDirectories")
 command(name="test", action=test_action)
@@ -235,8 +223,7 @@ def test_action(ctx):
         if f not in unique_files:
             unique_files.append(f)
     
-    if len(files) != len(unique_files):
-        fail('found duplicates in result: ' + str(files))
+    assert_equals(len(unique_files), len(files), 'should not contain duplicates')
 
 cli(name="TestGlobDuplicates")
 command(name="test", action=test_action)

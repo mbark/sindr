@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.starlark.net/starlark"
 
@@ -140,6 +141,7 @@ func Test(t *testing.T, contents string, opts ...TestOption) {
 		sindr.WithVerboseLogging(true),
 		sindr.WithLogger(l),
 		sindr.WithWriter(writer),
+		sindr.WithBuiltin("assert_equals", builtinAssertEquals(t, contents)),
 	)
 	if options.fail {
 		require.Error(t, err)
@@ -219,4 +221,24 @@ func writePackageJson(t *testing.T, dir string, jsonData []byte) {
 		err := os.Remove(packageJsonPath)
 		require.NoError(t, err)
 	})
+}
+
+func builtinAssertEquals(t *testing.T, contents string) func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	return func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		var expected, actual starlark.Value
+		var message string
+		if err := starlark.UnpackArgs("assert_equals", args, kwargs,
+			"expected", &expected,
+			"actual", &actual,
+			"message?", &message,
+		); err != nil {
+			return nil, err
+		}
+
+		at := thread.CallStack().At(1)
+		line := strings.Split(contents, "\n")[at.Pos.Line-1]
+
+		assert.Equal(t, expected, actual, "%s\n%s", message, line)
+		return starlark.None, nil
+	}
 }

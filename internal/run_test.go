@@ -26,10 +26,8 @@ def test_action(ctx):
     task1_result = shell('cat task1.txt')
     task2_result = shell('cat task2.txt')
     
-    if str(task1_result) != 'task1 done':
-        fail('expected "task1 done", got: ' + str(task1_result))
-    if str(task2_result) != 'task2 done':
-        fail('expected "task2 done", got: ' + str(task2_result))
+    assert_equals('task1 done', str(task1_result), 'expected task1 done')
+    assert_equals('task2 done', str(task2_result), 'expected task2 done')
 
 cli(name="TestPool", usage="Test pool functionality")
 command(name="test", action=test_action)
@@ -50,8 +48,7 @@ def test_action(ctx):
     p.wait()  # This should wait for the delayed task
     
     result = shell('cat delayed.txt')
-    if str(result) != 'delayed task done':
-        fail('expected "delayed task done", got: ' + str(result))
+    assert_equals('delayed task done', str(result), 'expected delayed task done')
 
 cli(name="TestPool", usage="Test pool functionality")
 command(name="test", action=test_action)
@@ -79,10 +76,8 @@ def test_action(ctx):
     result1 = shell('cat pool1.txt')
     result2 = shell('cat pool2.txt')
     
-    if str(result1) != 'pool1 task':
-        fail('expected "pool1 task", got: ' + str(result1))
-    if str(result2) != 'pool2 task':
-        fail('expected "pool2 task", got: ' + str(result2))
+    assert_equals('pool1 task', str(result1), 'expected pool1 task')
+    assert_equals('pool2 task', str(result2), 'expected pool2 task')
 
 cli(name="TestPool", usage="Test pool functionality")
 command(name="test", action=test_action)
@@ -101,8 +96,7 @@ def test_action(ctx):
     wait()  # Wait for async task to complete
     
     result = shell('cat async.txt')
-    if str(result) != 'async task done':
-        fail('expected "async task done", got: ' + str(result))
+    assert_equals('async task done', str(result), 'expected async task done')
 
 cli(name="TestAsync", usage="Test async functionality")
 command(name="test", action=test_action)
@@ -125,10 +119,8 @@ def test_action(ctx):
     result1 = shell('cat async1.txt')
     result2 = shell('cat async2.txt')
     
-    if str(result1) != 'async1 done':
-        fail('expected "async1 done", got: ' + str(result1))
-    if str(result2) != 'async2 done':
-        fail('expected "async2 done", got: ' + str(result2))
+    assert_equals('async1 done', str(result1), 'expected async1 done')
+    assert_equals('async2 done', str(result2), 'expected async2 done')
 
 cli(name="TestAsync", usage="Test async functionality")
 command(name="test", action=test_action)
@@ -152,8 +144,7 @@ def test_action(ctx):
     
     # After wait, task should be completed
     result = shell('cat wait_test.txt')
-    if str(result) != 'completed':
-        fail('expected "completed", got: ' + str(result))
+    assert_equals('completed', str(result), 'expected completed')
 
 cli(name="TestWait", usage="Test wait functionality")
 command(name="test", action=test_action)

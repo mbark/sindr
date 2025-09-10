@@ -87,12 +87,10 @@ command(
 		sindrtest.Test(t, `
 def test_action(ctx):
     strings_list = ctx.flags.strings
-    if type(strings_list) != "list":
-        fail("Expected strings flag to be a list, got: " + str(type(strings_list)))
-    if len(strings_list) != 2:
-        fail("Expected strings flag to have 2 items, got: " + str(len(strings_list)))
-    if strings_list[0] != "default1" or strings_list[1] != "default2":
-        fail("Expected default strings ['default1', 'default2'], got: " + str(strings_list))
+    assert_equals("list", type(strings_list), "Expected strings flag to be a list")
+    assert_equals(2, len(strings_list), "Expected strings flag to have 2 items")
+    assert_equals("default1", strings_list[0], "Expected first string to be default1")
+    assert_equals("default2", strings_list[1], "Expected second string to be default2")
     print("strings flag test passed:", strings_list)
 
 cli(name="TestSindrCommand")
@@ -111,12 +109,11 @@ command(
 		sindrtest.Test(t, `
 def test_action(ctx):
     ints_list = ctx.flags.ints
-    if type(ints_list) != "list":
-        fail("Expected ints flag to be a list, got: " + str(type(ints_list)))
-    if len(ints_list) != 3:
-        fail("Expected ints flag to have 3 items, got: " + str(len(ints_list)))
-    if ints_list[0] != 10 or ints_list[1] != 20 or ints_list[2] != 30:
-        fail("Expected default ints [10, 20, 30], got: " + str(ints_list))
+    assert_equals("list", type(ints_list), "Expected ints flag to be a list")
+    assert_equals(3, len(ints_list), "Expected ints flag to have 3 items")
+    assert_equals(10, ints_list[0], "Expected first int to be 10")
+    assert_equals(20, ints_list[1], "Expected second int to be 20")
+    assert_equals(30, ints_list[2], "Expected third int to be 30")
     print("ints flag test passed:", ints_list)
 
 cli(name="TestSindrCommand")
@@ -152,8 +149,7 @@ def test_action(ctx):
     # Test both dash-case and snake_case access
     value1 = ctx.flags["dry-run"]
     value2 = ctx.flags.dry_run
-    if value1 != value2:
-        fail("Expected dash-case and snake_case to return same value")
+    assert_equals(value1, value2, "Expected dash-case and snake_case to return same value")
     print("dry-run flag:", value1)
 
 cli(name="TestSindrCommand")
@@ -263,11 +259,9 @@ def test_action(ctx):
     verbose_attr = ctx.flags.verbose
     dry_run_attr = ctx.flags.dry_run
     
-    if verbose_index != verbose_attr:
-        fail("verbose flag access mismatch")
-    if dry_run_index != dry_run_attr:
-        fail("dry-run flag access mismatch")
-        
+	assert_equals(verbose_index, verbose_attr, "verbose flag access mismatch")
+	assert_equals(dry_run_index, dry_run_attr, "dry-run flag access mismatch")
+
     print("Flag access works correctly")
 
 cli(name="TestContextFlagAccess")
@@ -324,14 +318,10 @@ def test_action(ctx):
     name = ctx.name
     
     # Verify values match expected defaults
-    if verbose != True:
-        fail("verbose flag should be True, got: " + str(verbose))
-    if dry_run != False:
-        fail("dry_run flag should be False, got: " + str(dry_run))  
-    if count != 10:
-        fail("count flag should be 10, got: " + str(count))
-    if name != "default":
-        fail("name flag should be 'default', got: " + str(name))
+    assert_equals(True, verbose, "verbose flag should be True")
+    assert_equals(False, dry_run, "dry_run flag should be False")
+    assert_equals(10, count, "count flag should be 10")
+    assert_equals("default", name, "name flag should be 'default'")
         
     print("Direct flag access works correctly")
 
@@ -359,10 +349,8 @@ def test_action(ctx):
     print("Direct arg access - target:", target, "environment:", environment)
     
     # Verify these match the traditional ctx.args access
-    if target != ctx.args.target:
-        fail("ctx.target should match ctx.args.target")
-    if environment != ctx.args.environment:
-        fail("ctx.environment should match ctx.args.environment")
+    assert_equals(ctx.args.target, target, "ctx.target should match ctx.args.target")
+    assert_equals(ctx.args.environment, environment, "ctx.environment should match ctx.args.environment")
 
 cli(name="TestDirectContextAccess") 
 command(
@@ -391,10 +379,10 @@ def test_action(ctx):
     target_index = ctx.args["target"]
     
     # All should be equivalent
-    if verbose != verbose_nested or verbose != verbose_index:
-        fail("All verbose flag access methods should be equivalent")
-    if target != target_nested or target != target_index:
-        fail("All target arg access methods should be equivalent")
+    assert_equals(verbose_nested, verbose, "verbose direct and nested access should match")
+    assert_equals(verbose_index, verbose, "verbose direct and index access should match")
+    assert_equals(target_nested, target, "target direct and nested access should match")
+    assert_equals(target_index, target, "target direct and index access should match")
         
     print("Mixed access patterns work correctly")
 
@@ -416,16 +404,12 @@ def test_action(ctx):
     api_key = ctx.api_key
     
     # Verify these match the nested access patterns
-    if dry_run != ctx.flags.dry_run:
-        fail("ctx.dry_run should match ctx.flags.dry_run")
-    if api_key != ctx.flags.api_key:
-        fail("ctx.api_key should match ctx.flags.api_key")
+    assert_equals(ctx.flags.dry_run, dry_run, "ctx.dry_run should match ctx.flags.dry_run")
+    assert_equals(ctx.flags.api_key, api_key, "ctx.api_key should match ctx.flags.api_key")
         
     # Also verify index access works with original dash-case names
-    if dry_run != ctx.flags["dry-run"]:
-        fail("ctx.dry_run should match ctx.flags['dry-run']")
-    if api_key != ctx.flags["api-key"]:
-        fail("ctx.api_key should match ctx.flags['api-key']")
+    assert_equals(ctx.flags["dry-run"], dry_run, "ctx.dry_run should match ctx.flags['dry-run']")
+    assert_equals(ctx.flags["api-key"], api_key, "ctx.api_key should match ctx.flags['api-key']")
         
     print("Snake case conversion works correctly")
 

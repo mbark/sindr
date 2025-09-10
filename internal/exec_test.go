@@ -11,8 +11,7 @@ func TestExec(t *testing.T) {
 		sindrtest.Test(t, `
 def test_action(ctx):
     result = exec('python3', 'print("hello from python")')
-    if result.stdout != 'hello from python':
-        fail('expected "hello from python", got: ' + str(result.stdout))
+    assert_equals('hello from python', result.stdout, 'expected hello from python')
 
 cli(name="TestExec", usage="Test exec functionality")
 command(name="test", action=test_action)
@@ -23,8 +22,7 @@ command(name="test", action=test_action)
 		sindrtest.Test(t, `
 def test_action(ctx):
     result = exec('sh', 'echo "shell output"')
-    if result.stdout != 'shell output':
-        fail('expected "shell output", got: ' + str(result.stdout))
+    assert_equals('shell output', result.stdout, 'expected shell output')
 
 cli(name="TestExec", usage="Test exec functionality")
 command(name="test", action=test_action)
@@ -39,8 +37,7 @@ echo "line2"
 echo "line3"'''
     result = exec('sh', command)
     expected = '''line1\nline2\nline3'''
-    if result.stdout != expected:
-        fail('expected "' + expected + '", got: ' + str(result.stdout))
+    assert_equals(expected, result.stdout, 'expected multiline output')
 
 cli(name="TestExec", usage="Test exec functionality")
 command(name="test", action=test_action)
@@ -51,10 +48,8 @@ command(name="test", action=test_action)
 		sindrtest.Test(t, `
 def test_action(ctx):
     result = exec('sh', 'echo "error message" >&2')
-    if result.stderr != 'error message':
-        fail('expected "error message" in stderr, got: ' + str(result.stderr))
-    if result.stdout != '':
-        fail('expected empty stdout, got: ' + str(result.stdout))
+    assert_equals('error message', result.stderr, 'expected error message in stderr')
+    assert_equals('', result.stdout, 'expected empty stdout')
 
 cli(name="TestExec", usage="Test exec functionality")
 command(name="test", action=test_action)
@@ -65,10 +60,8 @@ command(name="test", action=test_action)
 		sindrtest.Test(t, `
 def test_action(ctx):
     result = exec('sh', 'exit 0')
-    if result.exit_code != 0:
-        fail('expected exit code 0, got: ' + str(result.exit_code))
-    if not result.success:
-        fail('expected success to be True')
+    assert_equals(0, result.exit_code, 'expected exit code 0')
+    assert_equals(True, result.success, 'expected success to be True')
 
 cli(name="TestExec", usage="Test exec functionality")
 command(name="test", action=test_action)
@@ -79,10 +72,8 @@ command(name="test", action=test_action)
 		sindrtest.Test(t, `
 def test_action(ctx):
     result = exec('sh', 'exit 1')
-    if result.exit_code != 1:
-        fail('expected exit code 1, got: ' + str(result.exit_code))
-    if result.success:
-        fail('expected success to be False')
+    assert_equals(1, result.exit_code, 'expected exit code 1')
+    assert_equals(False, result.success, 'expected success to be False')
 
 cli(name="TestExec", usage="Test exec functionality")
 command(name="test", action=test_action)
@@ -93,12 +84,9 @@ command(name="test", action=test_action)
 		sindrtest.Test(t, `
 def test_action(ctx):
     result = exec('sh', 'echo "stdout message" && echo "stderr message" >&2')
-    if result.stdout != 'stdout message':
-        fail('expected "stdout message", got: ' + str(result.stdout))
-    if result.stderr != 'stderr message':
-        fail('expected "stderr message", got: ' + str(result.stderr))
-    if not result.success:
-        fail('expected success to be True')
+    assert_equals('stdout message', result.stdout, 'expected stdout message')
+    assert_equals('stderr message', result.stderr, 'expected stderr message')
+    assert_equals(True, result.success, 'expected success to be True')
 
 cli(name="TestExec", usage="Test exec functionality")
 command(name="test", action=test_action)
@@ -109,8 +97,7 @@ command(name="test", action=test_action)
 		sindrtest.Test(t, `
 def test_action(ctx):
     result = exec('sh', 'echo "prefixed output"', prefix='EXEC')
-    if result.stdout != 'prefixed output':
-        fail('expected "prefixed output", got: ' + str(result.stdout))
+    assert_equals('prefixed output', result.stdout, 'expected prefixed output')
 
 cli(name="TestExec", usage="Test exec functionality")  
 command(name="test", action=test_action)
@@ -121,15 +108,11 @@ command(name="test", action=test_action)
 		sindrtest.Test(t, `
 def test_action(ctx):
     result = exec('sh', 'echo "should not be captured" && echo "error output" >&2', no_output=True)
-    if result.stdout != '':
-        fail('stdout should be empty with no_output=True, got: ' + str(result.stdout))
-    if result.stderr != '':
-        fail('stderr should be empty with no_output=True, got: ' + str(result.stderr))
+    assert_equals('', result.stdout, 'stdout should be empty with no_output=True')
+    assert_equals('', result.stderr, 'stderr should be empty with no_output=True')
     # Exit code and success should still be captured
-    if result.exit_code != 0:
-        fail('exit code should be 0, got: ' + str(result.exit_code))
-    if not result.success:
-        fail('success should be True')
+    assert_equals(0, result.exit_code, 'exit code should be 0')
+    assert_equals(True, result.success, 'success should be True')
 
 cli(name="TestExec", usage="Test exec functionality")
 command(name="test", action=test_action)
@@ -140,8 +123,7 @@ command(name="test", action=test_action)
 		sindrtest.Test(t, `
 def test_action(ctx):
     result = exec('sh', 'echo "  content with spaces  "')
-    if result.stdout != 'content with spaces':
-        fail('expected "content with spaces", got: ' + str(result.stdout))
+    assert_equals('content with spaces', result.stdout, 'expected content with spaces')
 
 cli(name="TestExec", usage="Test exec functionality")
 command(name="test", action=test_action)
@@ -152,8 +134,7 @@ command(name="test", action=test_action)
 		sindrtest.Test(t, `
 def test_action(ctx):
     result = exec('sh', 'true')  # command that produces no output
-    if result.stdout != '':
-        fail('expected empty string, got: ' + str(result.stdout))
+    assert_equals('', result.stdout, 'expected empty string')
 
 cli(name="TestExec", usage="Test exec functionality")
 command(name="test", action=test_action)
@@ -181,8 +162,7 @@ command(name="test", action=test_action)
 def test_action(ctx):
     result = exec('sh', 'echo "test output"')
     str_result = str(result)
-    if str_result != 'test output':
-        fail('expected string representation to be "test output", got: ' + str_result)
+    assert_equals('test output', str_result, 'expected string representation to be test output')
 
 cli(name="TestExec", usage="Test exec functionality")
 command(name="test", action=test_action)
@@ -198,8 +178,7 @@ version = "1.0"
 print(f"Project {name} version {version}")
 '''
     result = exec('python3', python_code)
-    if result.stdout != 'Project sindr version 1.0':
-        fail('expected "Project sindr version 1.0", got: ' + str(result.stdout))
+    assert_equals('Project sindr version 1.0', result.stdout, 'expected Project sindr version 1.0')
 
 cli(name="TestExec", usage="Test exec functionality")
 command(name="test", action=test_action)
@@ -217,8 +196,7 @@ cat test_exec.txt
 rm test_exec.txt
 '''
     result = exec('sh', shell_script)
-    if result.stdout != 'test content':
-        fail('expected "test content", got: ' + str(result.stdout))
+    assert_equals('test content', result.stdout, 'expected test content')
 
 cli(name="TestExec", usage="Test exec functionality")
 command(name="test", action=test_action)

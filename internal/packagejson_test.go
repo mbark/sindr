@@ -1,13 +1,17 @@
 package internal_test
 
 import (
+	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/mbark/sindr/internal/sindrtest"
 )
 
 func TestSindrLoadPackageJson(t *testing.T) {
 	t.Run("loads package.json scripts as commands", func(t *testing.T) {
+		writer := new(sindrtest.CollectWriter)
 		sindrtest.Test(t, `
 def test_action(ctx):
     print("Package.json loaded successfully")
@@ -15,15 +19,35 @@ def test_action(ctx):
 cli(name="TestSindrLoadPackageJson")
 load_package_json(file="package.json")
 command(name="test", action=test_action)
-`, sindrtest.WithPackageJson(map[string]interface{}{
-			"name": "test-project",
-			"scripts": map[string]string{
-				"build":  "echo Building project",
-				"lint":   "echo Running linter",
-				"start":  "echo Starting server",
-				"deploy": "echo Deploying application",
-			},
-		}))
+`,
+			sindrtest.WithPackageJson(map[string]interface{}{
+				"name": "test-project",
+				"scripts": map[string]string{
+					"build":  "echo Building project",
+					"lint":   "echo Running linter",
+					"start":  "echo Starting server",
+					"deploy": "echo Deploying application",
+				},
+			}),
+			sindrtest.WithWriter(writer),
+			sindrtest.WithArgs("--help"))
+
+		shouldContain := []string{
+			"build",
+			"lint",
+			"start",
+			"deploy",
+		}
+		for _, cmd := range shouldContain {
+			var contains bool
+			for _, w := range writer.Writes {
+				if strings.Contains(w, cmd) {
+					t.Logf("Found command %s in output: %s", cmd, w)
+					contains = true
+				}
+			}
+			require.True(t, contains, "Expected to find command %s in output", cmd)
+		}
 	})
 
 	t.Run("loads package.json with custom npm binary", func(t *testing.T) {
@@ -34,13 +58,15 @@ def test_action(ctx):
 cli(name="TestSindrLoadPackageJson")
 load_package_json(file="package.json", bin="yarn")
 command(name="test", action=test_action)
-`, sindrtest.WithPackageJson(map[string]interface{}{
-			"name": "test-project-yarn",
-			"scripts": map[string]string{
-				"build": "echo Building with yarn",
-				"lint":  "echo Linting with yarn",
-			},
-		}))
+`,
+			sindrtest.WithPackageJson(map[string]interface{}{
+				"name": "test-project-yarn",
+				"scripts": map[string]string{
+					"build": "echo Building with yarn",
+					"lint":  "echo Linting with yarn",
+				},
+			}),
+		)
 	})
 
 	t.Run("handles empty scripts section", func(t *testing.T) {
@@ -74,6 +100,7 @@ command(name="test", action=test_action)
 	})
 
 	t.Run("handles complex script names", func(t *testing.T) {
+		writer := new(sindrtest.CollectWriter)
 		sindrtest.Test(t, `
 def test_action(ctx):
     print("Complex scripts package.json loaded")
@@ -81,16 +108,37 @@ def test_action(ctx):
 cli(name="TestSindrLoadPackageJson")
 load_package_json(file="package.json")
 command(name="test", action=test_action)
-`, sindrtest.WithPackageJson(map[string]interface{}{
-			"name": "complex-scripts-project",
-			"scripts": map[string]string{
-				"build:dev":        "echo Building for development",
-				"build:prod":       "echo Building for production",
-				"test:unit":        "echo Running unit tests",
-				"test:integration": "echo Running integration tests",
-				"start:watch":      "echo Starting in watch mode",
-			},
-		}))
+`,
+			sindrtest.WithPackageJson(map[string]interface{}{
+				"name": "complex-scripts-project",
+				"scripts": map[string]string{
+					"build:dev":        "echo Building for development",
+					"build:prod":       "echo Building for production",
+					"test:unit":        "echo Running unit tests",
+					"test:integration": "echo Running integration tests",
+					"start:watch":      "echo Starting in watch mode",
+				},
+			}),
+			sindrtest.WithWriter(writer),
+		)
+
+		shouldContain := []string{
+			"build:dev",
+			"build:prod",
+			"test:unit",
+			"test:integration",
+			"start:watch",
+		}
+		for _, cmd := range shouldContain {
+			var contains bool
+			for _, w := range writer.Writes {
+				if strings.Contains(w, cmd) {
+					t.Logf("Found command %s in output: %s", cmd, w)
+					contains = true
+				}
+			}
+			require.True(t, contains, "Expected to find command %s in output", cmd)
+		}
 	})
 }
 

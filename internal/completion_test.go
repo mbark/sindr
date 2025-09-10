@@ -135,4 +135,29 @@ sub_command(path=["deploy", "production"], action=deploy_prod, usage="Deploy to 
 		assert.Equal(t, "staging\tDeploy to staging\n", stagingCommand)
 		assert.Equal(t, "production\tDeploy to production\n", productionCommand)
 	})
+
+	t.Run("has custom fish completion", func(t *testing.T) {
+		writer := new(sindrtest.CollectWriter)
+		sindrtest.Test(t, `
+def build_action(ctx):
+    print("building")
+
+def deploy_action(ctx):  
+    print("deploying")
+
+cli(name="TestApp", usage="test app")
+command(name="build", action=build_action)
+command(name="deploy", action=deploy_action)
+`,
+			sindrtest.WithArgs("completion", "fish"),
+			sindrtest.WithWriter(writer))
+
+		var contains bool
+		for _, w := range writer.Writes {
+			if strings.Contains(w, "function __fish_sindr_complete") {
+				contains = true
+			}
+		}
+		assert.True(t, contains, "Expected to find fish completion function in output")
+	})
 }

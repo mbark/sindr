@@ -3,6 +3,9 @@ package internal_test
 import (
 	"testing"
 
+	"go.starlark.net/starlark"
+
+	"github.com/mbark/sindr/internal"
 	"github.com/mbark/sindr/internal/sindrtest"
 )
 
@@ -49,16 +52,20 @@ command(name="test", action=lambda ctx: print("test executed"))
 def deploy_action(ctx):
     target = ctx.args.target
     environment = ctx.args.environment
-    print("Deploying", target, "to", environment)
+	version = ctx.args.version
+
+	assert_equals(target, "test", "Expected target to be 'test'")
+	assert_equals(environment, "prod", "Expected environment to be 'prod'")
+	assert_equals(version, 1, "Expected version to be 1")
 
 cli(name="TestSindrCommand")
 command(
     name="test",
     usage="Deploy the application",
     action=deploy_action,
-    args=[string_arg("target"), string_arg("environment")]
+    args=[string_arg("target"), string_arg("environment"), int_arg("version")]
 )
-`)
+`, sindrtest.WithArgs("test", "test", "prod", "1"))
 	})
 
 	t.Run("handles command with flags", func(t *testing.T) {
@@ -499,4 +506,15 @@ sub_command(
 command(name="test", action=lambda ctx: print("test executed"))
 `, sindrtest.ShouldFail())
 	})
+}
+
+func TestHelperStructs(t *testing.T) {
+	sindrtest.AssertValue(t, internal.NewContext(
+		starlark.StringDict{}, starlark.StringDict{}, starlark.NewList([]starlark.Value{}),
+	), false)
+	sindrtest.AssertValue(t, internal.NewFlagMap(starlark.StringDict{
+		"foo": starlark.String("bar"),
+	}), false)
+	sindrtest.AssertValue(t, &internal.Arg{}, false)
+	sindrtest.AssertValue(t, &internal.Flag{}, false)
 }

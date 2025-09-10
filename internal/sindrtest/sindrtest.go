@@ -223,7 +223,10 @@ func writePackageJson(t *testing.T, dir string, jsonData []byte) {
 	})
 }
 
-func builtinAssertEquals(t *testing.T, contents string) func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func builtinAssertEquals(
+	t *testing.T,
+	contents string,
+) func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	return func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		var expected, actual starlark.Value
 		var message string

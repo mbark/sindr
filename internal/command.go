@@ -394,18 +394,6 @@ func (m *FlagMap) Get(value starlark.Value) (v starlark.Value, found bool, err e
 	return v, ok, nil
 }
 
-func (m *FlagMap) Index(i starlark.Value) (starlark.Value, error) {
-	key, ok := i.(starlark.String)
-	if !ok {
-		return nil, fmt.Errorf("flag key must be string")
-	}
-	val, ok := m.data[string(key)]
-	if !ok {
-		return starlark.None, nil
-	}
-	return val, nil
-}
-
 func isValidIdentifier(s string) bool {
 	if s == "" {
 		return false

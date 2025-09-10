@@ -243,7 +243,7 @@ func unpackCacheOptions(
 	kwargs []starlark.Tuple,
 ) (*cacheDiffOptions, error) {
 	var name string
-	var version stringOrInt
+	var version StringOrInt
 	err := starlark.UnpackArgs(fn.Name(), nil, kwargs,
 		"name", &name,
 		"version", &version,
@@ -295,18 +295,26 @@ func (c diskCache) GetVersion(name string) (*string, error) {
 }
 
 var (
-	_ starlark.Unpacker = new(stringOrInt)
-	_ starlark.Value    = new(stringOrInt)
+	_ starlark.Unpacker = new(StringOrInt)
+	_ starlark.Value    = new(StringOrInt)
 )
 
-// stringOrInt is used to allow the version to be passed in both as a version and an int_version.
-type stringOrInt struct {
+// StringOrInt is used to allow the version to be passed in both as a version and an int_version.
+type StringOrInt struct {
 	s      *string
 	i      *int
 	frozen bool
 }
 
-func (si *stringOrInt) String() string {
+func NewStringOrIntString(s string) *StringOrInt {
+	return &StringOrInt{s: &s}
+}
+
+func NewStringOrIntInt(i int) *StringOrInt {
+	return &StringOrInt{i: &i}
+}
+
+func (si *StringOrInt) String() string {
 	if si == nil {
 		return ""
 	}
@@ -320,25 +328,25 @@ func (si *stringOrInt) String() string {
 	return ""
 }
 
-func (si *stringOrInt) Type() string {
-	return "stringOrInt"
+func (si *StringOrInt) Type() string {
+	return "StringOrInt"
 }
 
-func (si *stringOrInt) Freeze() {
+func (si *StringOrInt) Freeze() {
 	si.frozen = true
 }
 
-func (si *stringOrInt) Truth() starlark.Bool {
+func (si *StringOrInt) Truth() starlark.Bool {
 	return starlark.True
 }
 
-func (si *stringOrInt) Hash() (uint32, error) {
+func (si *StringOrInt) Hash() (uint32, error) {
 	h := fnv.New32a()
 	_, _ = h.Write([]byte(si.String()))
 	return h.Sum32(), nil
 }
 
-func (si *stringOrInt) Unpack(v starlark.Value) error {
+func (si *StringOrInt) Unpack(v starlark.Value) error {
 	switch v := v.(type) {
 	case starlark.String:
 		s := string(v)

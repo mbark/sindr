@@ -3,6 +3,7 @@ package cache_test
 import (
 	"testing"
 
+	"github.com/mbark/sindr/cache"
 	"github.com/mbark/sindr/internal/sindrtest"
 )
 
@@ -149,4 +150,10 @@ cli(name="TestCacheWithCustomDir", usage="Test cache with custom directory")
 command(name="test", action=test_action)
 `)
 	})
+}
+
+func TestValues(t *testing.T) {
+	sindrtest.AssertValue(t, &cache.Cache{}, true)
+	sindrtest.AssertValue(t, cache.NewStringOrIntString("s"), true)
+	sindrtest.AssertValue(t, cache.NewStringOrIntInt(2), true)
 }

@@ -22,8 +22,7 @@ print('Created .env file')
     
     # Check that the variable is set
     result = shell('echo $TEST_VAR')
-    if result.stdout != 'hello':
-        fail('expected "hello", got: ' + str(result.stdout))
+    assert_equals('hello', result.stdout, 'expected "hello"')
 
 cli(name="TestDotenv")
 command(name="test", action=test_action)
@@ -49,12 +48,10 @@ print('Created env files')
     
     # Check both variables are set
     result1 = shell('echo $VAR1')
-    if result1.stdout != 'value1':
-        fail('expected VAR1="value1", got: ' + str(result1.stdout))
+    assert_equals('value1', result1.stdout, 'expected VAR1="value1"')
     
     result2 = shell('echo $VAR2')
-    if result2.stdout != 'value2':
-        fail('expected VAR2="value2", got: ' + str(result2.stdout))
+    assert_equals('value2', result2.stdout, 'expected VAR2="value2"')
 
 cli(name="TestDotenv")
 command(name="test", action=test_action)
@@ -177,8 +174,7 @@ print('Created complex .env file')
         fail('expected VAR_WITH_EQUALS="key=value", got: ' + str(result4.stdout))
     
     result5 = shell('echo "$EMPTY_VAR"')
-    if result5.stdout != '':
-        fail('expected EMPTY_VAR to be empty, got: ' + str(result5.stdout))
+    assert_empty(result5.stdout, 'expected EMPTY_VAR to be empty')
 
 cli(name="TestDotenv")
 command(name="test", action=test_action)

@@ -145,12 +145,10 @@ command(name="test", action=test_action)
 		sindrtest.Test(t, `
 def test_action(ctx):
     success_result = exec('sh', 'exit 0')
-    if not success_result:
-        fail('successful result should be truthy')
+    assert_true(success_result, 'successful result should be truthy')
     
     fail_result = exec('sh', 'exit 1')
-    if fail_result:
-        fail('failed result should be falsy')
+    assert_true(not fail_result, 'failed result should be falsy')
 
 cli(name="TestExec", usage="Test exec functionality")
 command(name="test", action=test_action)
@@ -209,8 +207,7 @@ def test_action(ctx):
     # Test with awk
     awk_command = 'print "Hello from perl\n";'
     result = exec('perl', awk_command)
-    if result.stdout != 'Hello from perl':
-        fail('expected "Hello from perl", got: ' + str(result.stdout))
+    assert_equals('Hello from perl', result.stdout, 'expected "Hello from perl"')
 
 cli(name="TestExec", usage="Test exec functionality")
 command(name="test", action=test_action)
@@ -226,12 +223,9 @@ print("This will fail")
 sys.exit(42)
 '''
     result = exec('python3', python_code)
-    if result.exit_code != 42:
-        fail('expected exit code 42, got: ' + str(result.exit_code))
-    if result.success:
-        fail('expected success to be False')
-    if result.stdout != 'This will fail':
-        fail('expected "This will fail", got: ' + str(result.stdout))
+    assert_equals(42, result.exit_code, 'expected exit code 42')
+    assert_true(not result.success, 'expected success to be False')
+    assert_equals('This will fail', result.stdout, 'expected "This will fail"')
 
 cli(name="TestExec", usage="Test exec functionality")
 command(name="test", action=test_action)
@@ -246,13 +240,10 @@ def test_action(ctx):
 print("unclosed string
 '''
     result = exec('python3', python_code)
-    if result.success:
-        fail('expected command to fail due to syntax error')
-    if result.exit_code == 0:
-        fail('expected non-zero exit code for syntax error')
+    assert_true(not result.success, 'expected command to fail due to syntax error')
+    assert_non_zero(result.exit_code, 'expected non-zero exit code for syntax error')
     # stderr should contain error information
-    if result.stderr == '':
-        fail('expected error output in stderr')
+    assert_not_empty(result.stderr, 'expected error output in stderr')
 
 cli(name="TestExec", usage="Test exec functionality")
 command(name="test", action=test_action)
@@ -264,10 +255,8 @@ command(name="test", action=test_action)
 def test_action(ctx):
     # Test that exec works when all required parameters are provided
     result = exec('sh', 'echo "validation test"')
-    if result.stdout != 'validation test':
-        fail('expected "validation test", got: ' + str(result.stdout))
-    if not result.success:
-        fail('expected successful execution')
+    assert_equals('validation test', result.stdout, 'expected "validation test"')
+    assert_true(result.success, 'expected successful execution')
 
 cli(name="TestExec", usage="Test exec functionality")
 command(name="test", action=test_action)
@@ -280,8 +269,7 @@ func TestExecTemplating(t *testing.T) {
 		sindrtest.Test(t, `
 def test_action(ctx):
     result = exec('sh', 'echo "Debug mode: {{.debug}}"')
-    if result.stdout != 'Debug mode: true':
-        fail('expected "Debug mode: true", got: ' + str(result.stdout))
+    assert_equals('Debug mode: true', result.stdout, 'expected "Debug mode: true"')
 
 cli(name="TestExecTemplating", usage="Test exec automatic templating")
 command(name="test", action=test_action, flags=[
@@ -294,8 +282,7 @@ command(name="test", action=test_action, flags=[
 		sindrtest.Test(t, `
 def test_action(ctx):
     result = exec('sh', 'echo "Processing environment: {{.environment}}"')
-    if result.stdout != 'Processing environment: development':
-        fail('expected "Processing environment: development", got: ' + str(result.stdout))
+    assert_equals('Processing environment: development', result.stdout, 'expected "Processing environment: development"')
 
 cli(name="TestExecTemplating", usage="Test exec automatic templating")
 command(name="test", action=test_action, args=[string_arg("environment")])
@@ -307,8 +294,7 @@ command(name="test", action=test_action, args=[string_arg("environment")])
 def test_action(ctx):
     python_code = '''print("App with verbose={{.verbose}}")'''
     result = exec('python3', python_code)
-    if result.stdout != 'App with verbose=false':
-        fail('expected "App with verbose=false", got: ' + str(result.stdout))
+    assert_equals('App with verbose=false', result.stdout, 'expected "App with verbose=false"')
 
 cli(name="TestExecTemplating", usage="Test exec automatic templating")
 command(name="test", action=test_action, flags=[
@@ -325,8 +311,7 @@ echo "Host: {{.host}}"
 echo "Mode: {{.mode}}"'''
     result = exec('sh', shell_script)
     expected = '''Database: postgres\nHost: localhost\nMode: production'''
-    if result.stdout != expected:
-        fail('expected "' + expected + '", got: ' + str(result.stdout))
+    assert_equals(expected, result.stdout, 'expected multiline output to match')
 
 cli(name="TestExecTemplating", usage="Test exec automatic templating")
 command(name="test", action=test_action, args=[string_arg("database"), string_arg("host"), string_arg("mode")])
@@ -337,8 +322,7 @@ command(name="test", action=test_action, args=[string_arg("database"), string_ar
 		sindrtest.Test(t, `
 def test_action(ctx):
     result = exec('sh', 'echo "Loading config: {{.config_file}}"', prefix='CONFIG', config_file="app.config")
-    if result.stdout != 'Loading config: app.config':
-        fail('expected "Loading config: app.config", got: ' + str(result.stdout))
+    assert_equals('Loading config: app.config', result.stdout, 'expected "Loading config: app.config"')
 
 cli(name="TestExecTemplating", usage="Test exec automatic templating")
 command(name="test", action=test_action)
@@ -349,8 +333,7 @@ command(name="test", action=test_action)
 		sindrtest.Test(t, `
 def test_action(ctx):
     result = exec('sh', 'echo "no template variables here"')
-    if result.stdout != 'no template variables here':
-        fail('expected "no template variables here", got: ' + str(result.stdout))
+    assert_equals('no template variables here', result.stdout, 'expected "no template variables here"')
 
 cli(name="TestExecTemplating", usage="Test exec automatic templating")
 command(name="test", action=test_action)
@@ -361,8 +344,7 @@ command(name="test", action=test_action)
 		sindrtest.Test(t, `
 def test_action(ctx):
     result = exec('sh', 'echo "{{.instance}} {{.region}}"', instance="web-01", region="us-west-2")
-    if result.stdout != 'web-01 us-west-2':
-        fail('expected "web-01 us-west-2", got: ' + str(result.stdout))
+    assert_equals('web-01 us-west-2', result.stdout, 'expected "web-01 us-west-2"')
 
 cli(name="TestExecTemplating", usage="Test exec automatic templating")
 command(name="test", action=test_action)
@@ -373,8 +355,7 @@ command(name="test", action=test_action)
 		sindrtest.Test(t, `
 def test_action(ctx):
     result = exec('sh', 'echo "{{.service_name}}"', service_name="overridden-service")
-    if result.stdout != 'overridden-service':
-        fail('expected "overridden-service", got: ' + str(result.stdout))
+    assert_equals('overridden-service', result.stdout, 'expected "overridden-service"')
 
 cli(name="TestExecTemplating", usage="Test exec automatic templating")
 command(name="test", action=test_action, args=[string_arg("service_name")])
@@ -385,8 +366,7 @@ command(name="test", action=test_action, args=[string_arg("service_name")])
 		sindrtest.Test(t, `
 def test_action(ctx):
     result = exec('sh', 'echo "{{.environment}} {{.debug}} {{.deployment_id}}"', deployment_id="deploy-123")
-    if result.stdout != 'development true deploy-123':
-        fail('expected "development true deploy-123", got: ' + str(result.stdout))
+    assert_equals('development true deploy-123', result.stdout, 'expected "development true deploy-123"')
 
 cli(name="TestExecTemplating", usage="Test exec automatic templating")
 command(name="test", action=test_action, args=[string_arg("environment")], flags=[
@@ -400,8 +380,7 @@ command(name="test", action=test_action, args=[string_arg("environment")], flags
 def test_action(ctx):
     python_code = '''print("Processing {{.task_name}} with ID {{.task_id}} status {{.status}}")'''
     result = exec('python3', python_code, task_name="backup", task_id="task-456", status="running")
-    if result.stdout != 'Processing backup with ID task-456 status running':
-        fail('expected "Processing backup with ID task-456 status running", got: ' + str(result.stdout))
+    assert_equals('Processing backup with ID task-456 status running', result.stdout, 'expected "Processing backup with ID task-456 status running"')
 
 cli(name="TestExecTemplating", usage="Test exec automatic templating")
 command(name="test", action=test_action)
@@ -412,8 +391,7 @@ command(name="test", action=test_action)
 		sindrtest.Test(t, `
 def test_action(ctx):
     result = exec('sh', 'echo "Executing {{.operation}} on {{.resource}}"', prefix='EXEC', operation="deploy", resource="cluster")
-    if result.stdout != 'Executing deploy on cluster':
-        fail('expected "Executing deploy on cluster", got: ' + str(result.stdout))
+    assert_equals('Executing deploy on cluster', result.stdout, 'expected "Executing deploy on cluster"')
 
 cli(name="TestExecTemplating", usage="Test exec automatic templating")
 command(name="test", action=test_action)
@@ -428,8 +406,7 @@ echo "User: {{.user}}"
 echo "Backup ID: {{.backup_id}}"'''
     result = exec('sh', shell_script, database="production_db", user="admin", backup_id="backup-789")
     expected = '''Database: production_db\nUser: admin\nBackup ID: backup-789'''
-    if result.stdout != expected:
-        fail('expected "' + expected + '", got: ' + str(result.stdout))
+    assert_equals(expected, result.stdout, 'expected multiline database output to match')
 
 cli(name="TestExecTemplating", usage="Test exec automatic templating")
 command(name="test", action=test_action)
@@ -441,8 +418,7 @@ command(name="test", action=test_action)
 def test_action(ctx):
     python_code = '''print(f"Count: {{.count}} Enabled: {{.enabled}} Rate: {{.rate}}")'''
     result = exec('python3', python_code, count=100, enabled=False, rate=1.5)
-    if result.stdout != 'Count: 100 Enabled: false Rate: 1.5':
-        fail('expected "Count: 100 Enabled: false Rate: 1.5", got: ' + str(result.stdout))
+    assert_equals('Count: 100 Enabled: false Rate: 1.5', result.stdout, 'expected "Count: 100 Enabled: false Rate: 1.5"')
 
 cli(name="TestExecTemplating", usage="Test exec automatic templating")
 command(name="test", action=test_action)

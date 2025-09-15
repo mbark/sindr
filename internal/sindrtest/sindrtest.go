@@ -142,6 +142,13 @@ func Test(t *testing.T, contents string, opts ...TestOption) {
 		sindr.WithLogger(l),
 		sindr.WithWriter(writer),
 		sindr.WithBuiltin("assert_equals", builtinAssertEquals(t, contents)),
+		sindr.WithBuiltin("assert_true", builtinAssertTrue(t, contents)),
+		sindr.WithBuiltin("assert_not_equals", builtinAssertNotEquals(t, contents)),
+		sindr.WithBuiltin("assert_false", builtinAssertFalse(t, contents)),
+		sindr.WithBuiltin("assert_empty", builtinAssertEmpty(t, contents)),
+		sindr.WithBuiltin("assert_not_empty", builtinAssertNotEmpty(t, contents)),
+		sindr.WithBuiltin("assert_zero", builtinAssertZero(t, contents)),
+		sindr.WithBuiltin("assert_non_zero", builtinAssertNonZero(t, contents)),
 	)
 	if options.fail {
 		require.Error(t, err)
@@ -242,6 +249,225 @@ func builtinAssertEquals(
 		line := strings.Split(contents, "\n")[at.Pos.Line-1]
 
 		assert.Equal(t, expected, actual, "%s\n%s", message, line)
+		return starlark.None, nil
+	}
+}
+
+func builtinAssertTrue(
+	t *testing.T,
+	contents string,
+) func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	return func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		var actual starlark.Value
+		var message string
+		if err := starlark.UnpackArgs("assert_true", args, kwargs,
+			"actual", &actual,
+			"message?", &message,
+		); err != nil {
+			return nil, err
+		}
+
+		at := thread.CallStack().At(1)
+		line := strings.Split(contents, "\n")[at.Pos.Line-1]
+
+		assert.True(t, bool(actual.Truth()), "%s\n%s", message, line)
+		return starlark.None, nil
+	}
+}
+
+func builtinAssertNotEquals(
+	t *testing.T,
+	contents string,
+) func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	return func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		var expected, actual starlark.Value
+		var message string
+		if err := starlark.UnpackArgs("assert_not_equals", args, kwargs,
+			"expected", &expected,
+			"actual", &actual,
+			"message?", &message,
+		); err != nil {
+			return nil, err
+		}
+
+		at := thread.CallStack().At(1)
+		line := strings.Split(contents, "\n")[at.Pos.Line-1]
+
+		assert.NotEqual(t, expected, actual, "%s\n%s", message, line)
+		return starlark.None, nil
+	}
+}
+
+func builtinAssertFalse(
+	t *testing.T,
+	contents string,
+) func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	return func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		var actual starlark.Value
+		var message string
+		if err := starlark.UnpackArgs("assert_false", args, kwargs,
+			"actual", &actual,
+			"message?", &message,
+		); err != nil {
+			return nil, err
+		}
+
+		at := thread.CallStack().At(1)
+		line := strings.Split(contents, "\n")[at.Pos.Line-1]
+
+		assert.False(t, bool(actual.Truth()), "%s\n%s", message, line)
+		return starlark.None, nil
+	}
+}
+
+func builtinAssertEmpty(
+	t *testing.T,
+	contents string,
+) func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	return func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		var actual starlark.Value
+		var message string
+		if err := starlark.UnpackArgs("assert_empty", args, kwargs,
+			"actual", &actual,
+			"message?", &message,
+		); err != nil {
+			return nil, err
+		}
+
+		at := thread.CallStack().At(1)
+		line := strings.Split(contents, "\n")[at.Pos.Line-1]
+
+		// Convert Starlark value to Go value for empty check
+		var goValue interface{}
+		switch v := actual.(type) {
+		case starlark.String:
+			goValue = string(v)
+		case starlark.Int:
+			if i, ok := v.Int64(); ok {
+				goValue = i
+			} else {
+				goValue = v.String()
+			}
+		case starlark.Float:
+			goValue = float64(v)
+		default:
+			goValue = v.String()
+		}
+		assert.Empty(t, goValue, "%s\n%s", message, line)
+		return starlark.None, nil
+	}
+}
+
+func builtinAssertNotEmpty(
+	t *testing.T,
+	contents string,
+) func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	return func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		var actual starlark.Value
+		var message string
+		if err := starlark.UnpackArgs("assert_not_empty", args, kwargs,
+			"actual", &actual,
+			"message?", &message,
+		); err != nil {
+			return nil, err
+		}
+
+		at := thread.CallStack().At(1)
+		line := strings.Split(contents, "\n")[at.Pos.Line-1]
+
+		// Convert Starlark value to Go value for not empty check
+		var goValue interface{}
+		switch v := actual.(type) {
+		case starlark.String:
+			goValue = string(v)
+		case starlark.Int:
+			if i, ok := v.Int64(); ok {
+				goValue = i
+			} else {
+				goValue = v.String()
+			}
+		case starlark.Float:
+			goValue = float64(v)
+		default:
+			goValue = v.String()
+		}
+		assert.NotEmpty(t, goValue, "%s\n%s", message, line)
+		return starlark.None, nil
+	}
+}
+
+func builtinAssertZero(
+	t *testing.T,
+	contents string,
+) func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	return func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		var actual starlark.Value
+		var message string
+		if err := starlark.UnpackArgs("assert_zero", args, kwargs,
+			"actual", &actual,
+			"message?", &message,
+		); err != nil {
+			return nil, err
+		}
+
+		at := thread.CallStack().At(1)
+		line := strings.Split(contents, "\n")[at.Pos.Line-1]
+
+		// Convert Starlark value to Go value for zero check
+		var goValue interface{}
+		switch v := actual.(type) {
+		case starlark.Int:
+			if i, ok := v.Int64(); ok {
+				goValue = i
+			} else {
+				goValue = v.String()
+			}
+		case starlark.Float:
+			goValue = float64(v)
+		case starlark.String:
+			goValue = string(v)
+		default:
+			goValue = v.String()
+		}
+		assert.Zero(t, goValue, "%s\n%s", message, line)
+		return starlark.None, nil
+	}
+}
+
+func builtinAssertNonZero(
+	t *testing.T,
+	contents string,
+) func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	return func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		var actual starlark.Value
+		var message string
+		if err := starlark.UnpackArgs("assert_non_zero", args, kwargs,
+			"actual", &actual,
+			"message?", &message,
+		); err != nil {
+			return nil, err
+		}
+
+		at := thread.CallStack().At(1)
+		line := strings.Split(contents, "\n")[at.Pos.Line-1]
+
+		// Convert Starlark value to Go value for non-zero check
+		var goValue interface{}
+		switch v := actual.(type) {
+		case starlark.Int:
+			if i, ok := v.Int64(); ok {
+				goValue = i
+			} else {
+				goValue = v.String()
+			}
+		case starlark.Float:
+			goValue = float64(v)
+		case starlark.String:
+			goValue = string(v)
+		default:
+			goValue = v.String()
+		}
+		assert.NotZero(t, goValue, "%s\n%s", message, line)
 		return starlark.None, nil
 	}
 }

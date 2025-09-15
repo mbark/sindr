@@ -12,8 +12,7 @@ func TestDiff(t *testing.T) {
 		sindrtest.Test(t, `
 def test_action(ctx):
 	c = cache()
-	if not c.diff(name='version', version='1'):
-		fail('unexpected diff')
+	assert_true(c.diff(name='version', version='1'), 'expected diff')
 
 cli(name="TestDiff", usage="Test diff functionality")
 command(name="test", action=test_action)
@@ -25,8 +24,7 @@ command(name="test", action=test_action)
 def test_action(ctx):
 	c = cache()
 	c.set_version(name='version', version='1')
-	if c.diff(name='version', version='1'):
-		fail('expected no diff')
+	assert_true(not c.diff(name='version', version='1'), 'expected no diff')
 
 cli(name="TestDiff", usage="Test diff functionality")
 command(name="test", action=test_action)
@@ -77,8 +75,7 @@ def test_action(ctx):
 	
 	ran = c.with_version(version_func, name='test-version', version='v2.0.0')
 	
-	if not ran:
-		fail('expected with_version to return true when function runs')
+	assert_true(ran, 'expected with_version to return true when function runs')
 	
 	print('Function executed successfully')
 
@@ -100,8 +97,7 @@ def test_action(ctx):
 	# Then try to run with_version with same version
 	ran = c.with_version(version_func, name='skip-test', version='v1.5.0')
 	
-	if ran:
-		fail('expected with_version to return false when versions match')
+	assert_true(not ran, 'expected with_version to return false when versions match')
 	
 	print('Version matching test passed - function was correctly skipped')
 	
@@ -120,8 +116,7 @@ def test_action(ctx):
 
 	ran = c.with_version(version_func, name='int-version', version=123)
 	
-	if not ran:
-		fail('expected with_version to return true when function runs')
+	assert_true(ran, 'expected with_version to return true when function runs')
 	
 	print('Int version function executed successfully')
 	
